@@ -1261,6 +1261,54 @@ function crm_dl_hook_payload($j) {
   }
   return $p;
 }
+function crm_dl_phone_norm($v) {
+  $d = preg_replace('/\D+/', '', (string)$v);
+  /* +2126xxxxxxxx / 2126xxxxxxxx → 06xxxxxxxx */
+  if (strlen($d) === 12 && strpos($d, '212') === 0) $d = '0' . substr($d, 3);
+  return $d;
+}
+function crm_dl_find_customer_phone($v) {
+  if (!is_array($v)) return '';
+  foreach (array('phone','telephone','tel','customerPhone','customer_phone','clientPhone','client_phone','recipientPhone','recipient_phone') as $k) {
+    if (isset($v[$k]) && !is_array($v[$k])) {
+      $p = crm_dl_phone_norm($v[$k]);
+      if (strlen($p) >= 9) return $p;
+    }
+  }
+  foreach ($v as $child) {
+    if (is_array($child)) { $p = crm_dl_find_customer_phone($child); if ($p !== '') return $p; }
+  }
+  return '';
+}
+/* الـwebhook ديال Digylog ما فيهش هاتف الزبون، وnum ديالو داخلي. فالطلبيات
+ * القديمة اللي ما تخزنش فيها tracking كنجيب تفاصيل الطلبية بـGET read-only،
+ * ومن بعد كنطابق بالهاتف بشكل unique. */
+function crm_dl_lookup_customer_phone($num, $tracking) {
+  $cfg = crm_dl_cfg_get();
+  $token = isset($cfg['token']) ? trim((string)$cfg['token']) : '';
+  if ($token === '') return array('phone'=>'', 'path'=>'no-token');
+  $paths = array();
+  if ($num !== '') {
+    $q = rawurlencode($num);
+    $paths[] = '/orders/' . $q;
+    $paths[] = '/orders?num=' . $q;
+    $paths[] = '/orders/standard/' . $q;
+  }
+  if ($tracking !== '') {
+    $q = rawurlencode($tracking);
+    $paths[] = '/orders?traking=' . $q;
+    $paths[] = '/orders?tracking=' . $q;
+    $paths[] = '/orders/tracking/' . $q;
+  }
+  foreach (array_values(array_unique($paths)) as $path) {
+    list($code, $body, $err) = crm_dl_http('GET', $path, $token);
+    if ($code < 200 || $code >= 300 || $body === '') continue;
+    $j = json_decode($body, true);
+    $phone = crm_dl_find_customer_phone($j);
+    if ($phone !== '') return array('phone'=>$phone, 'path'=>$path);
+  }
+  return array('phone'=>'', 'path'=>'not-found');
+}
 function crm_dl_hook() {
   global $SECRET, $LOCK_FILE;
   $tk = isset($_GET['token']) ? (string)$_GET['token'] : '';
@@ -1330,10 +1378,31 @@ function crm_dl_hook() {
     }
     if ($matches === 1) { $hit = $candidate; $matchedBy = 'tracking'; }
   }
+  /* 4) الطلبية القديمة ما عندها لا tracking لا dlNum فالـCRM: كنطلقو اللوك،
+     كنجيبوا تفاصيلها من Digylog، ومن بعد كنطابقو بالهاتف unique. */
+  if ($hit < 0) {
+    if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); $fh = null; }
+    $__look = crm_dl_lookup_customer_phone($num, $tracking);
+    $__phone = isset($__look['phone']) ? (string)$__look['phone'] : '';
+    if ($__phone !== '') {
+      $fh = @fopen($LOCK_FILE, 'c'); if ($fh) @flock($fh, LOCK_EX);
+      $data = crm_read_raw(true);
+      $cur = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+      if (!is_array($cur)) $cur = array();
+      $prevT = isset($data['paraveda_orders_v5']['t']) ? (int)$data['paraveda_orders_v5']['t'] : 0;
+      $candidate = -1; $matches = 0;
+      foreach ($cur as $i => $candidateOrder) {
+        if (!is_array($candidateOrder) || !empty($candidateOrder['_del'])) continue;
+        if (crm_dl_phone_norm(isset($candidateOrder['telephone']) ? $candidateOrder['telephone'] : '') === $__phone) { $candidate = $i; $matches++; }
+      }
+      if ($matches === 1) { $hit = $candidate; $matchedBy = 'digylog-api-phone'; }
+      crm_audit('digylog-lookup | path=' . (isset($__look['path']) ? $__look['path'] : '') . ' | phoneTail=' . substr($__phone, -4) . ' | matches=' . $matches);
+    }
+  }
   if ($hit < 0) {
     if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
     crm_audit('digylog-hook-miss | num=' . $num . ' | dlId=' . $dlId . ' | tracking=' . $tracking . ' | status=' . $st);
-    crm_out(array('ok'=>true, 'found'=>false, 'num'=>$num));
+    crm_out(array('ok'=>true, 'found'=>false, 'num'=>$num, 'lookup'=>(isset($__look['path']) ? $__look['path'] : 'not-run')));
   }
 
   $now = (int)(microtime(true) * 1000);
