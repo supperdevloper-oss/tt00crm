@@ -1245,6 +1245,14 @@ function crm_dl_hook_pick($a, $keys) {
   }
   return '';
 }
+/* الحالة النهائية فقط: "En cours ... retour" ماشي Retournée بعد، لذلك ما
+ * كنبدلوش CRM حتى Digylog يقول Retournée/Returned صراحة. */
+function crm_dl_status_to_crm($idStatus, $status) {
+  $s = crm_dl_hook_norm($status);
+  if (strpos($s, 'retourne') !== false || strpos($s, 'returned') !== false) return 'Retournée';
+  if ((string)$idStatus === '6' || strpos($s, 'livr') !== false || strpos($s, 'deliver') !== false || strpos($s, 'distribu') !== false || strpos($s, 'remis') !== false) return 'Livrée';
+  return '';
+}
 function crm_dl_hook_payload($j) {
   $p = $j;
   /* بعض نسخ Digylog كيغلفو الحدث مرة أو جوج: payload/data/order */
@@ -1341,14 +1349,7 @@ function crm_dl_hook() {
   $tracking = crm_dl_hook_pick($p, array('traking','tracking','trackingId','tracking_id','trackingNumber','tracking_number','barcode'));
   if ($num === '' && $dlId === '' && $tracking === '') crm_out(array('ok'=>true, 'ignored'=>'no-order-reference'));
 
-  $stLow = crm_dl_hook_norm($st);
-  $newLiv = '';
-  /* Retour كيتفحص قبل Livrée باش status مركّب ما يتصنفش غلط. */
-  if (strpos($stLow, 'retour') !== false || strpos($stLow, 'refus') !== false || strpos($stLow, 'refused') !== false || strpos($stLow, 'returned') !== false) {
-    $newLiv = 'Retour';
-  } elseif ($idSt === '6' || strpos($stLow, 'livr') !== false || strpos($stLow, 'deliver') !== false || strpos($stLow, 'distribu') !== false || strpos($stLow, 'remis') !== false) {
-    $newLiv = 'Livrée';
-  }
+  $newLiv = crm_dl_status_to_crm($idSt, $st);
 
   $fh = @fopen($LOCK_FILE, 'c'); if ($fh) @flock($fh, LOCK_EX);
   $data = crm_read_raw(true);
@@ -1514,7 +1515,7 @@ if ($m === 'GET') {
           $lv = isset($o['livraison']) ? (string)$o['livraison'] : '';
           if ($st === 'Confirmé') $conf++;
           if ($lv === 'Livrée' || $lv === 'Rechange')   { $livre++;  $ca += isset($o['prix']) ? (float)$o['prix'] : 0; }
-          if ($lv === 'Retour' || $lv === 'Remboursé')  { $retour++; }
+          if ($lv === 'Retour' || $lv === 'Retournée' || $lv === 'Remboursé')  { $retour++; }
         }
         $__rows[] = array(
           'id'      => isset($a['id']) ? $a['id'] : '',
