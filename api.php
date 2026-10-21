@@ -1067,7 +1067,9 @@ function crm_dl_admin($b) {
     /* تشخيص: آخر سطور الـwebhook من audit.log (شكل الطلب الحقيقي اللي وصل من Digylog) */
     $__al = (is_file($AUDIT_FILE)) ? array_slice(array_values(array_filter(explode("\n", (string)@file_get_contents($AUDIT_FILE)))), -500) : array();
     $__hk = array_values(array_filter($__al, function ($l) { return strpos($l, 'digylog-hook') !== false; }));
-    $out['/hook-log'] = array('lines' => array_slice($__hk, -6));
+    $out['/hook-log'] = array('lines' => array_slice($__hk, -10));
+    /* عاود عالج تلقائياً webhooks ديال Livrée/Retournée اللي فاتو قبل إصلاح lookup. */
+    $out['/reconcile'] = crm_dl_reconcile_recent();
     crm_out(array('ok'=>true, 'test'=>$out));
   }
   if ($op === 'dry') crm_out(crm_dl_run(true));
@@ -1304,6 +1306,8 @@ function crm_dl_lookup_customer_phone($num, $tracking) {
   }
   if ($tracking !== '') {
     $q = rawurlencode($tracking);
+    /* Endpoint officiel Digylog: كيرجع infos فيها phone/name/price/status. */
+    $paths[] = '/order/' . $q . '/infos';
     $paths[] = '/orders?traking=' . $q;
     $paths[] = '/orders?tracking=' . $q;
     $paths[] = '/orders/tracking/' . $q;
@@ -1313,9 +1317,88 @@ function crm_dl_lookup_customer_phone($num, $tracking) {
     if ($code < 200 || $code >= 300 || $body === '') continue;
     $j = json_decode($body, true);
     $phone = crm_dl_find_customer_phone($j);
-    if ($phone !== '') return array('phone'=>$phone, 'path'=>$path);
+    if ($phone !== '') return array('phone'=>$phone, 'path'=>$path, 'info'=>$j);
   }
-  return array('phone'=>'', 'path'=>'not-found');
+  return array('phone'=>'', 'path'=>'not-found', 'info'=>array());
+}
+function crm_dl_match_order($orders, $phone, $info, &$matches = 0) {
+  $candidates = array();
+  foreach ($orders as $i => $o) {
+    if (!is_array($o) || !empty($o['_del'])) continue;
+    if (crm_dl_phone_norm(isset($o['telephone']) ? $o['telephone'] : '') === $phone) $candidates[] = $i;
+  }
+  $matches = count($candidates);
+  if ($matches === 1) return $candidates[0];
+  if ($matches === 0 || !is_array($info)) return -1;
+  $remoteDate = substr((string)(isset($info['createdAt']) ? $info['createdAt'] : ''), 0, 10);
+  $remotePrice = isset($info['price']) && is_numeric($info['price']) ? (float)$info['price'] : null;
+  $remoteName = crm_dl_hook_norm(isset($info['name']) ? $info['name'] : '');
+  $best = -1; $bestScore = -1; $ties = 0;
+  foreach ($candidates as $i) {
+    $o = $orders[$i]; $score = 0;
+    if ($remoteDate !== '' && substr((string)(isset($o['dateCreation']) ? $o['dateCreation'] : ''), 0, 10) === $remoteDate) $score += 4;
+    if ($remotePrice !== null && abs((float)(isset($o['prix']) ? $o['prix'] : 0) - $remotePrice) < 0.01) $score += 2;
+    if ($remoteName !== '' && crm_dl_hook_norm(isset($o['nom']) ? $o['nom'] : '') === $remoteName) $score += 1;
+    if ($score > $bestScore) { $best = $i; $bestScore = $score; $ties = 1; }
+    elseif ($score === $bestScore) $ties++;
+  }
+  return ($bestScore > 0 && $ties === 1) ? $best : -1;
+}
+/* كيرجع يعالج آخر webhooks اللي وصلو قبل الإصلاح وكانو found=false. كيتشغل
+ * مع زر اختبار الاتصال، باش Livrée/Retournée القديمة تلحق بالـCRM بلا انتظار حدث جديد. */
+function crm_dl_reconcile_recent() {
+  global $AUDIT_FILE, $LOCK_FILE;
+  if (!is_file($AUDIT_FILE)) return array('ok'=>true, 'events'=>0, 'updated'=>0);
+  $lines = array_slice(explode("\n", (string)@file_get_contents($AUDIT_FILE)), -1200);
+  $events = array();
+  foreach ($lines as $line) {
+    $mark = strpos($line, 'digylog-hook-raw |');
+    if ($mark === false) continue;
+    $jsonAt = strpos($line, ' | {', $mark);
+    if ($jsonAt === false) continue;
+    $j = json_decode(substr($line, $jsonAt + 3), true);
+    if (!is_array($j)) continue;
+    $p = crm_dl_hook_payload($j);
+    $tracking = crm_dl_hook_pick($p, array('traking','tracking','trackingId','tracking_id','trackingNumber','tracking_number','barcode'));
+    $status = crm_dl_hook_pick($p, array('status','statusName','status_name','orderStatus','order_status','label'));
+    $idStatus = crm_dl_hook_pick($p, array('idStatus','statusId','status_id','id_status'));
+    $liv = crm_dl_status_to_crm($idStatus, $status);
+    if ($tracking !== '' && $liv !== '') $events[$tracking] = array('tracking'=>$tracking, 'status'=>$status, 'idStatus'=>$idStatus, 'livraison'=>$liv);
+  }
+  if (count($events) > 40) $events = array_slice($events, -40, null, true);
+  $resolved = array();
+  foreach ($events as $tracking => $event) {
+    $look = crm_dl_lookup_customer_phone('', $tracking);
+    if (!empty($look['phone'])) { $event['phone'] = $look['phone']; $event['info'] = isset($look['info']) ? $look['info'] : array(); $resolved[] = $event; }
+  }
+  if (!$resolved) return array('ok'=>true, 'events'=>count($events), 'resolved'=>0, 'updated'=>0);
+  $fh = @fopen($LOCK_FILE, 'c'); if ($fh) @flock($fh, LOCK_EX);
+  $data = crm_read_raw(true);
+  $cur = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  if (!is_array($cur)) $cur = array();
+  $prevT = isset($data['paraveda_orders_v5']['t']) ? (int)$data['paraveda_orders_v5']['t'] : 0;
+  $updated = 0; $ambiguous = 0; $now = (int)(microtime(true) * 1000);
+  foreach ($resolved as $event) {
+    $matches = 0; $hit = crm_dl_match_order($cur, $event['phone'], $event['info'], $matches);
+    if ($hit < 0) { if ($matches > 1) $ambiguous++; continue; }
+    $o = $cur[$hit];
+    if (!isset($o['_f']) || !is_array($o['_f'])) $o['_f'] = array();
+    $changed = (string)(isset($o['livraison']) ? $o['livraison'] : '') !== $event['livraison'];
+    $o['livraison'] = $event['livraison']; $o['_f']['livraison'] = $now;
+    $o['tracking'] = $event['tracking']; $o['_f']['tracking'] = $now;
+    $o['dlStatus'] = $event['status']; $o['dlStatusId'] = $event['idStatus']; $o['dlStatusAt'] = $now;
+    $o['_f']['dlStatus'] = $now; $o['_f']['dlStatusId'] = $now;
+    if ($event['livraison'] === 'Livrée' && trim((string)(isset($o['dateLiv']) ? $o['dateLiv'] : '')) === '') { $o['dateLiv'] = date('Y-m-d'); $o['_f']['dateLiv'] = $now; }
+    $o['_u'] = $now; $cur[$hit] = $o; if ($changed) $updated++;
+  }
+  if ($updated > 0) {
+    crm_backup(); $t = max($prevT + 1, $now);
+    $data['paraveda_orders_v5'] = array('t'=>$t, 'd'=>array_values($cur));
+    $ok = crm_write_all($data); if ($ok) crm_journal_append('paraveda_orders_v5', $t, array_values($cur));
+  }
+  if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
+  crm_audit('digylog-reconcile | events=' . count($events) . ' | resolved=' . count($resolved) . ' | updated=' . $updated . ' | ambiguous=' . $ambiguous);
+  return array('ok'=>true, 'events'=>count($events), 'resolved'=>count($resolved), 'updated'=>$updated, 'ambiguous'=>$ambiguous);
 }
 function crm_dl_hook() {
   global $SECRET, $LOCK_FILE;
@@ -1391,13 +1474,10 @@ function crm_dl_hook() {
       $cur = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
       if (!is_array($cur)) $cur = array();
       $prevT = isset($data['paraveda_orders_v5']['t']) ? (int)$data['paraveda_orders_v5']['t'] : 0;
-      $candidate = -1; $matches = 0;
-      foreach ($cur as $i => $candidateOrder) {
-        if (!is_array($candidateOrder) || !empty($candidateOrder['_del'])) continue;
-        if (crm_dl_phone_norm(isset($candidateOrder['telephone']) ? $candidateOrder['telephone'] : '') === $__phone) { $candidate = $i; $matches++; }
-      }
-      if ($matches === 1) { $hit = $candidate; $matchedBy = 'digylog-api-phone'; }
-      crm_audit('digylog-lookup | path=' . (isset($__look['path']) ? $__look['path'] : '') . ' | phoneTail=' . substr($__phone, -4) . ' | matches=' . $matches);
+      $matches = 0;
+      $candidate = crm_dl_match_order($cur, $__phone, isset($__look['info']) ? $__look['info'] : array(), $matches);
+      if ($candidate >= 0) { $hit = $candidate; $matchedBy = 'digylog-api-phone'; }
+      crm_audit('digylog-lookup | path=' . (isset($__look['path']) ? $__look['path'] : '') . ' | phoneTail=' . substr($__phone, -4) . ' | matches=' . $matches . ' | matched=' . ($candidate >= 0 ? 1 : 0));
     }
   }
   if ($hit < 0) {
