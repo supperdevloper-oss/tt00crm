@@ -1190,15 +1190,29 @@ function crm_dl_run($dry = false) {
              المرجع الأصلي، ترتيب الجواب مطابق لترتيب batch وكنستعملو index. */
           $rr = null;
           foreach ($responseRows as $candidate) {
-            $orig = crm_dl_response_value($candidate, array('externalReference','external_reference','clientReference','client_reference','reference','ref','sourceNum','source_num'));
+            /* Digylog كيرجع غالباً نفس num اللي صيفطناه (CRM id). النسخة
+               القديمة ما كانتش كتستعمل num فالمطابقة، وهادشي خلا batch كامل
+               يتعلّم Expédier vers بلا Tracking. */
+            $orig = crm_dl_response_value($candidate, array('externalReference','external_reference','clientReference','client_reference','reference','ref','sourceNum','source_num','num','orderNum','order_num'));
             if ($orig !== '' && $orig === (string)$r['id']) { $rr = $candidate; break; }
           }
           if ($rr === null && count($responseRows) === count($chunk) && isset($responseRows[$__ri])) $rr = $responseRows[$__ri];
+          $rowOk = is_array($rr);
+          if ($rowOk && isset($rr['isSuccess']) && ($rr['isSuccess'] === false || $rr['isSuccess'] === 0 || $rr['isSuccess'] === 'false')) $rowOk = false;
+          if ($rowOk && isset($rr['success']) && ($rr['success'] === false || $rr['success'] === 0 || $rr['success'] === 'false')) $rowOk = false;
+          $rowTracking = $rowOk ? crm_dl_response_value($rr, array('traking','tracking','trackingId','tracking_id','trackingNumber','tracking_number')) : '';
+          /* ما نكتبوش Expédier vers إلا عندنا دليل لكل سطر: Tracking حقيقي.
+             HTTP 200 ديال batch بوحدو ماشي نجاح جميع الطلبيات. */
+          if (!$rowOk || $rowTracking === '') {
+            $msg = is_array($rr) ? crm_dl_response_value($rr, array('message','error','errors')) : '';
+            $failed[$r['id']] = 'digylog-no-tracking' . ($msg !== '' ? (': ' . $msg) : '') . ' | ' . substr($resp, 0, 120);
+            continue;
+          }
           $sent[$r['id']] = array(
             'raw'      => substr($resp, 0, 500),
             'num'      => crm_dl_response_value($rr, array('num','orderNum','order_num')),
             'id'       => crm_dl_response_value($rr, array('idOrder','orderId','order_id','id')),
-            'tracking' => crm_dl_response_value($rr, array('traking','tracking','trackingId','tracking_id','trackingNumber','tracking_number'))
+            'tracking' => $rowTracking
           );
         } else $failed[$r['id']] = ($err !== '' ? $err : ('http-' . $code . ' ' . substr($resp, 0, 150)));
       }
