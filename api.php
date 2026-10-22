@@ -1477,37 +1477,55 @@ function crm_dl_reconcile_recent($requestedTrackings = array()) {
     if ($event['status'] === '') $event['status'] = crm_dl_hook_pick($info, array('status','statusName','status_name','orderStatus','order_status','label'));
     if ($event['idStatus'] === '') $event['idStatus'] = crm_dl_hook_pick($info, array('idStatus','statusId','status_id','id_status'));
     if ($event['livraison'] === '') $event['livraison'] = crm_dl_status_to_crm($event['idStatus'], $event['status']);
-    if ($event['livraison'] === '') continue; // ما نبدلوش الحالات غير النهائية
+    /* حتى الحالات غير النهائية كنربطو tracking ديالها مع الطلبية. غير Suivie
+       ما كنبدلوهاش حتى تكون Livrée ولا Retournée النهائية. */
     $event['phone'] = $look['phone']; $event['info'] = $info; $resolved[] = $event;
   }
-  if (!$resolved) return array('ok'=>true, 'events'=>count($events), 'resolved'=>0, 'updated'=>0);
+  if (!$resolved) return array('ok'=>true, 'events'=>count($events), 'resolved'=>0, 'linked'=>0, 'updated'=>0);
   $fh = @fopen($LOCK_FILE, 'c'); if ($fh) @flock($fh, LOCK_EX);
   $data = crm_read_raw(true);
   $cur = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
   if (!is_array($cur)) $cur = array();
   $prevT = isset($data['paraveda_orders_v5']['t']) ? (int)$data['paraveda_orders_v5']['t'] : 0;
-  $updated = 0; $ambiguous = 0; $now = (int)(microtime(true) * 1000);
+  $updated = 0; $linked = 0; $applied = 0; $ambiguous = 0; $now = (int)(microtime(true) * 1000);
   foreach ($resolved as $event) {
-    $matches = 0; $hit = crm_dl_match_order($cur, $event['phone'], $event['info'], $matches);
+    /* Tracking المخزن كيربح أولاً؛ إلا مازال ما مربوطش كنطابق بالهاتف ثم
+       الاسم/المدينة/التاريخ/الثمن. */
+    $hit = -1; $trackingMatches = 0;
+    foreach ($cur as $ci => $co) {
+      if (!is_array($co) || !empty($co['_del'])) continue;
+      if (strtoupper(trim((string)(isset($co['tracking']) ? $co['tracking'] : ''))) === $event['tracking']) { $hit = $ci; $trackingMatches++; }
+    }
+    $matches = 0;
+    if ($trackingMatches !== 1) $hit = crm_dl_match_order($cur, $event['phone'], $event['info'], $matches);
     if ($hit < 0) { if ($matches > 1) $ambiguous++; continue; }
     $o = $cur[$hit];
     if (!isset($o['_f']) || !is_array($o['_f'])) $o['_f'] = array();
-    $changed = (string)(isset($o['livraison']) ? $o['livraison'] : '') !== $event['livraison'];
-    $o['livraison'] = $event['livraison']; $o['_f']['livraison'] = $now;
+    $oldTracking = strtoupper(trim((string)(isset($o['tracking']) ? $o['tracking'] : '')));
+    $statusChanged = $event['livraison'] !== '' && (string)(isset($o['livraison']) ? $o['livraison'] : '') !== $event['livraison'];
+    $rowChanged = $oldTracking !== $event['tracking']
+      || (string)(isset($o['dlStatus']) ? $o['dlStatus'] : '') !== (string)$event['status']
+      || (string)(isset($o['dlStatusId']) ? $o['dlStatusId'] : '') !== (string)$event['idStatus']
+      || $statusChanged;
+    if ($event['livraison'] === 'Livrée' && trim((string)(isset($o['dateLiv']) ? $o['dateLiv'] : '')) === '') $rowChanged = true;
+    if (!$rowChanged) continue;
+    if ($event['livraison'] !== '') { $o['livraison'] = $event['livraison']; $o['_f']['livraison'] = $now; }
     $o['tracking'] = $event['tracking']; $o['_f']['tracking'] = $now;
     $o['dlStatus'] = $event['status']; $o['dlStatusId'] = $event['idStatus']; $o['dlStatusAt'] = $now;
     $o['_f']['dlStatus'] = $now; $o['_f']['dlStatusId'] = $now;
     if ($event['livraison'] === 'Livrée' && trim((string)(isset($o['dateLiv']) ? $o['dateLiv'] : '')) === '') { $o['dateLiv'] = date('Y-m-d'); $o['_f']['dateLiv'] = $now; }
-    $o['_u'] = $now; $cur[$hit] = $o; if ($changed) $updated++;
+    $o['_u'] = $now; $cur[$hit] = $o; $applied++;
+    if ($oldTracking !== $event['tracking']) $linked++;
+    if ($statusChanged) $updated++;
   }
-  if ($updated > 0) {
+  if ($applied > 0) {
     crm_backup(); $t = max($prevT + 1, $now);
     $data['paraveda_orders_v5'] = array('t'=>$t, 'd'=>array_values($cur));
     $ok = crm_write_all($data); if ($ok) crm_journal_append('paraveda_orders_v5', $t, array_values($cur));
   }
   if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
-  crm_audit('digylog-reconcile | events=' . count($events) . ' | resolved=' . count($resolved) . ' | updated=' . $updated . ' | ambiguous=' . $ambiguous);
-  return array('ok'=>true, 'events'=>count($events), 'resolved'=>count($resolved), 'updated'=>$updated, 'ambiguous'=>$ambiguous);
+  crm_audit('digylog-reconcile | events=' . count($events) . ' | resolved=' . count($resolved) . ' | linked=' . $linked . ' | updated=' . $updated . ' | ambiguous=' . $ambiguous);
+  return array('ok'=>true, 'events'=>count($events), 'resolved'=>count($resolved), 'linked'=>$linked, 'updated'=>$updated, 'ambiguous'=>$ambiguous);
 }
 function crm_dl_hook() {
   global $SECRET, $LOCK_FILE;

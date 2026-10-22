@@ -172,7 +172,7 @@
       });
     };
     $('reconcileAll').onclick = async function () {
-      var btn = $('reconcileAll'), totalUpdated = 0, totalResolved = 0, failed = 0;
+      var btn = $('reconcileAll'), totalUpdated = 0, totalLinked = 0, totalResolved = 0, failed = 0;
       btn.disabled = true;
       try {
         show('⏳ كنوجد لائحة الطلبيات المرتبطة…', true);
@@ -184,11 +184,11 @@
           var part = trackings.slice(i, i + 8);
           show('⏳ تراجعو ' + Math.min(i + part.length, trackings.length) + ' من ' + trackings.length + '…', true);
           var j = await call({ action: 'digylog_admin', op: 'reconcile', trackings: part });
-          if (j.ok) { totalUpdated += Number(j.updated || 0); totalResolved += Number(j.resolved || 0); }
+          if (j.ok) { totalUpdated += Number(j.updated || 0); totalLinked += Number(j.linked || 0); totalResolved += Number(j.resolved || 0); }
           else failed++;
-          out({ ok: failed === 0, progress: Math.min(i + part.length, trackings.length), total: trackings.length, resolved: totalResolved, updated: totalUpdated, failedBatches: failed });
+          out({ ok: failed === 0, progress: Math.min(i + part.length, trackings.length), total: trackings.length, resolved: totalResolved, linked: totalLinked, updated: totalUpdated, failedBatches: failed });
         }
-        show('✅ تسالات: تراجعو ' + trackings.length + ' وتبدلات ' + totalUpdated + ' طلبية فالـCRM', true);
+        show('✅ تسالات: تربط Tracking مع ' + totalLinked + ' وتبدلات الحالة ديال ' + totalUpdated + ' طلبية', true);
       } catch (e) {
         show('❌ توقفت المزامنة: ' + (e.message || 'error') + '. عاود ضغط الزر باش تكمل.', false);
       } finally { btn.disabled = false; }
