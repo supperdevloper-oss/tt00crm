@@ -1072,6 +1072,12 @@ function crm_dl_admin($b) {
     $out['/reconcile'] = crm_dl_reconcile_recent();
     crm_out(array('ok'=>true, 'test'=>$out));
   }
+  if ($op === 'reconcile') {
+    $raw = isset($b['trackings']) ? $b['trackings'] : array();
+    if (is_string($raw)) $raw = preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY);
+    if (!is_array($raw) || count($raw) === 0) crm_out(array('ok'=>false, 'err'=>'no-trackings'), 400);
+    crm_out(crm_dl_reconcile_recent($raw));
+  }
   if ($op === 'dry') crm_out(crm_dl_run(true));
   crm_out(array('ok'=>false, 'err'=>'bad-op'), 400);
 }
@@ -1346,30 +1352,49 @@ function crm_dl_match_order($orders, $phone, $info, &$matches = 0) {
 }
 /* كيرجع يعالج آخر webhooks اللي وصلو قبل الإصلاح وكانو found=false. كيتشغل
  * مع زر اختبار الاتصال، باش Livrée/Retournée القديمة تلحق بالـCRM بلا انتظار حدث جديد. */
-function crm_dl_reconcile_recent() {
+function crm_dl_reconcile_recent($requestedTrackings = array()) {
   global $AUDIT_FILE, $LOCK_FILE;
-  if (!is_file($AUDIT_FILE)) return array('ok'=>true, 'events'=>0, 'updated'=>0);
-  $lines = array_slice(explode("\n", (string)@file_get_contents($AUDIT_FILE)), -1200);
   $events = array();
-  foreach ($lines as $line) {
-    $mark = strpos($line, 'digylog-hook-raw |');
-    if ($mark === false) continue;
-    $jsonAt = strpos($line, ' | {', $mark);
-    if ($jsonAt === false) continue;
-    $j = json_decode(substr($line, $jsonAt + 3), true);
-    if (!is_array($j)) continue;
-    $p = crm_dl_hook_payload($j);
-    $tracking = crm_dl_hook_pick($p, array('traking','tracking','trackingId','tracking_id','trackingNumber','tracking_number','barcode'));
-    $status = crm_dl_hook_pick($p, array('status','statusName','status_name','orderStatus','order_status','label'));
-    $idStatus = crm_dl_hook_pick($p, array('idStatus','statusId','status_id','id_status'));
-    $liv = crm_dl_status_to_crm($idStatus, $status);
-    if ($tracking !== '' && $liv !== '') $events[$tracking] = array('tracking'=>$tracking, 'status'=>$status, 'idStatus'=>$idStatus, 'livraison'=>$liv);
+  /* الاسترجاع اليدوي: tracking واحد فكل سطر. الحالة والهاتف كنجيبوهم مباشرة
+     من endpoint الرسمي /order/{tracking}/infos. */
+  if (is_array($requestedTrackings) && count($requestedTrackings) > 0) {
+    foreach ($requestedTrackings as $tracking) {
+      $tracking = strtoupper(trim((string)$tracking));
+      if ($tracking !== '' && preg_match('/^[A-Z0-9_-]{5,40}$/', $tracking)) $events[$tracking] = array('tracking'=>$tracking, 'status'=>'', 'idStatus'=>'', 'livraison'=>'');
+      if (count($events) >= 100) break;
+    }
+  } else {
+    if (!is_file($AUDIT_FILE)) return array('ok'=>true, 'events'=>0, 'updated'=>0);
+    /* نقراو audit.log كامل (حتى 2MB فقط) لأن أحداث Livrée تقدر تكون أقدم
+       من آخر 1200 سطر ملي كاينين webhooks بزاف. */
+    $lines = explode("\n", (string)@file_get_contents($AUDIT_FILE));
+    foreach ($lines as $line) {
+      $mark = strpos($line, 'digylog-hook-raw |');
+      if ($mark === false) continue;
+      $jsonAt = strpos($line, ' | {', $mark);
+      if ($jsonAt === false) continue;
+      $j = json_decode(substr($line, $jsonAt + 3), true);
+      if (!is_array($j)) continue;
+      $p = crm_dl_hook_payload($j);
+      $tracking = crm_dl_hook_pick($p, array('traking','tracking','trackingId','tracking_id','trackingNumber','tracking_number','barcode'));
+      $status = crm_dl_hook_pick($p, array('status','statusName','status_name','orderStatus','order_status','label'));
+      $idStatus = crm_dl_hook_pick($p, array('idStatus','statusId','status_id','id_status'));
+      $liv = crm_dl_status_to_crm($idStatus, $status);
+      if ($tracking !== '' && $liv !== '') $events[$tracking] = array('tracking'=>$tracking, 'status'=>$status, 'idStatus'=>$idStatus, 'livraison'=>$liv);
+    }
+    if (count($events) > 100) $events = array_slice($events, -100, null, true);
   }
-  if (count($events) > 40) $events = array_slice($events, -40, null, true);
   $resolved = array();
   foreach ($events as $tracking => $event) {
     $look = crm_dl_lookup_customer_phone('', $tracking);
-    if (!empty($look['phone'])) { $event['phone'] = $look['phone']; $event['info'] = isset($look['info']) ? $look['info'] : array(); $resolved[] = $event; }
+    if (empty($look['phone'])) continue;
+    $info = isset($look['info']) && is_array($look['info']) ? $look['info'] : array();
+    /* فالإدخال اليدوي الحالة كتجي من Digylog، ماشي من المستخدم. */
+    if ($event['status'] === '') $event['status'] = crm_dl_hook_pick($info, array('status','statusName','status_name','orderStatus','order_status','label'));
+    if ($event['idStatus'] === '') $event['idStatus'] = crm_dl_hook_pick($info, array('idStatus','statusId','status_id','id_status'));
+    if ($event['livraison'] === '') $event['livraison'] = crm_dl_status_to_crm($event['idStatus'], $event['status']);
+    if ($event['livraison'] === '') continue; // ما نبدلوش الحالات غير النهائية
+    $event['phone'] = $look['phone']; $event['info'] = $info; $resolved[] = $event;
   }
   if (!$resolved) return array('ok'=>true, 'events'=>count($events), 'resolved'=>0, 'updated'=>0);
   $fh = @fopen($LOCK_FILE, 'c'); if ($fh) @flock($fh, LOCK_EX);
