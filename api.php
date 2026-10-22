@@ -1469,7 +1469,10 @@ function crm_dl_rollback_phone_match($apply) {
   $fields=array('tracking','dlStatus','dlStatusId','livraison','dateLiv');
   foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($restore[$id])||empty($o['_f'])||!is_array($o['_f']))continue;
     $mt=isset($sus[$id]['stamp'])?(string)$sus[$id]['stamp']:'';if($mt===''||(string)(isset($o['_f']['tracking'])?$o['_f']['tracking']:'')!==$mt)continue;$po=$restore[$id];$pf=isset($po['_f'])&&is_array($po['_f'])?$po['_f']:array();$changed=false;
-    foreach($fields as $f){if((string)(isset($o['_f'][$f])?$o['_f'][$f]:'')!==$mt)continue;if(array_key_exists($f,$po))$o[$f]=$po[$f];else unset($o[$f]);if(array_key_exists($f,$pf))$o['_f'][$f]=$pf[$f];else unset($o['_f'][$f]);$changed=true;}
+    foreach($fields as $f){if((string)(isset($o['_f'][$f])?$o['_f'][$f]:'')!==$mt)continue;
+      /* مهم: القيمة المسترجعة خاصها timestamp جديد، ماشي القديم ديال backup.
+         وإلا CRM مفتوح بذاكرة محلية فيها الغلط كيرجع يربح علينا مباشرة. */
+      $o[$f]=array_key_exists($f,$po)?$po[$f]:'';$o['_f'][$f]=$now;$changed=true;}
     if($changed){$o['_u']=$now;$cur[$i]=$o;$rolled++;}}
   if($rolled>0){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
   if($fh){@flock($fh,LOCK_UN);@fclose($fh);} crm_audit('digylog-phone-rollback | rolled='.$rolled.' | recoverable='.count($restore));
