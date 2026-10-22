@@ -1129,6 +1129,9 @@ function crm_dl_admin($b) {
   if ($op === 'phone_candidates') {
     crm_out(crm_dl_phone_candidates());
   }
+  if ($op === 'rollback_phone_match') {
+    crm_out(crm_dl_rollback_phone_match(!empty($b['apply'])));
+  }
   if ($op === 'match_phones') {
     $ids = isset($b['ids']) && is_array($b['ids']) ? $b['ids'] : array();
     $temporarySellerToken = isset($b['sellerToken']) ? (string)$b['sellerToken'] : '';
@@ -1335,16 +1338,23 @@ function crm_dl_phone_records($v, $phone, &$out, $depth = 0) {
   foreach ($v as $child) if (is_array($child)) crm_dl_phone_records($child, $phone, $out, $depth + 1);
 }
 function crm_dl_phone_record_score($info, $order) {
-  if (!is_array($info) || !is_array($order)) return 0;
+  if (!is_array($info) || !is_array($order)) return array('score'=>0,'date'=>false,'extra'=>false);
   $score = 0;
-  $rd = substr((string)(isset($info['createdAt']) ? $info['createdAt'] : ''), 0, 10);
-  if ($rd !== '' && $rd === substr((string)(isset($order['dateCreation']) ? $order['dateCreation'] : ''), 0, 10)) $score += 4;
-  if (isset($info['price']) && is_numeric($info['price']) && abs((float)$info['price'] - (float)(isset($order['prix']) ? $order['prix'] : 0)) < .01) $score += 2;
-  $rc = crm_dl_hook_norm(isset($info['city']) ? $info['city'] : '');
-  if ($rc !== '' && $rc === crm_dl_hook_norm(isset($order['ville']) ? $order['ville'] : '')) $score += 2;
-  $rn = crm_dl_hook_norm(isset($info['name']) ? $info['name'] : '');
-  if ($rn !== '' && $rn === crm_dl_hook_norm(isset($order['nom']) ? $order['nom'] : '')) $score += 1;
-  return $score;
+  $rawDate = crm_dl_hook_pick($info, array('createdAt','created_at','date','created','creationDate','dateCreation','createdDate'));
+  $rd = substr((string)$rawDate, 0, 10);
+  $od = substr((string)(isset($order['dateCreation']) ? $order['dateCreation'] : ''), 0, 10);
+  $dateOk = ($rd !== '' && $od !== '' && $rd === $od);
+  if ($dateOk) $score += 4;
+  $rawPrice = crm_dl_hook_pick($info, array('price','prix','amount','total','orderPrice'));
+  $priceOk = ($rawPrice !== '' && is_numeric($rawPrice) && abs((float)$rawPrice - (float)(isset($order['prix']) ? $order['prix'] : 0)) < .01);
+  if ($priceOk) $score += 2;
+  $rc = crm_dl_hook_norm(crm_dl_hook_pick($info, array('city','ville','destination','cityName')));
+  $cityOk = ($rc !== '' && $rc === crm_dl_hook_norm(isset($order['ville']) ? $order['ville'] : ''));
+  if ($cityOk) $score += 2;
+  $rn = crm_dl_hook_norm(crm_dl_hook_pick($info, array('name','nom','fullname','customerName','client')));
+  $nameOk = ($rn !== '' && $rn === crm_dl_hook_norm(isset($order['nom']) ? $order['nom'] : ''));
+  if ($nameOk) $score += 1;
+  return array('score'=>$score,'date'=>$dateOk,'extra'=>($priceOk || $cityOk || $nameOk));
 }
 /* البحث العكسي اللي طلبو المستخدم: هاتف CRM → search API Digylog → Tracking.
  * كنقبلو عدة صيغ endpoint لأن نسخ seller API ماشي كلها بنفس route. أول route
@@ -1389,14 +1399,17 @@ function crm_dl_match_phones($requestedIds, $temporarySellerToken = '') {
        باش ما نضربوش API بعشرات الطلبات الفارغة. */
     if ($working === '' && $checked >= 1) break;
     if (!$records) continue;
-    $bestTr = ''; $bestScore = -1; $ties = 0;
+    $bestTr = ''; $bestScore = -1; $bestMeta = array(); $ties = 0;
     foreach ($records as $tr => $info) {
-      $sc = crm_dl_phone_record_score($info, $o);
-      if ($sc > $bestScore) { $bestScore=$sc; $bestTr=$tr; $ties=1; }
+      $meta = crm_dl_phone_record_score($info, $o); $sc = (int)$meta['score'];
+      if ($sc > $bestScore) { $bestScore=$sc; $bestTr=$tr; $bestMeta=$meta; $ties=1; }
       elseif ($sc === $bestScore) $ties++;
     }
-    if (count($records) === 1 || ($bestScore > 0 && $ties === 1)) $found[(string)$o['id']] = array('tracking'=>$bestTr, 'info'=>$records[$bestTr]);
-    else $ambiguous++;
+    /* الهاتف وحدو عمره ما يكفي: حتى نتيجة وحدة ممكن تكون طلبية قديمة لنفس الزبون.
+       التاريخ المتطابق + معلومة ثانية + نتيجة وحيدة الأفضل شروط إلزامية. */
+    if ($ties === 1 && !empty($bestMeta['date']) && !empty($bestMeta['extra']) && $bestScore >= 5) {
+      $found[(string)$o['id']] = array('tracking'=>$bestTr, 'info'=>$records[$bestTr]);
+    } else $ambiguous++;
   }
   $linked=0; $updated=0;
   if ($found) {
@@ -1404,16 +1417,63 @@ function crm_dl_match_phones($requestedIds, $temporarySellerToken = '') {
     $data=crm_read_raw(true); $cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array(); if(!is_array($cur))$cur=array();
     $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0; $now=(int)(microtime(true)*1000);
     foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($found[$id])||trim((string)(isset($o['tracking'])?$o['tracking']:''))!=='')continue;
-      if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();$rec=$found[$id];$info=$rec['info'];$o['tracking']=$rec['tracking'];$o['_f']['tracking']=$now;
-      $st=crm_dl_hook_pick($info,array('status','statusName','status_name','orderStatus','order_status','label'));$sid=crm_dl_hook_pick($info,array('idStatus','statusId','status_id','id_status'));$liv=crm_dl_status_to_crm($sid,$st);
-      $o['dlStatus']=$st;$o['dlStatusId']=$sid;$o['_f']['dlStatus']=$now;$o['_f']['dlStatusId']=$now;
-      if($liv!==''&&(string)(isset($o['livraison'])?$o['livraison']:'')!==$liv){$o['livraison']=$liv;$o['_f']['livraison']=$now;$updated++;if($liv==='Livrée'&&trim((string)(isset($o['dateLiv'])?$o['dateLiv']:''))===''){$o['dateLiv']=date('Y-m-d');$o['_f']['dateLiv']=$now;}}
+      if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();$rec=$found[$id];$o['tracking']=$rec['tracking'];$o['_f']['tracking']=$now;
+      /* مرحلة الهاتف تربط Tracking فقط. الحالة كتتراجع من endpoint ديال Tracking
+         من بعد؛ ما كنبدلوش livraison/dateLiv نهائياً اعتماداً على بحث الهاتف. */
       $o['_u']=$now;$cur[$i]=$o;$linked++;}
     if($linked>0){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
     if($fh){@flock($fh,LOCK_UN);@fclose($fh);}
   }
   crm_audit('digylog-phone-match | checked='.$checked.' | linked='.$linked.' | updated='.$updated.' | ambiguous='.$ambiguous.' | endpoint='.$working);
   return array('ok'=>true,'checked'=>$checked,'linked'=>$linked,'updated'=>$updated,'notFound'=>max(0,$checked-$linked-$ambiguous),'ambiguous'=>$ambiguous,'endpoint'=>$working,'tests'=>$tests);
+}
+
+/* تراجع آمن على ربط الهاتف القديم: كنرجعو غير الحقول اللي عندها نفس timestamp
+ * ديال tracking+dlStatus (بصمة العملية المعيبة)، ومن أحدث backup سابق. أي تصحيح
+ * يدوي دارو المستخدم من بعد عندو timestamp أحدث وما كنمسّوهش. */
+function crm_dl_rollback_phone_match($apply) {
+  global $BACKUP_DIR, $LOCK_FILE;
+  $data = crm_read_raw(true);
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  if (!is_array($orders)) $orders = array();
+  $sus = array();
+  foreach ($orders as $o) {
+    if (!is_array($o) || empty($o['id']) || empty($o['_f']) || !is_array($o['_f'])) continue;
+    $mt = isset($o['_f']['tracking']) ? (string)$o['_f']['tracking'] : '';
+    if ($mt !== '' && isset($o['_f']['dlStatus'], $o['_f']['dlStatusId']) &&
+        (string)$o['_f']['dlStatus'] === $mt && (string)$o['_f']['dlStatusId'] === $mt) {
+      $sus[(string)$o['id']] = array('stamp'=>$mt, 'current'=>$o);
+    }
+  }
+  $files = array_merge((array)glob($BACKUP_DIR.'/b-*.json'), (array)glob($BACKUP_DIR.'/d-*.json'));
+  usort($files, function($a,$b){ return (int)@filemtime($b) - (int)@filemtime($a); });
+  $restore = array();
+  foreach ($files as $file) {
+    if (count($restore) >= count($sus)) break;
+    $j = json_decode((string)@file_get_contents($file), true);
+    $old = is_array($j) && isset($j['paraveda_orders_v5']['d']) ? crm_unwrap($j['paraveda_orders_v5']['d']) : array();
+    if (!is_array($old)) continue;
+    foreach ($old as $po) {
+      $id = is_array($po) && isset($po['id']) ? (string)$po['id'] : '';
+      if ($id === '' || !isset($sus[$id]) || isset($restore[$id])) continue;
+      $pf = isset($po['_f']) && is_array($po['_f']) ? $po['_f'] : array();
+      $pst = isset($pf['tracking']) ? (string)$pf['tracking'] : '';
+      if ($pst !== (string)$sus[$id]['stamp']) $restore[$id] = $po;
+    }
+  }
+  if (!$apply) return array('ok'=>true,'preview'=>true,'suspected'=>count($sus),'recoverable'=>count($restore),'withoutBackup'=>max(0,count($sus)-count($restore)));
+  if (!$restore) return array('ok'=>false,'err'=>'no-recoverable-backup','suspected'=>count($sus));
+  $fh=@fopen($LOCK_FILE,'c'); if($fh)@flock($fh,LOCK_EX);
+  $data=crm_read_raw(true); $cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array(); if(!is_array($cur))$cur=array();
+  $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0; $now=(int)(microtime(true)*1000); $rolled=0;
+  $fields=array('tracking','dlStatus','dlStatusId','livraison','dateLiv');
+  foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($restore[$id])||empty($o['_f'])||!is_array($o['_f']))continue;
+    $mt=isset($sus[$id]['stamp'])?(string)$sus[$id]['stamp']:'';if($mt===''||(string)(isset($o['_f']['tracking'])?$o['_f']['tracking']:'')!==$mt)continue;$po=$restore[$id];$pf=isset($po['_f'])&&is_array($po['_f'])?$po['_f']:array();$changed=false;
+    foreach($fields as $f){if((string)(isset($o['_f'][$f])?$o['_f'][$f]:'')!==$mt)continue;if(array_key_exists($f,$po))$o[$f]=$po[$f];else unset($o[$f]);if(array_key_exists($f,$pf))$o['_f'][$f]=$pf[$f];else unset($o['_f'][$f]);$changed=true;}
+    if($changed){$o['_u']=$now;$cur[$i]=$o;$rolled++;}}
+  if($rolled>0){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);} crm_audit('digylog-phone-rollback | rolled='.$rolled.' | recoverable='.count($restore));
+  return array('ok'=>true,'rolledBack'=>$rolled,'recoverable'=>count($restore),'withoutBackup'=>max(0,count($sus)-count($restore)));
 }
 
 /* إصلاح الطلبيات اللي النسخة القديمة علماتها Expédier vers من HTTP 200 ديال
