@@ -964,11 +964,19 @@ function crm_dl_http($method, $path, $token, $body = null) {
   curl_close($ch);
   return array($code, $resp === false ? '' : (string)$resp, $err);
 }
+/* كنقبلو Copy value أو السطر الكامل "Authorization: Bearer …" باش ما
+ * يتبعثش بالغلط Bearer Authorization: Bearer ويعطينا 401. */
+function crm_dl_bearer_value($raw) {
+  $v = trim((string)$raw, " \t\r\n\"'");
+  $v = preg_replace('/^authorization\s*:\s*/i', '', $v);
+  $v = preg_replace('/^bearer\s+/i', '', trim($v));
+  return trim($v, " \t\r\n\"'");
+}
 /* API الداخلي اللي كيستعمل seller.digylog.com للبحث بالهاتف. مختلف على
  * public /api/v2/seller، وكيحتاج Seller session bearer مؤقت. */
 function crm_dl_internal_http($path, $token) {
   if (!function_exists('curl_init')) return array(0, '', 'no-curl');
-  $token = preg_replace('/^Bearer\s+/i', '', trim((string)$token));
+  $token = crm_dl_bearer_value($token);
   $ch = curl_init('https://api.digylog.com/api/seller/v48' . $path);
   curl_setopt_array($ch, array(
     CURLOPT_HTTPHEADER => array('Accept: application/json, text/plain, */*', 'Referer: https://seller.digylog.com/', 'Origin: https://seller.digylog.com', 'Authorization: Bearer ' . $token),
@@ -1048,8 +1056,7 @@ function crm_dl_admin($b) {
   if ($op === 'save') {
     if (isset($b['token']) && trim((string)$b['token']) !== '') $c['token'] = trim((string)$b['token']);
     if (isset($b['sellerToken']) && trim((string)$b['sellerToken']) !== '') {
-      $sv = trim((string)$b['sellerToken']);
-      $c['sellerToken'] = preg_replace('/^Bearer\s+/i', '', $sv);
+      $c['sellerToken'] = crm_dl_bearer_value($b['sellerToken']);
     }
     if (!empty($b['clearSellerToken'])) unset($c['sellerToken']);
     if (isset($b['network'])) $c['network'] = (int)$b['network'];
@@ -1349,7 +1356,7 @@ function crm_dl_match_phones($requestedIds, $temporarySellerToken = '') {
   $cfg = crm_dl_cfg_get();
   /* الزر يقدر يبعث Session Token مباشرة بلا خطوة حفظ. كنرجعو للمحفوظ غير
      للتوافق مع النسخة السابقة. القيمة المباشرة لا تُكتب نهائياً في config. */
-  $token = preg_replace('/^Bearer\s+/i', '', trim((string)$temporarySellerToken));
+  $token = crm_dl_bearer_value($temporarySellerToken);
   if ($token === '') $token = isset($cfg['sellerToken']) ? trim((string)$cfg['sellerToken']) : '';
   if ($token === '') return array('ok'=>false, 'err'=>'no-seller-token');
   $data = crm_read_raw(true);

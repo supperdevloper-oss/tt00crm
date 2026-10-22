@@ -206,7 +206,11 @@
           out({ ok:true, total:list.total, progress:Math.min(i+20,ids.length), checked:checked, linked:linked, updated:updated, notFound:notFound, ambiguous:ambiguous, endpoint:last.endpoint || '', tests:last.tests || [] });
           if (!last.endpoint) break;
         }
-        if (last && !last.endpoint) show('❌ Seller token ما تقبلش أو سالات الصلاحية. شوف tests فالنتيجة.', false);
+        if (last && !last.endpoint) {
+          var httpCode = last.tests && last.tests[0] ? Number(last.tests[0].code || 0) : 0;
+          if (httpCode === 401) show('❌ HTTP 401: دير Logout/Login فـDigylog، نفّذ بحث ناجح، ومن Authorization اختار Copy value ولسّق القيمة الجديدة.', false);
+          else show('❌ Digylog رفض الطلب (HTTP ' + httpCode + '). شوف tests فالنتيجة.', false);
+        }
         else {
           await call({ action: 'digylog_admin', op: 'clear_seller_token' });
           $('sellerTokInfo').textContent = '✅ تسالات العملية وتم حذف Seller token المؤقت من السيرفر';
