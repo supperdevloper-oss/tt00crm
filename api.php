@@ -1462,15 +1462,23 @@ function crm_dl_rollback_phone_match($apply) {
   }};
   $current=crm_read_raw(true);$curRows=isset($current['paraveda_orders_v5']['d'])?crm_unwrap($current['paraveda_orders_v5']['d']):array();$collect($curRows);
   foreach($files as $file){if((int)@filemtime($file)<$cutoff)continue;$j=json_decode((string)@file_get_contents($file),true);$rows=is_array($j)&&isset($j['paraveda_orders_v5']['d'])?crm_unwrap($j['paraveda_orders_v5']['d']):array();$collect($rows);}
-  if(!$apply)return array('ok'=>true,'preview'=>true,'suspected'=>count($affected),'recoverable'=>count($affected),'withoutBackup'=>0,'baseline'=>basename($baselineFile),'cutoff'=>date('c',$cutoff));
-  if(!$affected)return array('ok'=>false,'err'=>'no-affected-orders-found','baseline'=>basename($baselineFile));
+  /* المطلوب الصريح: غير الطلبيات اللي كانت Expédier vers قبل الخطأ. ما نقربوش
+     لأي طلبية كانت Livrée أصلاً. Tracking الخاطئ خاصو يتحيد وإلا reconciliation
+     غادي يرجع Livrée مرة أخرى. */
+  $targets=array();foreach($affected as $id=>$yes){$before=isset($base[$id]['livraison'])?(string)$base[$id]['livraison']:'';if(crm_dl_hook_norm($before)==='expedier vers')$targets[$id]=true;}
+  if(!$apply)return array('ok'=>true,'preview'=>true,'suspected'=>count($affected),'recoverable'=>count($targets),'willSetExpedier'=>count($targets),'withoutBackup'=>0,'baseline'=>basename($baselineFile),'cutoff'=>date('c',$cutoff));
+  if(!$targets)return array('ok'=>false,'err'=>'no-original-expedier-orders-found','affected'=>count($affected),'baseline'=>basename($baselineFile));
   $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();
-  $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);$fields=array('tracking','dlStatus','dlStatusId','livraison','dateLiv');$rolled=0;
-  foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($affected[$id])||!isset($base[$id]))continue;$po=$base[$id];if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();
-    foreach($fields as $f){$o[$f]=array_key_exists($f,$po)?$po[$f]:'';$o['_f'][$f]=$now;}$o['_u']=$now;$cur[$i]=$o;$rolled++;}
-  if($rolled>0){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
-  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_audit('digylog-phone-baseline-rollback | rolled='.$rolled.' | baseline='.basename($baselineFile));
-  return array('ok'=>true,'rolledBack'=>$rolled,'recoverable'=>count($affected),'withoutBackup'=>0,'baseline'=>basename($baselineFile),'cutoff'=>date('c',$cutoff));
+  $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);$rolled=0;
+  foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($targets[$id]))continue;if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();
+    $o['livraison']='Expédier vers';$o['dateLiv']='';$o['tracking']='';$o['dlStatus']='';$o['dlStatusId']='';
+    foreach(array('livraison','dateLiv','tracking','dlStatus','dlStatusId') as $f)$o['_f'][$f]=$now;$o['_u']=$now;$cur[$i]=$o;$rolled++;}
+  $writeOk=true;if($rolled>0){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$writeOk=crm_write_all($data);if($writeOk)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}
+  $verify=crm_read_raw(true);$vr=isset($verify['paraveda_orders_v5']['d'])?crm_unwrap($verify['paraveda_orders_v5']['d']):array();$verified=0;$stillLivree=0;
+  if(is_array($vr))foreach($vr as $o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($targets[$id]))continue;$st=crm_dl_hook_norm(isset($o['livraison'])?$o['livraison']:'');if($st==='expedier vers')$verified++;if($st==='livree')$stillLivree++;}
+  crm_audit('digylog-false-delivered-fix | changed='.$rolled.' | verified='.$verified.' | stillLivree='.$stillLivree.' | baseline='.basename($baselineFile));
+  return array('ok'=>$writeOk&&$verified===count($targets)&&$stillLivree===0,'changedToExpedier'=>$rolled,'verifiedExpedier'=>$verified,'stillLivree'=>$stillLivree,'targeted'=>count($targets),'writeOk'=>$writeOk,'baseline'=>basename($baselineFile),'cutoff'=>date('c',$cutoff));
 }
 
 /* إصلاح الطلبيات اللي النسخة القديمة علماتها Expédier vers من HTTP 200 ديال

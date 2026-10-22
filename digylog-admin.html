@@ -82,8 +82,8 @@
       <div class="card">
         <h2>2) استرجاع جميع Livrée / Retournée</h2>
         <div class="hint">ما محتاجش يكون عندك عمود Tracking ظاهر: النظام كيجمع الأرقام المخفية أوتوماتيكياً من أجوبة Digylog ومن سجل الـwebhook، كيجيب الهاتف والاسم والمدينة، وكيطابقهم مع الـCRM على دفعات. خلي الصفحة محلولة حتى تسالي.</div>
-        <button id="rollbackPhone" style="width:100%;margin-top:12px;background:#fee2e2;color:#991b1b;border:2px solid #ef4444">🚨 التراجع عن تغييرات مطابقة الهاتف السابقة</button>
-        <div class="hint">يرجع Tracking والحالة والتاريخ من النسخة الاحتياطية، ولا يلمس أي تصحيح يدوي درتيه من بعد.</div>
+        <button id="rollbackPhone" style="width:100%;margin-top:12px;background:#fee2e2;color:#991b1b;border:2px solid #ef4444">🚨 إصلاح Livrée الخاطئة وإرجاعها Expédier vers</button>
+        <div class="hint">يستهدف فقط الطلبيات المتضررة اللي كانت Expédier vers قبل مطابقة الهاتف، ويحذف Tracking الخاطئ باش الحالة ما ترجعش Livrée.</div>
         <button class="primary" id="matchPhones" style="width:100%;margin-top:12px;background:#2563eb">📞 جلب Tracking بمطابقة صارمة</button>
         <div class="hint">الهاتف وحده لا يكفي: الربط لا يتم إلا بتطابق التاريخ ومعطى إضافي، وهاد المرحلة ما كتبدلش حالة livraison نهائياً.</div>
         <button id="reconcileAll" style="width:100%;margin-top:10px">🔄 مزامنة Trackings المعروفة</button>
@@ -190,9 +190,9 @@
         show('⏳ كنراجع النسخ الاحتياطية بلا تغيير…', true);
         var p = await call({ action:'digylog_admin', op:'rollback_phone_match', apply:false }); out(p);
         if (!p.ok || !p.recoverable) { show('⚠️ ما لقيت حتى تغيير قابل للاسترجاع من النسخ الاحتياطية.', false); return; }
-        if (!confirm('لقينا ' + p.recoverable + ' طلبية قابلة للاسترجاع. نرجعو فقط تغييرات مطابقة الهاتف؟')) { show('تم إلغاء التراجع.', false); return; }
+        if (!confirm('لقينا ' + p.recoverable + ' طلبية كانت Expédier vers قبل الخطأ. نصلحو Livrée ونحيدو Tracking الخاطئ؟')) { show('تم إلغاء الإصلاح.', false); return; }
         var r = await call({ action:'digylog_admin', op:'rollback_phone_match', apply:true }); out(r);
-        show(r.ok ? ('✅ ترجعو ' + (r.rolledBack || 0) + ' طلبية. دير Ctrl+F5 فالـCRM.') : ('❌ فشل التراجع: ' + (r.err || 'error')), !!r.ok);
+        show(r.ok ? ('✅ تصلحات وتأكدنا من ' + (r.verifiedExpedier || 0) + ' طلبية Expédier vers. Livrée الباقية بالغلط: ' + (r.stillLivree || 0)) : ('❌ الإصلاح ما تأكدش. شوف stillLivree وwriteOk فالنتيجة.'), !!r.ok);
       } catch(e) { show('❌ فشل التراجع: ' + (e.message || 'error'), false); }
       finally { btn.disabled = false; }
     };
