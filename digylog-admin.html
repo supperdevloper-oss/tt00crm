@@ -186,7 +186,7 @@
           var j = await call({ action: 'digylog_admin', op: 'reconcile', trackings: part });
           if (j.ok) { totalUpdated += Number(j.updated || 0); totalLinked += Number(j.linked || 0); totalResolved += Number(j.resolved || 0); }
           else failed++;
-          out({ ok: failed === 0, progress: Math.min(i + part.length, trackings.length), total: trackings.length, fromCRM: list.local || 0, fromDigylogAPI: list.remote || 0, remoteEndpoint: list.remoteEndpoint || '', resolved: totalResolved, linked: totalLinked, updated: totalUpdated, failedBatches: failed });
+          out({ ok: failed === 0, progress: Math.min(i + part.length, trackings.length), total: trackings.length, fromCRM: list.local || 0, fromDigylogAPI: list.remote || 0, remoteEndpoint: list.remoteEndpoint || '', remoteTests: list.remoteTests || [], resolved: totalResolved, linked: totalLinked, updated: totalUpdated, failedBatches: failed });
         }
         show('✅ تسالات: جاب API ديال Digylog ' + (list.remote || 0) + ' Tracking، تربطو جداد ' + totalLinked + ' وتبدلات الحالة ديال ' + totalUpdated + ' طلبية', true);
       } catch (e) {
