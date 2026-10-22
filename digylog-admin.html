@@ -14,9 +14,7 @@
     .card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(15,23,42,.06); }
     h2 { font-size: 16px; margin: 0 0 12px; }
     label { display: block; font-size: 14px; font-weight: 600; margin: 10px 0 6px; color: #334155; }
-    input, select, textarea { width: 100%; padding: 0 12px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; }
-    input, select { height: 46px; }
-    textarea { min-height: 130px; padding: 12px; resize: vertical; direction: ltr; }
+    input, select { width: 100%; height: 46px; padding: 0 12px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; }
     .hint { font-size: 12px; color: #64748b; margin-top: 4px; }
     .check { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-weight: 600; }
     .check input { width: 22px; height: 22px; }
@@ -47,10 +45,6 @@
         <input id="token" type="password" autocomplete="off" placeholder="اللصق هنا (ما كيبانش من بعد الحفظ)" />
         <div class="hint" id="tokInfo"></div>
 
-        <label for="sellerToken">Seller Session Token المؤقت — للبحث بالهاتف</label>
-        <input id="sellerToken" type="password" autocomplete="off" placeholder="لسّق Authorization هنا، ثم اضغط الزر الأزرق مباشرة" />
-        <div class="hint" id="sellerTokInfo">ما محتاجش تضغط حفظ: لسّق التوكن واضغط زر مطابقة الهاتف. ما تلصقوش فالمحادثة.</div>
-
         <label for="network">رقم الشبكة (network)</label>
         <input id="network" type="number" min="1" value="1" />
         <div class="hint">كيتجاب من /networks (ديك الخانة كتتأكد بزر "اختبار الاتصال")</div>
@@ -77,22 +71,6 @@
           <button id="dry">👀 معاينة (بلا إرسال)</button>
         </div>
         <div id="msg" class="msg"></div>
-      </div>
-
-      <div class="card">
-        <h2>2) مزامنة Tracking والحالات — موقوفة</h2>
-        <div class="hint" style="padding:12px;background:#fee2e2;color:#991b1b;border-radius:10px;font-weight:800">تم توقيف استيراد Tracking وتغيير Livrée / Retournée من Digylog نهائياً بطلب المستخدم. الأزرار أسفله معطلة والسيرفر يرفض هاد العمليات.</div>
-        <button id="rollbackPhone" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:12px;background:#fee2e2;color:#991b1b;border:2px solid #ef4444">🚨 إصلاح Livrée الخاطئة وإرجاعها Expédier vers</button>
-        <div class="hint">يستهدف فقط الطلبيات المتضررة اللي كانت Expédier vers قبل مطابقة الهاتف، ويحذف Tracking الخاطئ باش الحالة ما ترجعش Livrée.</div>
-        <button class="primary" id="matchPhones" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:12px;background:#2563eb">📞 جلب Tracking بمطابقة صارمة</button>
-        <div class="hint">الهاتف وحده لا يكفي: الربط لا يتم إلا بتطابق التاريخ ومعطى إضافي، وهاد المرحلة ما كتبدلش حالة livraison نهائياً.</div>
-        <button id="reconcileAll" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:10px">🔄 مزامنة Trackings المعروفة</button>
-        <button id="repairUntracked" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:10px;background:#fff7ed;color:#c2410c;border:1px solid #fdba74">🛠️ إصلاح Expédier vers اللي بلا Tracking</button>
-        <div class="hint">هاد الزر كيعيد نفس أرقام الطلبات القديمة مع حماية checkDuplicate، وما كيبدل والو إلا رجع Digylog Tracking صريح.</div>
-        <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
-        <div class="hint">إلا كانت طلبية قديمة بزاف وما عندهاش tracking محفوظ فالـCRM، تقدر تلصق أرقامها هنا (كاملين مرة وحدة، رقم فكل سطر).</div>
-        <textarea id="trackings" placeholder="S06478B0E&#10;S1889FE6M&#10;S3CB5780T"></textarea>
-        <button id="reconcile" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:12px">مزامنة الأرقام الملصقة</button>
       </div>
 
       <div class="card">
@@ -142,7 +120,6 @@
       $('enabled').checked = !!cfg.enabled;
       AGENTS.forEach(function (a) { $('st_' + a).value = (cfg.stores && cfg.stores[a]) || DEFAULT_STORES[a]; });
       $('tokInfo').textContent = cfg.hasToken ? ('✅ توكن محفوظ (…' + cfg.tokenTail + ')') : '⚠️ ما كاينش توكن بعد';
-      $('sellerTokInfo').textContent = cfg.hasSellerToken ? ('✅ Seller token محفوظ مؤقتاً (…' + cfg.sellerTokenTail + ')') : '⚠️ لسّق Authorization ديال seller.digylog.com هنا — ما تلصقوش فالمحادثة';
     }
 
     call({ action: 'digylog_admin', op: 'get' }).then(function (j) {
@@ -167,10 +144,8 @@
       };
       var t = $('token').value.trim();
       if (t) body.token = t;
-      var st = $('sellerToken').value.trim();
-      if (st) body.sellerToken = st;
       run($('save'), body, function (j) {
-        if (j.ok) { show('✅ تحفظات', true); $('token').value = ''; $('sellerToken').value = ''; call({ action: 'digylog_admin', op: 'get' }).then(function (g) { if (g.ok) fill(g.cfg); }); }
+        if (j.ok) { show('✅ تحفظات', true); $('token').value = ''; call({ action: 'digylog_admin', op: 'get' }).then(function (g) { if (g.ok) fill(g.cfg); }); }
         else show('❌ ما تحفظاتش (' + (j.err || 'error') + ')', false);
       });
     };
@@ -182,93 +157,6 @@
     $('dry').onclick = function () {
       run($('dry'), { action: 'digylog_admin', op: 'dry' }, function (j) {
         show(j.ok ? '👀 هادي الطلبيات لي غاديين يمشيو (ما تصيفطاتش)' : '❌ ' + (j.err || 'error'), !!j.ok);
-      });
-    };
-    $('rollbackPhone').onclick = async function () {
-      var btn = $('rollbackPhone'); btn.disabled = true;
-      try {
-        show('⏳ كنراجع النسخ الاحتياطية بلا تغيير…', true);
-        var p = await call({ action:'digylog_admin', op:'rollback_phone_match', apply:false }); out(p);
-        if (!p.ok || !p.recoverable) { show('⚠️ ما لقيت حتى تغيير قابل للاسترجاع من النسخ الاحتياطية.', false); return; }
-        if (!confirm('لقينا ' + p.recoverable + ' طلبية كانت Expédier vers قبل الخطأ. نصلحو Livrée ونحيدو Tracking الخاطئ؟')) { show('تم إلغاء الإصلاح.', false); return; }
-        var r = await call({ action:'digylog_admin', op:'rollback_phone_match', apply:true }); out(r);
-        show(r.ok ? ('✅ تصلحات وتأكدنا من ' + (r.verifiedExpedier || 0) + ' طلبية Expédier vers. Livrée الباقية بالغلط: ' + (r.stillLivree || 0)) : ('❌ الإصلاح ما تأكدش. شوف stillLivree وwriteOk فالنتيجة.'), !!r.ok);
-      } catch(e) { show('❌ فشل التراجع: ' + (e.message || 'error'), false); }
-      finally { btn.disabled = false; }
-    };
-    $('matchPhones').onclick = async function () {
-      var btn = $('matchPhones'), checked = 0, linked = 0, updated = 0, notFound = 0, ambiguous = 0, last = null;
-      /* ما بقيناش كنفرضو زر حفظ: القيمة كتدوز مباشرة لهاد العملية ولا كتتحفظ. */
-      var directSellerToken = $('sellerToken').value.trim();
-      if (!directSellerToken && !$('sellerTokInfo').textContent.includes('محفوظ')) {
-        show('❌ لسّق Authorization فخانة Seller Session Token الفوق، ومن بعد اضغط الزر الأزرق مباشرة.', false);
-        $('sellerToken').focus();
-        return;
-      }
-      btn.disabled = true;
-      try {
-        show('⏳ كنوجد أرقام الهاتف من CRM…', true);
-        var list = await call({ action: 'digylog_admin', op: 'phone_candidates' });
-        if (!list.ok) throw new Error(list.err || 'candidates-failed');
-        var ids = list.ids || [];
-        for (var i = 0; i < ids.length; i += 20) {
-          show('⏳ مطابقة الهواتف: ' + Math.min(i + 20, ids.length) + ' من ' + ids.length + '…', true);
-          last = await call({ action: 'digylog_admin', op: 'match_phones', ids: ids.slice(i, i + 20), sellerToken: directSellerToken });
-          if (!last.ok) throw new Error(last.err || 'match-failed');
-          checked += Number(last.checked || 0); linked += Number(last.linked || 0); updated += Number(last.updated || 0);
-          notFound += Number(last.notFound || 0); ambiguous += Number(last.ambiguous || 0);
-          out({ ok:true, total:list.total, progress:Math.min(i+20,ids.length), checked:checked, linked:linked, updated:updated, notFound:notFound, ambiguous:ambiguous, endpoint:last.endpoint || '', tests:last.tests || [] });
-          if (!last.endpoint) break;
-        }
-        if (last && !last.endpoint) {
-          var httpCode = last.tests && last.tests[0] ? Number(last.tests[0].code || 0) : 0;
-          if (httpCode === 401) show('❌ HTTP 401: دير Logout/Login فـDigylog، نفّذ بحث ناجح، ومن Authorization اختار Copy value ولسّق القيمة الجديدة.', false);
-          else show('❌ Digylog رفض الطلب (HTTP ' + httpCode + '). شوف tests فالنتيجة.', false);
-        }
-        else {
-          await call({ action: 'digylog_admin', op: 'clear_seller_token' });
-          $('sellerTokInfo').textContent = '✅ تسالات العملية وتم حذف Seller token المؤقت من السيرفر';
-          show('✅ تسالات مطابقة الهاتف: تربط Tracking مع ' + linked + ' طلبية', true);
-        }
-      } catch (e) { show('❌ مطابقة الهاتف فشلات: ' + (e.message || 'error'), false); }
-      finally { btn.disabled = false; }
-    };
-    $('repairUntracked').onclick = function () {
-      var btn = $('repairUntracked');
-      if (!confirm('إصلاح طلبيات Expédier vers اللي بلا Tracking؟ النظام غادي يستعمل checkDuplicate وما غادي يحفظ والو إلا رجع Tracking صريح.')) return;
-      run(btn, { action: 'digylog_admin', op: 'repair_untracked', limit: 100 }, function (j) {
-        if (j.ok) show('✅ تفحصو ' + (j.checked || 0) + ' واسترجع Tracking ديال ' + (j.recovered || 0) + ' طلبية', true);
-        else show('❌ الإصلاح فشل (' + (j.err || 'error') + ')', false);
-      });
-    };
-    $('reconcileAll').onclick = async function () {
-      var btn = $('reconcileAll'), totalUpdated = 0, totalLinked = 0, totalResolved = 0, failed = 0;
-      btn.disabled = true;
-      try {
-        show('⏳ كنجيب لائحة الطلبيات مباشرة من API ديال Digylog…', true);
-        var list = await call({ action: 'digylog_admin', op: 'known_trackings' });
-        if (!list.ok) throw new Error(list.err || 'list-failed');
-        var trackings = list.trackings || [];
-        if (!trackings.length) { show('⚠️ ما لقيت حتى tracking محفوظ فالـCRM', false); out(list); return; }
-        for (var i = 0; i < trackings.length; i += 8) {
-          var part = trackings.slice(i, i + 8);
-          show('⏳ تراجعو ' + Math.min(i + part.length, trackings.length) + ' من ' + trackings.length + '…', true);
-          var j = await call({ action: 'digylog_admin', op: 'reconcile', trackings: part });
-          if (j.ok) { totalUpdated += Number(j.updated || 0); totalLinked += Number(j.linked || 0); totalResolved += Number(j.resolved || 0); }
-          else failed++;
-          out({ ok: failed === 0, progress: Math.min(i + part.length, trackings.length), total: trackings.length, fromCRM: list.local || 0, fromDigylogAPI: list.remote || 0, remoteEndpoint: list.remoteEndpoint || '', remoteTests: list.remoteTests || [], resolved: totalResolved, linked: totalLinked, updated: totalUpdated, failedBatches: failed });
-        }
-        show('✅ تسالات: جاب API ديال Digylog ' + (list.remote || 0) + ' Tracking، تربطو جداد ' + totalLinked + ' وتبدلات الحالة ديال ' + totalUpdated + ' طلبية', true);
-      } catch (e) {
-        show('❌ توقفت المزامنة: ' + (e.message || 'error') + '. عاود ضغط الزر باش تكمل.', false);
-      } finally { btn.disabled = false; }
-    };
-    $('reconcile').onclick = function () {
-      var values = $('trackings').value.trim();
-      if (!values) { show('⚠️ لسّق رقم تتبع واحد على الأقل', false); return; }
-      run($('reconcile'), { action: 'digylog_admin', op: 'reconcile', trackings: values }, function (j) {
-        if (j.ok) show('✅ تسالات المزامنة: تحدّثات ' + (j.updated || 0) + ' طلبية', true);
-        else show('❌ المزامنة فشلات (' + (j.err || 'error') + ')', false);
       });
     };
   })();
