@@ -1051,9 +1051,114 @@ function crm_dl_admin($b) {
     $out['/hook-log'] = array('lines' => array_slice($__hk, -6));
     crm_out(array('ok'=>true, 'test'=>$out));
   }
+  if ($op === 'tracking_candidates') crm_out(crm_tracking_candidates());
+  if ($op === 'tracking_sync') {
+    $ids = isset($b['ids']) && is_array($b['ids']) ? $b['ids'] : array();
+    $sellerToken = isset($b['sellerToken']) ? (string)$b['sellerToken'] : '';
+    crm_out(crm_tracking_sync($ids, $sellerToken));
+  }
   if ($op === 'dry') crm_out(crm_dl_run(true));
   crm_out(array('ok'=>false, 'err'=>'bad-op'), 400);
 }
+
+/* ================= Tracking-only Digylog import =================
+ * هاد المسار مسموح ليه يكتب tracking فقط. ما كيقراش status وما كيكتبش
+ * livraison/dateLiv/statut نهائياً. الـwebhook ديال الحالات باقي موقوف. */
+function crm_tracking_bearer($raw) {
+  $v = trim((string)$raw, " \t\r\n\"'");
+  $v = preg_replace('/^authorization\s*:\s*/i', '', $v);
+  $v = preg_replace('/^bearer\s+/i', '', trim($v));
+  return trim($v, " \t\r\n\"'");
+}
+function crm_tracking_phone($v) {
+  $d = preg_replace('/\D+/', '', (string)$v);
+  if (strlen($d) === 12 && strpos($d, '212') === 0) $d = '0' . substr($d, 3);
+  return $d;
+}
+function crm_tracking_norm($v) {
+  $v = trim((string)$v);
+  $v = function_exists('mb_strtolower') ? mb_strtolower($v, 'UTF-8') : strtolower($v);
+  $v = str_replace(array('é','è','ê','ë','à','â','ä','î','ï','ô','ö','ù','û','ü','ç'), array('e','e','e','e','a','a','a','i','i','o','o','u','u','u','c'), $v);
+  return preg_replace('/[^a-z0-9]+/u', '', $v);
+}
+function crm_tracking_pick($a, $keys) {
+  if (!is_array($a)) return '';
+  foreach ($keys as $k) if (array_key_exists($k,$a) && !is_array($a[$k]) && !is_object($a[$k]) && trim((string)$a[$k]) !== '') return trim((string)$a[$k]);
+  return '';
+}
+function crm_tracking_deep_pick($a,$keys,$depth=0) {
+  if(!is_array($a)||$depth>6)return '';
+  $v=crm_tracking_pick($a,$keys);if($v!=='')return $v;
+  foreach($a as $child)if(is_array($child)){ $v=crm_tracking_deep_pick($child,$keys,$depth+1);if($v!=='')return $v; }
+  return '';
+}
+function crm_tracking_date($v) {
+  $v=trim((string)$v); if($v==='')return '';
+  if(preg_match('/^(\d{4})[-\/]?(\d{2})[-\/]?(\d{2})/',$v,$m))return $m[1].'-'.$m[2].'-'.$m[3];
+  if(preg_match('/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/',$v,$m))return $m[3].'-'.$m[2].'-'.$m[1];
+  return '';
+}
+function crm_tracking_records($v, &$out, $depth=0) {
+  if($depth>10 || !is_array($v))return;
+  $tr=crm_tracking_pick($v,array('traking','tracking','trackingNumber','tracking_number','barcode'));
+  if($tr!=='' && preg_match('/^[A-Za-z0-9_-]{5,40}$/',$tr)) {
+    $key=strtoupper($tr); if(!isset($out[$key]))$out[$key]=$v;
+  }
+  foreach($v as $child)if(is_array($child))crm_tracking_records($child,$out,$depth+1);
+}
+function crm_tracking_internal_get($phone, $token) {
+  if(!function_exists('curl_init'))return array(0,'','no-curl');
+  $url='https://api.digylog.com/api/seller/v48/historic/orders?phone='.rawurlencode($phone).'&datatype=1&countPerPage=100&currentPage=1&sort=0';
+  $ch=curl_init($url);
+  curl_setopt_array($ch,array(CURLOPT_HTTPHEADER=>array('Accept: application/json, text/plain, */*','Referer: https://seller.digylog.com/','Origin: https://seller.digylog.com','Authorization: Bearer '.$token),CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>25));
+  $body=curl_exec($ch);$err=(string)curl_error($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+  return array($code,$body===false?'':(string)$body,$err);
+}
+function crm_tracking_candidates() {
+  $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
+  $ids=array();foreach($orders as $o){if(!is_array($o)||!empty($o['_del'])||trim((string)(isset($o['tracking'])?$o['tracking']:''))!==''||crm_tracking_phone(isset($o['telephone'])?$o['telephone']:'')==='')continue;
+    $liv=crm_tracking_norm(isset($o['livraison'])?$o['livraison']:'');
+    if(!empty($o['dlSent'])||in_array($liv,array('expediervers','livree','retour','retournee','rembourse','rechange'),true))$ids[]=(string)$o['id'];
+  }
+  return array('ok'=>true,'ids'=>$ids,'total'=>count($ids));
+}
+function crm_tracking_score($record,$order) {
+  $ref=crm_tracking_deep_pick($record,array('num','externalReference','external_reference','clientReference','client_reference','reference','ref','orderNumber','order_number'));
+  if($ref!=='' && $ref===(string)$order['id'])return array('score'=>100,'safe'=>true,'why'=>'crm-reference');
+  $rd=crm_tracking_date(crm_tracking_deep_pick($record,array('createdAt','created_at','date','creationDate','dateCreation','createdDate')));
+  $od=crm_tracking_date(isset($order['dateCreation'])?$order['dateCreation']:'');$dateOk=($rd!==''&&$od!==''&&$rd===$od);$score=$dateOk?10:0;$extra=0;
+  $rp=crm_tracking_deep_pick($record,array('price','prix','amount','total','orderPrice'));
+  if($rp!==''&&is_numeric($rp)&&abs((float)$rp-(float)(isset($order['prix'])?$order['prix']:0))<0.01){$score+=4;$extra++;}
+  $rc=crm_tracking_norm(crm_tracking_deep_pick($record,array('city','ville','destination','cityName')));
+  if($rc!==''&&$rc===crm_tracking_norm(isset($order['ville'])?$order['ville']:'')){$score+=3;$extra++;}
+  $rn=crm_tracking_norm(crm_tracking_deep_pick($record,array('name','nom','fullname','customerName','client')));
+  if($rn!==''&&$rn===crm_tracking_norm(isset($order['nom'])?$order['nom']:'')){$score+=2;$extra++;}
+  return array('score'=>$score,'safe'=>($dateOk&&$extra>0),'why'=>$dateOk?'date+extra':'insufficient');
+}
+function crm_tracking_sync($requestedIds,$rawToken) {
+  global $LOCK_FILE;
+  $token=crm_tracking_bearer($rawToken);if($token==='')return array('ok'=>false,'err'=>'no-seller-token');
+  $want=array();foreach($requestedIds as $id){$id=(string)$id;if($id!=='')$want[$id]=true;if(count($want)>=20)break;}if(!$want)return array('ok'=>false,'err'=>'no-ids');
+  $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();$todo=array();
+  foreach($orders as $o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id!==''&&isset($want[$id])&&empty($o['_del'])&&trim((string)(isset($o['tracking'])?$o['tracking']:''))==='')$todo[]=$o;}
+  $found=array();$cache=array();$checked=0;$notFound=0;$ambiguous=0;$httpCode=0;
+  foreach($todo as $o){$phone=crm_tracking_phone(isset($o['telephone'])?$o['telephone']:'');if($phone===''){continue;}$checked++;
+    if(!isset($cache[$phone])){list($code,$body,$err)=crm_tracking_internal_get($phone,$token);$httpCode=$code;$records=array();if($code>=200&&$code<300){$j=json_decode($body,true);if(is_array($j))crm_tracking_records($j,$records);}$cache[$phone]=array('code'=>$code,'records'=>$records);}
+    $pack=$cache[$phone];if($pack['code']<200||$pack['code']>=300)return array('ok'=>false,'err'=>'digylog-http-'.$pack['code'],'code'=>$pack['code'],'checked'=>$checked-1);
+    $best='';$bestScore=-1;$ties=0;$bestSafe=false;
+    foreach($pack['records'] as $tr=>$record){$m=crm_tracking_score($record,$o);if($m['score']>$bestScore){$best=$tr;$bestScore=$m['score'];$bestSafe=$m['safe'];$ties=1;}elseif($m['score']===$bestScore)$ties++;}
+    if($best!==''&&$bestSafe&&$ties===1)$found[(string)$o['id']]=$best;elseif(count($pack['records'])===0)$notFound++;else$ambiguous++;
+  }
+  $linked=0;if($found){$fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();$prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);
+    foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($found[$id])||trim((string)(isset($o['tracking'])?$o['tracking']:''))!=='')continue;if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();
+      /* السطر الوحيد المسموح به: tracking. لا Suivie لا status لا تاريخ. */
+      $o['tracking']=$found[$id];$o['_f']['tracking']=$now;$o['_u']=$now;$cur[$i]=$o;$linked++;}
+    if($linked){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
+    if($fh){@flock($fh,LOCK_UN);@fclose($fh);}}
+  crm_audit('tracking-only-sync | checked='.$checked.' | linked='.$linked.' | ambiguous='.$ambiguous.' | notFound='.$notFound);
+  return array('ok'=>true,'checked'=>$checked,'linked'=>$linked,'ambiguous'=>$ambiguous,'notFound'=>$notFound,'httpCode'=>$httpCode,'trackingOnly'=>true);
+}
+
 /* يشتغل: من cron (GET) أو من admin (dry) */
 function crm_dl_run($dry = false) {
   global $LOCK_FILE, $DATA_DIR;

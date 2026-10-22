@@ -74,6 +74,14 @@
       </div>
 
       <div class="card">
+        <h2>2) جلب Tracking فقط</h2>
+        <div class="hint" style="margin-bottom:10px;color:#166534;font-weight:700">هاد العملية كتكتب غير عمود Tracking. ما كتبدلش Suivie ولا Livrée ولا Retour ولا حتى تاريخ.</div>
+        <label for="sellerToken">Seller Authorization المؤقت</label>
+        <input id="sellerToken" type="password" autocomplete="off" placeholder="لسّق Authorization ديال seller.digylog.com" />
+        <button class="primary" id="syncTracking" style="width:100%;margin-top:12px">جلب جميع Tracking الناقصة</button>
+      </div>
+
+      <div class="card">
         <h2>نتيجة</h2>
         <pre id="out">—</pre>
       </div>
@@ -158,6 +166,27 @@
       run($('dry'), { action: 'digylog_admin', op: 'dry' }, function (j) {
         show(j.ok ? '👀 هادي الطلبيات لي غاديين يمشيو (ما تصيفطاتش)' : '❌ ' + (j.err || 'error'), !!j.ok);
       });
+    };
+    $('syncTracking').onclick = async function () {
+      var btn=$('syncTracking'), token=$('sellerToken').value.trim();
+      if(!token){ show('❌ لسّق Seller Authorization أولاً',false); return; }
+      btn.disabled=true;
+      try {
+        show('⏳ كنوجد الطلبيات اللي ناقصها Tracking…',true);
+        var c=await call({action:'digylog_admin',op:'tracking_candidates'});
+        if(!c.ok)throw new Error(c.err||'candidates');
+        var ids=c.ids||[], checked=0, linked=0, ambiguous=0, notFound=0;
+        for(var i=0;i<ids.length;i+=20){
+          show('⏳ Tracking فقط: '+Math.min(i+20,ids.length)+' / '+ids.length,true);
+          var r=await call({action:'digylog_admin',op:'tracking_sync',ids:ids.slice(i,i+20),sellerToken:token});
+          if(!r.ok)throw new Error(r.err||'sync');
+          checked+=Number(r.checked||0);linked+=Number(r.linked||0);ambiguous+=Number(r.ambiguous||0);notFound+=Number(r.notFound||0);
+          out({ok:true,trackingOnly:true,total:ids.length,progress:Math.min(i+20,ids.length),checked:checked,linked:linked,ambiguous:ambiguous,notFound:notFound});
+        }
+        $('sellerToken').value='';
+        show('✅ تعمّر Tracking ديال '+linked+' طلبية. Suivie ما تبدلاتش.',true);
+      } catch(e){ show('❌ '+(e.message||'error'),false); }
+      finally{btn.disabled=false;}
     };
   })();
   </script>
