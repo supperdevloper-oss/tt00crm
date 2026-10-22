@@ -80,19 +80,19 @@
       </div>
 
       <div class="card">
-        <h2>2) استرجاع جميع Livrée / Retournée</h2>
-        <div class="hint">ما محتاجش يكون عندك عمود Tracking ظاهر: النظام كيجمع الأرقام المخفية أوتوماتيكياً من أجوبة Digylog ومن سجل الـwebhook، كيجيب الهاتف والاسم والمدينة، وكيطابقهم مع الـCRM على دفعات. خلي الصفحة محلولة حتى تسالي.</div>
-        <button id="rollbackPhone" style="width:100%;margin-top:12px;background:#fee2e2;color:#991b1b;border:2px solid #ef4444">🚨 إصلاح Livrée الخاطئة وإرجاعها Expédier vers</button>
+        <h2>2) مزامنة Tracking والحالات — موقوفة</h2>
+        <div class="hint" style="padding:12px;background:#fee2e2;color:#991b1b;border-radius:10px;font-weight:800">تم توقيف استيراد Tracking وتغيير Livrée / Retournée من Digylog نهائياً بطلب المستخدم. الأزرار أسفله معطلة والسيرفر يرفض هاد العمليات.</div>
+        <button id="rollbackPhone" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:12px;background:#fee2e2;color:#991b1b;border:2px solid #ef4444">🚨 إصلاح Livrée الخاطئة وإرجاعها Expédier vers</button>
         <div class="hint">يستهدف فقط الطلبيات المتضررة اللي كانت Expédier vers قبل مطابقة الهاتف، ويحذف Tracking الخاطئ باش الحالة ما ترجعش Livrée.</div>
-        <button class="primary" id="matchPhones" style="width:100%;margin-top:12px;background:#2563eb">📞 جلب Tracking بمطابقة صارمة</button>
+        <button class="primary" id="matchPhones" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:12px;background:#2563eb">📞 جلب Tracking بمطابقة صارمة</button>
         <div class="hint">الهاتف وحده لا يكفي: الربط لا يتم إلا بتطابق التاريخ ومعطى إضافي، وهاد المرحلة ما كتبدلش حالة livraison نهائياً.</div>
-        <button id="reconcileAll" style="width:100%;margin-top:10px">🔄 مزامنة Trackings المعروفة</button>
-        <button id="repairUntracked" style="width:100%;margin-top:10px;background:#fff7ed;color:#c2410c;border:1px solid #fdba74">🛠️ إصلاح Expédier vers اللي بلا Tracking</button>
+        <button id="reconcileAll" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:10px">🔄 مزامنة Trackings المعروفة</button>
+        <button id="repairUntracked" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:10px;background:#fff7ed;color:#c2410c;border:1px solid #fdba74">🛠️ إصلاح Expédier vers اللي بلا Tracking</button>
         <div class="hint">هاد الزر كيعيد نفس أرقام الطلبات القديمة مع حماية checkDuplicate، وما كيبدل والو إلا رجع Digylog Tracking صريح.</div>
         <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
         <div class="hint">إلا كانت طلبية قديمة بزاف وما عندهاش tracking محفوظ فالـCRM، تقدر تلصق أرقامها هنا (كاملين مرة وحدة، رقم فكل سطر).</div>
         <textarea id="trackings" placeholder="S06478B0E&#10;S1889FE6M&#10;S3CB5780T"></textarea>
-        <button id="reconcile" style="width:100%;margin-top:12px">مزامنة الأرقام الملصقة</button>
+        <button id="reconcile" disabled title="موقوف بطلب المستخدم" style="width:100%;margin-top:12px">مزامنة الأرقام الملصقة</button>
       </div>
 
       <div class="card">

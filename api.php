@@ -1077,6 +1077,10 @@ function crm_dl_admin($b) {
     crm_audit('digylog-save | enabled=' . $en . ' | sentType=' . (isset($c['sentType']) ? $c['sentType'] : 0));
     crm_out(array('ok'=>true));
   }
+  /* بطلب المستخدم: كل عمليات استيراد Tracking أو تغيير Livrée/Retournée
+     من Digylog موقوفة نهائياً. إرسال الطلبيات الجديدة فقط كيبقى مستقل. */
+  $disabledSyncOps = array('known_trackings','reconcile','repair_untracked','phone_candidates','rollback_phone_match','match_phones');
+  if (in_array($op, $disabledSyncOps, true)) crm_out(array('ok'=>false,'disabled'=>true,'err'=>'digylog-tracking-status-sync-disabled'));
   if ($op === 'test') {
     if ($t === '') crm_out(array('ok'=>false, 'err'=>'no-token'), 400);
     $out = array();
@@ -1098,8 +1102,7 @@ function crm_dl_admin($b) {
     $__al = (is_file($AUDIT_FILE)) ? array_slice(array_values(array_filter(explode("\n", (string)@file_get_contents($AUDIT_FILE)))), -500) : array();
     $__hk = array_values(array_filter($__al, function ($l) { return strpos($l, 'digylog-hook') !== false; }));
     $out['/hook-log'] = array('lines' => array_slice($__hk, -10));
-    /* عاود عالج تلقائياً webhooks ديال Livrée/Retournée اللي فاتو قبل إصلاح lookup. */
-    $out['/reconcile'] = crm_dl_reconcile_recent();
+    $out['/reconcile'] = array('ok'=>true,'disabled'=>true,'updated'=>0);
     crm_out(array('ok'=>true, 'test'=>$out));
   }
   if ($op === 'known_trackings') {
@@ -1582,9 +1585,7 @@ function crm_dl_hook_pick($a, $keys) {
 /* الحالة النهائية فقط: "En cours ... retour" ماشي Retournée بعد، لذلك ما
  * كنبدلوش CRM حتى Digylog يقول Retournée/Returned صراحة. */
 function crm_dl_status_to_crm($idStatus, $status) {
-  $s = crm_dl_hook_norm($status);
-  if (strpos($s, 'retourne') !== false || strpos($s, 'returned') !== false) return 'Retournée';
-  if ((string)$idStatus === '6' || strpos($s, 'livr') !== false || strpos($s, 'deliver') !== false || strpos($s, 'distribu') !== false || strpos($s, 'remis') !== false) return 'Livrée';
+  /* موقوف نهائياً: Digylog ما كيبدل لا Livrée لا Retournée فالـCRM. */
   return '';
 }
 function crm_dl_hook_payload($j) {
@@ -1771,6 +1772,7 @@ function crm_dl_remote_trackings() {
 /* كتراجع دفعة مختلفة مع كل cron. 8 فقط باش ما نطولوش execution ديال shared
  * hosting؛ cursor كيدور حتى تتراجع جميع الطلبيات غير النهائية. */
 function crm_dl_reconcile_known_batch($limit = 8) {
+  return array('ok'=>true,'disabled'=>true,'checked'=>0,'pending'=>0,'updated'=>0);
   $all = crm_dl_known_trackings(true);
   $total = count($all);
   if ($total === 0) return array('ok'=>true, 'checked'=>0, 'pending'=>0, 'updated'=>0);
@@ -1790,6 +1792,7 @@ function crm_dl_reconcile_known_batch($limit = 8) {
 /* كيرجع يعالج آخر webhooks اللي وصلو قبل الإصلاح وكانو found=false. كيتشغل
  * مع زر اختبار الاتصال، باش Livrée/Retournée القديمة تلحق بالـCRM بلا انتظار حدث جديد. */
 function crm_dl_reconcile_recent($requestedTrackings = array()) {
+  return array('ok'=>true,'disabled'=>true,'events'=>0,'resolved'=>0,'linked'=>0,'updated'=>0);
   global $AUDIT_FILE, $LOCK_FILE;
   $events = array();
   /* الاسترجاع اليدوي: tracking واحد فكل سطر. الحالة والهاتف كنجيبوهم مباشرة
@@ -1894,6 +1897,10 @@ function crm_dl_hook() {
     echo json_encode(array('key' => (string)$j['key']), JSON_UNESCAPED_UNICODE);
     exit;
   }
+  /* الـwebhook كيتقبل باش Digylog ما يعاودش الإرسال، ولكن ممنوع يكتب أي
+     Tracking أو Livrée أو Retournée أو تاريخ فالـCRM. */
+  crm_audit('digylog-hook-disabled | len=' . strlen($rawHook));
+  crm_out(array('ok'=>true,'disabled'=>true,'changed'=>false));
 
   $p = crm_dl_hook_payload($j);
   $ev = crm_dl_hook_pick($j, array('eventType','event_type','event','type','action'));
