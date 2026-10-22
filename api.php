@@ -1124,7 +1124,8 @@ function crm_dl_admin($b) {
   }
   if ($op === 'match_phones') {
     $ids = isset($b['ids']) && is_array($b['ids']) ? $b['ids'] : array();
-    crm_out(crm_dl_match_phones($ids));
+    $temporarySellerToken = isset($b['sellerToken']) ? (string)$b['sellerToken'] : '';
+    crm_out(crm_dl_match_phones($ids, $temporarySellerToken));
   }
   if ($op === 'dry') crm_out(crm_dl_run(true));
   crm_out(array('ok'=>false, 'err'=>'bad-op'), 400);
@@ -1341,12 +1342,15 @@ function crm_dl_phone_record_score($info, $order) {
 /* البحث العكسي اللي طلبو المستخدم: هاتف CRM → search API Digylog → Tracking.
  * كنقبلو عدة صيغ endpoint لأن نسخ seller API ماشي كلها بنفس route. أول route
  * كيرجع HTTP 200 كنعتمدو عليه لباقي الدفعة. */
-function crm_dl_match_phones($requestedIds) {
+function crm_dl_match_phones($requestedIds, $temporarySellerToken = '') {
   global $LOCK_FILE;
   $ids = array(); foreach ($requestedIds as $id) { $id = (string)$id; if ($id !== '') $ids[$id] = true; if (count($ids) >= 20) break; }
   if (!$ids) return array('ok'=>false, 'err'=>'no-ids');
   $cfg = crm_dl_cfg_get();
-  $token = isset($cfg['sellerToken']) ? trim((string)$cfg['sellerToken']) : '';
+  /* الزر يقدر يبعث Session Token مباشرة بلا خطوة حفظ. كنرجعو للمحفوظ غير
+     للتوافق مع النسخة السابقة. القيمة المباشرة لا تُكتب نهائياً في config. */
+  $token = preg_replace('/^Bearer\s+/i', '', trim((string)$temporarySellerToken));
+  if ($token === '') $token = isset($cfg['sellerToken']) ? trim((string)$cfg['sellerToken']) : '';
   if ($token === '') return array('ok'=>false, 'err'=>'no-seller-token');
   $data = crm_read_raw(true);
   $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();

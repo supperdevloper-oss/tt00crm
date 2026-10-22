@@ -48,8 +48,8 @@
         <div class="hint" id="tokInfo"></div>
 
         <label for="sellerToken">Seller Session Token المؤقت — للبحث بالهاتف</label>
-        <input id="sellerToken" type="password" autocomplete="off" placeholder="لسّق قيمة Authorization هنا (Bearer اختياري)" />
-        <div class="hint" id="sellerTokInfo">كيستعمل غير مع /api/seller/v48/historic/orders. ما تلصقوش فالمحادثة.</div>
+        <input id="sellerToken" type="password" autocomplete="off" placeholder="لسّق Authorization هنا، ثم اضغط الزر الأزرق مباشرة" />
+        <div class="hint" id="sellerTokInfo">ما محتاجش تضغط حفظ: لسّق التوكن واضغط زر مطابقة الهاتف. ما تلصقوش فالمحادثة.</div>
 
         <label for="network">رقم الشبكة (network)</label>
         <input id="network" type="number" min="1" value="1" />
@@ -184,6 +184,13 @@
     };
     $('matchPhones').onclick = async function () {
       var btn = $('matchPhones'), checked = 0, linked = 0, updated = 0, notFound = 0, ambiguous = 0, last = null;
+      /* ما بقيناش كنفرضو زر حفظ: القيمة كتدوز مباشرة لهاد العملية ولا كتتحفظ. */
+      var directSellerToken = $('sellerToken').value.trim();
+      if (!directSellerToken && !$('sellerTokInfo').textContent.includes('محفوظ')) {
+        show('❌ لسّق Authorization فخانة Seller Session Token الفوق، ومن بعد اضغط الزر الأزرق مباشرة.', false);
+        $('sellerToken').focus();
+        return;
+      }
       btn.disabled = true;
       try {
         show('⏳ كنوجد أرقام الهاتف من CRM…', true);
@@ -192,7 +199,7 @@
         var ids = list.ids || [];
         for (var i = 0; i < ids.length; i += 20) {
           show('⏳ مطابقة الهواتف: ' + Math.min(i + 20, ids.length) + ' من ' + ids.length + '…', true);
-          last = await call({ action: 'digylog_admin', op: 'match_phones', ids: ids.slice(i, i + 20) });
+          last = await call({ action: 'digylog_admin', op: 'match_phones', ids: ids.slice(i, i + 20), sellerToken: directSellerToken });
           if (!last.ok) throw new Error(last.err || 'match-failed');
           checked += Number(last.checked || 0); linked += Number(last.linked || 0); updated += Number(last.updated || 0);
           notFound += Number(last.notFound || 0); ambiguous += Number(last.ambiguous || 0);
