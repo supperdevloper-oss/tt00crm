@@ -1159,11 +1159,53 @@ function crm_tracking_sync($requestedIds,$rawToken) {
   return array('ok'=>true,'checked'=>$checked,'linked'=>$linked,'ambiguous'=>$ambiguous,'notFound'=>$notFound,'httpCode'=>$httpCode,'trackingOnly'=>true);
 }
 
+
+/* ================= Livrée-only sync by exact Tracking =================
+ * كيستعمل tracking المخزن كمفتاح وحيد. الكتابة الوحيدة هي livraison='Livrée'.
+ * ما كيكتب لا dateLiv لا Retour لا tracking لا أي حقل آخر. */
+function crm_delivery_is_delivered($info) {
+  if(!is_array($info))return false;
+  $id=crm_tracking_deep_pick($info,array('idStatus','statusId','status_id','id_status'));
+  if((string)$id==='6')return true;
+  $st=crm_tracking_deep_pick($info,array('statusName','status_name','orderStatus','order_status','statut','label','status'));
+  $n=crm_tracking_norm($st);
+  return $n==='livree'||strpos($n,'livree')===0;
+}
+function crm_delivery_fetch_infos($trackings,$token) {
+  $out=array();if(!function_exists('curl_multi_init'))return $out;
+  $mh=curl_multi_init();$chs=array();
+  foreach($trackings as $tr){$tr=strtoupper(trim((string)$tr));if($tr==='')continue;
+    $ch=curl_init(crm_dl_base().'/order/'.rawurlencode($tr).'/infos');
+    curl_setopt_array($ch,array(CURLOPT_HTTPHEADER=>array('Accept: application/json','Referer: https://apiseller.digylog.com','Authorization: Bearer '.$token),CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>8,CURLOPT_TIMEOUT=>20));
+    curl_multi_add_handle($mh,$ch);$chs[$tr]=$ch;
+  }
+  $running=null;do{$mrc=curl_multi_exec($mh,$running);if($running)curl_multi_select($mh,1.0);}while($running&&$mrc===CURLM_OK);
+  foreach($chs as $tr=>$ch){$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);$body=(string)curl_multi_getcontent($ch);$j=json_decode($body,true);$out[$tr]=array('code'=>$code,'delivered'=>($code>=200&&$code<300&&crm_delivery_is_delivered($j)));curl_multi_remove_handle($mh,$ch);curl_close($ch);}curl_multi_close($mh);
+  return $out;
+}
+function crm_delivery_sync_batch($limit=20) {
+  global $LOCK_FILE;
+  $cfg=crm_dl_cfg_get();$token=isset($cfg['token'])?trim((string)$cfg['token']):'';if($token==='')return array('ok'=>false,'err'=>'no-token','checked'=>0,'updated'=>0);
+  $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
+  $map=array();foreach($orders as $o){if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));if($tr===''||(string)(isset($o['livraison'])?$o['livraison']:'')==='Livrée')continue;$map[$tr]=true;}
+  $all=array_keys($map);sort($all);$total=count($all);if($total===0)return array('ok'=>true,'checked'=>0,'pending'=>0,'delivered'=>0,'updated'=>0);
+  $cursor=isset($cfg['deliveryCursor'])?max(0,(int)$cfg['deliveryCursor']):0;if($cursor>=$total)$cursor=0;$take=min(max(1,(int)$limit),$total);$batch=array();for($i=0;$i<$take;$i++)$batch[]=$all[($cursor+$i)%$total];
+  $cfg['deliveryCursor']=($cursor+$take)%max(1,$total);crm_dl_cfg_set($cfg);$infos=crm_delivery_fetch_infos($batch,$token);$delivered=array();foreach($infos as $tr=>$r)if(!empty($r['delivered']))$delivered[$tr]=true;
+  $updated=0;if($delivered){$fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();$prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);
+    foreach($cur as $i=>$o){if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));if(!isset($delivered[$tr])||(string)(isset($o['livraison'])?$o['livraison']:'')==='Livrée')continue;if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();
+      /* السطر التجاري الوحيد اللي كيتبدل فهاد العملية. */
+      $o['livraison']='Livrée';$o['_f']['livraison']=$now;$o['_u']=$now;$cur[$i]=$o;$updated++;}
+    if($updated){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
+    if($fh){@flock($fh,LOCK_UN);@fclose($fh);}}
+  crm_audit('digylog-delivered-tracking-only | checked='.count($batch).' | delivered='.count($delivered).' | updated='.$updated);
+  return array('ok'=>true,'checked'=>count($batch),'pending'=>$total,'delivered'=>count($delivered),'updated'=>$updated);
+}
+
 /* يشتغل: من cron (GET) أو من admin (dry) */
 function crm_dl_run($dry = false) {
   global $LOCK_FILE, $DATA_DIR;
   $c = crm_dl_cfg_get();
-  if (!$dry && empty($c['enabled'])) return array('ok'=>true, 'skipped'=>'disabled');
+  if (!$dry && empty($c['enabled'])) return array('ok'=>true, 'skipped'=>'sending-disabled', 'deliveredSync'=>crm_delivery_sync_batch(20));
   $since   = isset($c['since']) ? (int)$c['since'] : 0;
   $token   = isset($c['token']) ? (string)$c['token'] : '';
   $network = isset($c['network']) ? (int)$c['network'] : 1;
@@ -1287,8 +1329,11 @@ function crm_dl_run($dry = false) {
     if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
   }
   if ($runLock) { @flock($runLock, LOCK_UN); @fclose($runLock); }
-  crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied);
-  return array('ok'=>true, 'sent'=>count($sent), 'failed'=>count($failed), 'skipped'=>count($skipped), 'applied'=>$applied, 'errors'=>$failed);
+  /* كل تشغيل cron كيراجع دفعة Trackings معروفة. المطابقة exact بالـTracking
+     والنتيجة الوحيدة الممكنة هي Suivie = Livrée. */
+  $deliverySync=crm_delivery_sync_batch(20);
+  crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied . ' | deliveredUpdated=' . (isset($deliverySync['updated'])?(int)$deliverySync['updated']:0));
+  return array('ok'=>true, 'sent'=>count($sent), 'failed'=>count($failed), 'skipped'=>count($skipped), 'applied'=>$applied, 'errors'=>$failed, 'deliveredSync'=>$deliverySync);
 }
 
 /* v3.102: Digylog webhook — Digylog كيصيفط تبدل حالة الطلبية (order-status-changed).
