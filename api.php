@@ -1428,55 +1428,49 @@ function crm_dl_match_phones($requestedIds, $temporarySellerToken = '') {
   return array('ok'=>true,'checked'=>$checked,'linked'=>$linked,'updated'=>$updated,'notFound'=>max(0,$checked-$linked-$ambiguous),'ambiguous'=>$ambiguous,'endpoint'=>$working,'tests'=>$tests);
 }
 
-/* تراجع آمن على ربط الهاتف القديم: كنرجعو غير الحقول اللي عندها نفس timestamp
- * ديال tracking+dlStatus (بصمة العملية المعيبة)، ومن أحدث backup سابق. أي تصحيح
- * يدوي دارو المستخدم من بعد عندو timestamp أحدث وما كنمسّوهش. */
+/* تراجع حاسم على النسخة السابقة: كنحدد أول phone-match ربط طلبية فعلاً من
+ * audit، كنختار آخر backup قبله، وكنجمع IDs المتضررة من snapshots اللي من بعده.
+ * كنرجع الحقول الخمسة من baseline دفعة واحدة وبـtimestamp جديد. */
 function crm_dl_rollback_phone_match($apply) {
-  global $BACKUP_DIR, $LOCK_FILE;
-  $data = crm_read_raw(true);
-  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
-  if (!is_array($orders)) $orders = array();
-  $sus = array();
-  foreach ($orders as $o) {
-    if (!is_array($o) || empty($o['id']) || empty($o['_f']) || !is_array($o['_f'])) continue;
-    $mt = isset($o['_f']['tracking']) ? (string)$o['_f']['tracking'] : '';
-    if ($mt !== '' && isset($o['_f']['dlStatus'], $o['_f']['dlStatusId']) &&
-        (string)$o['_f']['dlStatus'] === $mt && (string)$o['_f']['dlStatusId'] === $mt) {
-      $sus[(string)$o['id']] = array('stamp'=>$mt, 'current'=>$o);
+  global $BACKUP_DIR, $LOCK_FILE, $AUDIT_FILE;
+  $cutoff = 0;
+  foreach (array($AUDIT_FILE.'.1', $AUDIT_FILE) as $af) {
+    $lines = @file($af, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!$lines) continue;
+    foreach ($lines as $line) {
+      if (strpos($line, 'digylog-phone-match') === false || !preg_match('/linked=([1-9][0-9]*)/', $line)) continue;
+      if (preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/', $line, $m)) {
+        $ts = strtotime($m[1]); if ($ts && ($cutoff === 0 || $ts < $cutoff)) $cutoff = $ts;
+      }
     }
   }
+  if ($cutoff === 0) return array('ok'=>false,'err'=>'phone-match-start-not-found');
   $files = array_merge((array)glob($BACKUP_DIR.'/b-*.json'), (array)glob($BACKUP_DIR.'/d-*.json'));
   usort($files, function($a,$b){ return (int)@filemtime($b) - (int)@filemtime($a); });
-  $restore = array();
-  foreach ($files as $file) {
-    if (count($restore) >= count($sus)) break;
-    $j = json_decode((string)@file_get_contents($file), true);
-    $old = is_array($j) && isset($j['paraveda_orders_v5']['d']) ? crm_unwrap($j['paraveda_orders_v5']['d']) : array();
-    if (!is_array($old)) continue;
-    foreach ($old as $po) {
-      $id = is_array($po) && isset($po['id']) ? (string)$po['id'] : '';
-      if ($id === '' || !isset($sus[$id]) || isset($restore[$id])) continue;
-      $pf = isset($po['_f']) && is_array($po['_f']) ? $po['_f'] : array();
-      $pst = isset($pf['tracking']) ? (string)$pf['tracking'] : '';
-      if ($pst !== (string)$sus[$id]['stamp']) $restore[$id] = $po;
-    }
-  }
-  if (!$apply) return array('ok'=>true,'preview'=>true,'suspected'=>count($sus),'recoverable'=>count($restore),'withoutBackup'=>max(0,count($sus)-count($restore)));
-  if (!$restore) return array('ok'=>false,'err'=>'no-recoverable-backup','suspected'=>count($sus));
-  $fh=@fopen($LOCK_FILE,'c'); if($fh)@flock($fh,LOCK_EX);
-  $data=crm_read_raw(true); $cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array(); if(!is_array($cur))$cur=array();
-  $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0; $now=(int)(microtime(true)*1000); $rolled=0;
-  $fields=array('tracking','dlStatus','dlStatusId','livraison','dateLiv');
-  foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($restore[$id])||empty($o['_f'])||!is_array($o['_f']))continue;
-    $mt=isset($sus[$id]['stamp'])?(string)$sus[$id]['stamp']:'';if($mt===''||(string)(isset($o['_f']['tracking'])?$o['_f']['tracking']:'')!==$mt)continue;$po=$restore[$id];$pf=isset($po['_f'])&&is_array($po['_f'])?$po['_f']:array();$changed=false;
-    foreach($fields as $f){if((string)(isset($o['_f'][$f])?$o['_f'][$f]:'')!==$mt)continue;
-      /* مهم: القيمة المسترجعة خاصها timestamp جديد، ماشي القديم ديال backup.
-         وإلا CRM مفتوح بذاكرة محلية فيها الغلط كيرجع يربح علينا مباشرة. */
-      $o[$f]=array_key_exists($f,$po)?$po[$f]:'';$o['_f'][$f]=$now;$changed=true;}
-    if($changed){$o['_u']=$now;$cur[$i]=$o;$rolled++;}}
+  $baselineFile = '';
+  foreach ($files as $file) if ((int)@filemtime($file) < $cutoff) { $baselineFile=$file; break; }
+  if ($baselineFile === '') return array('ok'=>false,'err'=>'baseline-before-phone-match-not-found','cutoff'=>date('c',$cutoff));
+  $bj=json_decode((string)@file_get_contents($baselineFile),true);
+  $baseRows=is_array($bj)&&isset($bj['paraveda_orders_v5']['d'])?crm_unwrap($bj['paraveda_orders_v5']['d']):array();
+  if(!is_array($baseRows)) return array('ok'=>false,'err'=>'invalid-baseline');
+  $base=array();foreach($baseRows as $o)if(is_array($o)&&isset($o['id']))$base[(string)$o['id']]=$o;
+  $affected=array();
+  $collect=function($rows)use(&$affected,$base,$cutoff){if(!is_array($rows))return;foreach($rows as $o){
+    if(!is_array($o)||empty($o['id'])||empty($o['_f'])||!is_array($o['_f']))continue;$id=(string)$o['id'];if(!isset($base[$id]))continue;
+    $f=$o['_f'];$mt=isset($f['tracking'])?(string)$f['tracking']:'';
+    if($mt!==''&&is_numeric($mt)&&((float)$mt/1000)>=($cutoff-5)&&(string)(isset($f['dlStatus'])?$f['dlStatus']:'')===$mt&&(string)(isset($f['dlStatusId'])?$f['dlStatusId']:'')===$mt)$affected[$id]=true;
+  }};
+  $current=crm_read_raw(true);$curRows=isset($current['paraveda_orders_v5']['d'])?crm_unwrap($current['paraveda_orders_v5']['d']):array();$collect($curRows);
+  foreach($files as $file){if((int)@filemtime($file)<$cutoff)continue;$j=json_decode((string)@file_get_contents($file),true);$rows=is_array($j)&&isset($j['paraveda_orders_v5']['d'])?crm_unwrap($j['paraveda_orders_v5']['d']):array();$collect($rows);}
+  if(!$apply)return array('ok'=>true,'preview'=>true,'suspected'=>count($affected),'recoverable'=>count($affected),'withoutBackup'=>0,'baseline'=>basename($baselineFile),'cutoff'=>date('c',$cutoff));
+  if(!$affected)return array('ok'=>false,'err'=>'no-affected-orders-found','baseline'=>basename($baselineFile));
+  $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();
+  $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);$fields=array('tracking','dlStatus','dlStatusId','livraison','dateLiv');$rolled=0;
+  foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($affected[$id])||!isset($base[$id]))continue;$po=$base[$id];if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();
+    foreach($fields as $f){$o[$f]=array_key_exists($f,$po)?$po[$f]:'';$o['_f'][$f]=$now;}$o['_u']=$now;$cur[$i]=$o;$rolled++;}
   if($rolled>0){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
-  if($fh){@flock($fh,LOCK_UN);@fclose($fh);} crm_audit('digylog-phone-rollback | rolled='.$rolled.' | recoverable='.count($restore));
-  return array('ok'=>true,'rolledBack'=>$rolled,'recoverable'=>count($restore),'withoutBackup'=>max(0,count($sus)-count($restore)));
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_audit('digylog-phone-baseline-rollback | rolled='.$rolled.' | baseline='.basename($baselineFile));
+  return array('ok'=>true,'rolledBack'=>$rolled,'recoverable'=>count($affected),'withoutBackup'=>0,'baseline'=>basename($baselineFile),'cutoff'=>date('c',$cutoff));
 }
 
 /* إصلاح الطلبيات اللي النسخة القديمة علماتها Expédier vers من HTTP 200 ديال
