@@ -1351,21 +1351,47 @@ function crm_dl_match_order($orders, $phone, $info, &$matches = 0) {
   $remoteDate = substr((string)(isset($info['createdAt']) ? $info['createdAt'] : ''), 0, 10);
   $remotePrice = isset($info['price']) && is_numeric($info['price']) ? (float)$info['price'] : null;
   $remoteName = crm_dl_hook_norm(isset($info['name']) ? $info['name'] : '');
+  $remoteCity = crm_dl_hook_norm(isset($info['city']) ? $info['city'] : '');
   $best = -1; $bestScore = -1; $ties = 0;
   foreach ($candidates as $i) {
     $o = $orders[$i]; $score = 0;
     if ($remoteDate !== '' && substr((string)(isset($o['dateCreation']) ? $o['dateCreation'] : ''), 0, 10) === $remoteDate) $score += 4;
     if ($remotePrice !== null && abs((float)(isset($o['prix']) ? $o['prix'] : 0) - $remotePrice) < 0.01) $score += 2;
+    if ($remoteCity !== '' && crm_dl_hook_norm(isset($o['ville']) ? $o['ville'] : '') === $remoteCity) $score += 2;
     if ($remoteName !== '' && crm_dl_hook_norm(isset($o['nom']) ? $o['nom'] : '') === $remoteName) $score += 1;
     if ($score > $bestScore) { $best = $i; $bestScore = $score; $ties = 1; }
     elseif ($score === $bestScore) $ties++;
   }
   return ($bestScore > 0 && $ties === 1) ? $best : -1;
 }
-/* جميع أرقام Digylog اللي مخزنين فالـCRM. ما كنحتاجوش endpoint ديال listing
- * (الـseller API ما كيوفروش): كل طلبية خرجات من CRM خاص tracking ديالها يبقى
- * محفوظ، وكنراجع حالتها مباشرة بـ/order/{tracking}/infos. */
+/* كنجمع tracking حتى إلا ما كيبانش كعمود فالـCRM: جواب إنشاء الطلبية dlRes
+ * كيبقى مخزن داخلياً، وغالباً فيه traking (بالغلط الإملائي ديال Digylog).
+ * batch response يقدر يكون نفسو عند عدة طلبيات؛ dedupe كيتكلف به $out. */
+function crm_dl_extract_trackings($value, &$out, $depth = 0) {
+  if ($depth > 8) return;
+  if (is_array($value)) {
+    foreach ($value as $k => $v) {
+      $kn = crm_dl_hook_norm($k);
+      if (!is_array($v) && in_array($kn, array('tracking','traking','trackingid','trackingnumber','barcode'), true)) {
+        $tr = strtoupper(trim((string)$v));
+        if (preg_match('/^[A-Z0-9_-]{5,40}$/', $tr)) $out[$tr] = true;
+      }
+      crm_dl_extract_trackings($v, $out, $depth + 1);
+    }
+    return;
+  }
+  if (!is_string($value) || $value === '') return;
+  $j = json_decode($value, true);
+  if (is_array($j)) crm_dl_extract_trackings($j, $out, $depth + 1);
+  /* حتى إلا كان dlRes مقطوع فـ500 حرف، tracking غالباً باقي واضح. */
+  if (preg_match_all('/\bS(?=[A-Z0-9_-]{8,20}\b)(?=[A-Z0-9_-]*[0-9])[A-Z0-9_-]{8,20}\b/', strtoupper($value), $m)) {
+    foreach ($m[0] as $tr) $out[$tr] = true;
+  }
+}
+/* جميع أرقام Digylog الموجودة داخلياً: tracking fields + أجوبة الإرسال dlRes.
+ * فالاسترجاع الشامل كنزيدو حتى trackings ديال webhooks من audit.log. */
 function crm_dl_known_trackings($onlyNonFinal = false) {
+  global $AUDIT_FILE;
   $data = crm_read_raw(true);
   $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
   if (!is_array($orders)) return array();
@@ -1377,9 +1403,15 @@ function crm_dl_known_trackings($onlyNonFinal = false) {
       if (strpos($liv, 'livr') !== false || strpos($liv, 'retour') !== false) continue;
     }
     foreach (array('tracking','dlTracking','digylogTracking') as $k) {
-      $tr = isset($o[$k]) ? strtoupper(trim((string)$o[$k])) : '';
-      if ($tr !== '' && preg_match('/^[A-Z0-9_-]{5,40}$/', $tr)) $out[$tr] = true;
+      if (isset($o[$k])) crm_dl_extract_trackings(array($k => $o[$k]), $out);
     }
+    if (isset($o['dlRes'])) crm_dl_extract_trackings($o['dlRes'], $out);
+  }
+  if (!$onlyNonFinal && is_file($AUDIT_FILE)) {
+    /* ما نحتاجوش نفهمو شكل كل نسخة webhook: كنستخرجو أرقام S... مباشرة. */
+    $audit = (string)@file_get_contents($AUDIT_FILE);
+    if (strlen($audit) > 5 * 1024 * 1024) $audit = substr($audit, -5 * 1024 * 1024);
+    crm_dl_extract_trackings($audit, $out);
   }
   return array_keys($out);
 }
