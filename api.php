@@ -1073,11 +1073,18 @@ function crm_dl_admin($b) {
     crm_out(array('ok'=>true, 'test'=>$out));
   }
   if ($op === 'known_trackings') {
-    /* زر واحد لاسترجاع جميع الحالات القديمة بلا نسخ الأرقام واحداً واحداً.
-       كنرجعو غير tracking المخزن فعلاً فالـCRM؛ الواجهة كتقسمهم دفعات صغيرة
-       باش shared hosting ما يقطعش الطلب الطويل. */
-    $all = crm_dl_known_trackings(false);
-    crm_out(array('ok'=>true, 'trackings'=>$all, 'total'=>count($all)));
+    /* كنبدأو بالمخزن محلياً، ومن بعد كنجربو listing ديال Digylog مباشرة
+       باش نجيبو حتى طلبيات اليوم/البارح/الشهور اللي ما وصلش webhook ديالها. */
+    $local = crm_dl_known_trackings(false);
+    $remote = crm_dl_remote_trackings();
+    $allMap = array();
+    foreach ($local as $tr) $allMap[$tr] = true;
+    if (!empty($remote['trackings']) && is_array($remote['trackings'])) foreach ($remote['trackings'] as $tr) $allMap[$tr] = true;
+    $all = array_keys($allMap);
+    crm_out(array('ok'=>true, 'trackings'=>$all, 'total'=>count($all), 'local'=>count($local),
+      'remote'=>isset($remote['count']) ? (int)$remote['count'] : 0,
+      'remoteEndpoint'=>isset($remote['endpoint']) ? $remote['endpoint'] : '',
+      'remoteTests'=>isset($remote['tests']) ? $remote['tests'] : array()));
   }
   if ($op === 'reconcile') {
     $raw = isset($b['trackings']) ? $b['trackings'] : array();
@@ -1414,6 +1421,45 @@ function crm_dl_known_trackings($onlyNonFinal = false) {
     crm_dl_extract_trackings($audit, $out);
   }
   return array_keys($out);
+}
+/* Digylog seller API كيختلف حسب نسخة الحساب: بعض الحسابات كتدعم GET /orders
+ * بpagination رغم أن الوثائق العامة كتركز على POST. كنجربو الصيغ المعروفة
+ * read-only، وأول صيغة كترد Trackings كنكمّلو صفحاتها حتى ما يبقى جديد. */
+function crm_dl_remote_trackings() {
+  $cfg = crm_dl_cfg_get();
+  $token = isset($cfg['token']) ? trim((string)$cfg['token']) : '';
+  if ($token === '') return array('trackings'=>array(), 'count'=>0, 'endpoint'=>'', 'tests'=>array('no-token'));
+  $templates = array(
+    '/orders?page={page}&limit=250',
+    '/orders?page={page}&perPage=250',
+    '/orders?page={page}&per_page=250',
+    '/orders?currentPage={page}&pageSize=250',
+    '/orders/standard?page={page}&limit=250',
+    '/orders/list?page={page}&limit=250',
+    '/orders'
+  );
+  $tests = array(); $best = array(); $chosen = '';
+  foreach ($templates as $tpl) {
+    $path = str_replace('{page}', '1', $tpl);
+    list($code, $body, $err) = crm_dl_http('GET', $path, $token);
+    $found = array();
+    if ($code >= 200 && $code < 300 && $body !== '') crm_dl_extract_trackings($body, $found);
+    $tests[] = array('path'=>$path, 'code'=>$code, 'found'=>count($found), 'err'=>$err !== '' ? substr($err, 0, 80) : '');
+    if (count($found) > 0) { $best = $found; $chosen = $tpl; break; }
+  }
+  if ($chosen === '') return array('trackings'=>array(), 'count'=>0, 'endpoint'=>'', 'tests'=>$tests);
+  /* pagination: كنوقفو ملي صفحة ما تزيد حتى tracking أو نوصلو للسقف الآمن. */
+  if (strpos($chosen, '{page}') !== false) {
+    for ($page = 2; $page <= 20 && count($best) < 5000; $page++) {
+      $path = str_replace('{page}', (string)$page, $chosen);
+      list($code, $body, $err) = crm_dl_http('GET', $path, $token);
+      if ($code < 200 || $code >= 300 || $body === '') break;
+      $found = array(); crm_dl_extract_trackings($body, $found);
+      $before = count($best); foreach ($found as $tr => $yes) $best[$tr] = true;
+      if (count($best) === $before) break;
+    }
+  }
+  return array('trackings'=>array_keys($best), 'count'=>count($best), 'endpoint'=>$chosen, 'tests'=>$tests);
 }
 /* كتراجع دفعة مختلفة مع كل cron. 8 فقط باش ما نطولوش execution ديال shared
  * hosting؛ cursor كيدور حتى تتراجع جميع الطلبيات غير النهائية. */
