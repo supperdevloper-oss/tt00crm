@@ -33,6 +33,7 @@ checks = {
     "UI CSV and Excel export": "exportCsv" in ui and "exportExcel" in ui,
     "UI live refresh": "setInterval(()=>{if(!document.hidden&&!scanLock)load(true)},4000)" in ui,
     "CRM navigation integration": "Suivi des Retours" in index and "retours.html" in index,
+    "Navigation script after app bundle": index.rfind("document.addEventListener('click'") > index.rfind('<div id="root"></div>'),
 }
 
 package = ROOT / "paraveda-crm-retours.zip"
