@@ -47,6 +47,10 @@
         <input id="token" type="password" autocomplete="off" placeholder="اللصق هنا (ما كيبانش من بعد الحفظ)" />
         <div class="hint" id="tokInfo"></div>
 
+        <label for="sellerToken">Seller Session Token المؤقت — للبحث بالهاتف</label>
+        <input id="sellerToken" type="password" autocomplete="off" placeholder="لسّق قيمة Authorization هنا (Bearer اختياري)" />
+        <div class="hint" id="sellerTokInfo">كيستعمل غير مع /api/seller/v48/historic/orders. ما تلصقوش فالمحادثة.</div>
+
         <label for="network">رقم الشبكة (network)</label>
         <input id="network" type="number" min="1" value="1" />
         <div class="hint">كيتجاب من /networks (ديك الخانة كتتأكد بزر "اختبار الاتصال")</div>
@@ -136,6 +140,7 @@
       $('enabled').checked = !!cfg.enabled;
       AGENTS.forEach(function (a) { $('st_' + a).value = (cfg.stores && cfg.stores[a]) || DEFAULT_STORES[a]; });
       $('tokInfo').textContent = cfg.hasToken ? ('✅ توكن محفوظ (…' + cfg.tokenTail + ')') : '⚠️ ما كاينش توكن بعد';
+      $('sellerTokInfo').textContent = cfg.hasSellerToken ? ('✅ Seller token محفوظ مؤقتاً (…' + cfg.sellerTokenTail + ')') : '⚠️ لسّق Authorization ديال seller.digylog.com هنا — ما تلصقوش فالمحادثة';
     }
 
     call({ action: 'digylog_admin', op: 'get' }).then(function (j) {
@@ -160,8 +165,10 @@
       };
       var t = $('token').value.trim();
       if (t) body.token = t;
+      var st = $('sellerToken').value.trim();
+      if (st) body.sellerToken = st;
       run($('save'), body, function (j) {
-        if (j.ok) { show('✅ تحفظات', true); $('token').value = ''; call({ action: 'digylog_admin', op: 'get' }).then(function (g) { if (g.ok) fill(g.cfg); }); }
+        if (j.ok) { show('✅ تحفظات', true); $('token').value = ''; $('sellerToken').value = ''; call({ action: 'digylog_admin', op: 'get' }).then(function (g) { if (g.ok) fill(g.cfg); }); }
         else show('❌ ما تحفظاتش (' + (j.err || 'error') + ')', false);
       });
     };
@@ -192,8 +199,12 @@
           out({ ok:true, total:list.total, progress:Math.min(i+20,ids.length), checked:checked, linked:linked, updated:updated, notFound:notFound, ambiguous:ambiguous, endpoint:last.endpoint || '', tests:last.tests || [] });
           if (!last.endpoint) break;
         }
-        if (last && !last.endpoint) show('❌ API ديال Digylog ما قبل حتى endpoint ديال البحث بالهاتف. شوف tests فالنتيجة.', false);
-        else show('✅ تسالات مطابقة الهاتف: تربط Tracking مع ' + linked + ' طلبية', true);
+        if (last && !last.endpoint) show('❌ Seller token ما تقبلش أو سالات الصلاحية. شوف tests فالنتيجة.', false);
+        else {
+          await call({ action: 'digylog_admin', op: 'clear_seller_token' });
+          $('sellerTokInfo').textContent = '✅ تسالات العملية وتم حذف Seller token المؤقت من السيرفر';
+          show('✅ تسالات مطابقة الهاتف: تربط Tracking مع ' + linked + ' طلبية', true);
+        }
       } catch (e) { show('❌ مطابقة الهاتف فشلات: ' + (e.message || 'error'), false); }
       finally { btn.disabled = false; }
     };

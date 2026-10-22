@@ -964,6 +964,19 @@ function crm_dl_http($method, $path, $token, $body = null) {
   curl_close($ch);
   return array($code, $resp === false ? '' : (string)$resp, $err);
 }
+/* API الداخلي اللي كيستعمل seller.digylog.com للبحث بالهاتف. مختلف على
+ * public /api/v2/seller، وكيحتاج Seller session bearer مؤقت. */
+function crm_dl_internal_http($path, $token) {
+  if (!function_exists('curl_init')) return array(0, '', 'no-curl');
+  $token = preg_replace('/^Bearer\s+/i', '', trim((string)$token));
+  $ch = curl_init('https://api.digylog.com/api/seller/v48' . $path);
+  curl_setopt_array($ch, array(
+    CURLOPT_HTTPHEADER => array('Accept: application/json, text/plain, */*', 'Referer: https://seller.digylog.com/', 'Origin: https://seller.digylog.com', 'Authorization: Bearer ' . $token),
+    CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 25
+  ));
+  $resp = curl_exec($ch); $err = (string)curl_error($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+  return array($code, $resp === false ? '' : (string)$resp, $err);
+}
 function crm_dl_order_row($o) {
   return array(
     'num'         => (string)$o['id'],
@@ -1024,11 +1037,21 @@ function crm_dl_admin($b) {
       'stores'    => $stores,
       'since'     => isset($c['since']) ? (int)$c['since'] : 0,
       'hasToken'  => $t !== '',
-      'tokenTail' => $t !== '' ? substr($t, -4) : ''
+      'tokenTail' => $t !== '' ? substr($t, -4) : '',
+      'hasSellerToken' => !empty($c['sellerToken']),
+      'sellerTokenTail' => !empty($c['sellerToken']) ? substr((string)$c['sellerToken'], -4) : ''
     )));
+  }
+  if ($op === 'clear_seller_token') {
+    unset($c['sellerToken']); crm_dl_cfg_set($c); crm_out(array('ok'=>true));
   }
   if ($op === 'save') {
     if (isset($b['token']) && trim((string)$b['token']) !== '') $c['token'] = trim((string)$b['token']);
+    if (isset($b['sellerToken']) && trim((string)$b['sellerToken']) !== '') {
+      $sv = trim((string)$b['sellerToken']);
+      $c['sellerToken'] = preg_replace('/^Bearer\s+/i', '', $sv);
+    }
+    if (!empty($b['clearSellerToken'])) unset($c['sellerToken']);
     if (isset($b['network'])) $c['network'] = (int)$b['network'];
     if (isset($b['sentType'])) {
       $st = (int)$b['sentType'];
@@ -1322,8 +1345,9 @@ function crm_dl_match_phones($requestedIds) {
   global $LOCK_FILE;
   $ids = array(); foreach ($requestedIds as $id) { $id = (string)$id; if ($id !== '') $ids[$id] = true; if (count($ids) >= 20) break; }
   if (!$ids) return array('ok'=>false, 'err'=>'no-ids');
-  $cfg = crm_dl_cfg_get(); $token = isset($cfg['token']) ? trim((string)$cfg['token']) : '';
-  if ($token === '') return array('ok'=>false, 'err'=>'no-token');
+  $cfg = crm_dl_cfg_get();
+  $token = isset($cfg['sellerToken']) ? trim((string)$cfg['sellerToken']) : '';
+  if ($token === '') return array('ok'=>false, 'err'=>'no-seller-token');
   $data = crm_read_raw(true);
   $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
   $todo = array();
@@ -1331,7 +1355,8 @@ function crm_dl_match_phones($requestedIds) {
     $id = is_array($o) && isset($o['id']) ? (string)$o['id'] : '';
     if ($id !== '' && isset($ids[$id]) && empty($o['_del']) && trim((string)(isset($o['tracking']) ? $o['tracking'] : '')) === '') $todo[] = $o;
   }
-  $templates = array('/orders?phone={phone}','/orders?telephone={phone}','/orders?tel={phone}','/orders/search?phone={phone}','/order?phone={phone}','/orders?search={phone}');
+  /* Route exact لقاها المستخدم من Network ديال seller.digylog.com. */
+  $templates = array('/historic/orders?phone={phone}&datatype=1&countPerPage=100&currentPage=1&sort=0');
   $working = ''; $tests = array(); $found = array(); $ambiguous = 0; $checked = 0;
   foreach ($todo as $o) {
     $phone = crm_dl_phone_norm(isset($o['telephone']) ? $o['telephone'] : ''); if ($phone === '') continue;
@@ -1340,7 +1365,7 @@ function crm_dl_match_phones($requestedIds) {
     foreach ($try as $tpl) {
       foreach ($variants as $pv) {
         $path = str_replace('{phone}', rawurlencode($pv), $tpl);
-        list($code, $body, $err) = crm_dl_http('GET', $path, $token);
+        list($code, $body, $err) = crm_dl_internal_http($path, $token);
         if (count($tests) < 12) $tests[] = array('path'=>str_replace(rawurlencode($pv), 'PHONE', $path), 'code'=>$code, 'err'=>$err !== '' ? substr($err,0,80) : '');
         if ($code < 200 || $code >= 300 || $body === '') continue;
         if ($working === '') $working = $tpl;
