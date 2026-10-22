@@ -1096,6 +1096,13 @@ function crm_dl_admin($b) {
     $limit = isset($b['limit']) ? (int)$b['limit'] : 100;
     crm_out(crm_dl_repair_untracked(max(1, min(100, $limit))));
   }
+  if ($op === 'phone_candidates') {
+    crm_out(crm_dl_phone_candidates());
+  }
+  if ($op === 'match_phones') {
+    $ids = isset($b['ids']) && is_array($b['ids']) ? $b['ids'] : array();
+    crm_out(crm_dl_match_phones($ids));
+  }
   if ($op === 'dry') crm_out(crm_dl_run(true));
   crm_out(array('ok'=>false, 'err'=>'bad-op'), 400);
 }
@@ -1268,6 +1275,109 @@ function crm_dl_run($dry = false) {
   $polled = (!$dry && $token !== '') ? crm_dl_reconcile_known_batch(8) : array('checked'=>0, 'updated'=>0);
   crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied . ' | polled=' . (isset($polled['checked']) ? $polled['checked'] : 0) . ' | pollUpdated=' . (isset($polled['updated']) ? $polled['updated'] : 0));
   return array('ok'=>true, 'sent'=>count($sent), 'failed'=>count($failed), 'skipped'=>count($skipped), 'applied'=>$applied, 'polled'=>$polled, 'errors'=>$failed);
+}
+
+/* لائحة الطلبات اللي خاصها بحث عكسي بالهاتف. كنرجعو IDs فقط للواجهة؛ الهاتف
+ * كيبقى فالسيرفر وما كيتعرضش فالنتيجة. */
+function crm_dl_phone_candidates() {
+  $data = crm_read_raw(true);
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  $ids = array();
+  if (is_array($orders)) foreach ($orders as $o) {
+    if (!is_array($o) || !empty($o['_del'])) continue;
+    if (trim((string)(isset($o['tracking']) ? $o['tracking'] : '')) !== '') continue;
+    if (crm_dl_phone_norm(isset($o['telephone']) ? $o['telephone'] : '') === '') continue;
+    /* الأولوية للي باينين Expédier vers، ولكن الزر يقدر يربط حتى الحالات الأخرى. */
+    $ids[] = (string)$o['id'];
+  }
+  return array('ok'=>true, 'ids'=>$ids, 'total'=>count($ids));
+}
+/* كنستخرجو records اللي فيهم نفس الهاتف + tracking من أي response wrapper. */
+function crm_dl_phone_records($v, $phone, &$out, $depth = 0) {
+  if (!is_array($v) || $depth > 10) return;
+  $assoc = array_keys($v) !== range(0, count($v) - 1);
+  if ($assoc) {
+    $p = crm_dl_phone_norm(crm_dl_hook_pick($v, array('phone','telephone','tel','customerPhone','customer_phone','clientPhone','client_phone','recipientPhone','recipient_phone')));
+    $tr = crm_dl_hook_pick($v, array('traking','tracking','trackingId','tracking_id','trackingNumber','tracking_number','barcode'));
+    if ($tr !== '' && $p === $phone) $out[strtoupper(trim($tr))] = $v;
+  }
+  foreach ($v as $child) if (is_array($child)) crm_dl_phone_records($child, $phone, $out, $depth + 1);
+}
+function crm_dl_phone_record_score($info, $order) {
+  if (!is_array($info) || !is_array($order)) return 0;
+  $score = 0;
+  $rd = substr((string)(isset($info['createdAt']) ? $info['createdAt'] : ''), 0, 10);
+  if ($rd !== '' && $rd === substr((string)(isset($order['dateCreation']) ? $order['dateCreation'] : ''), 0, 10)) $score += 4;
+  if (isset($info['price']) && is_numeric($info['price']) && abs((float)$info['price'] - (float)(isset($order['prix']) ? $order['prix'] : 0)) < .01) $score += 2;
+  $rc = crm_dl_hook_norm(isset($info['city']) ? $info['city'] : '');
+  if ($rc !== '' && $rc === crm_dl_hook_norm(isset($order['ville']) ? $order['ville'] : '')) $score += 2;
+  $rn = crm_dl_hook_norm(isset($info['name']) ? $info['name'] : '');
+  if ($rn !== '' && $rn === crm_dl_hook_norm(isset($order['nom']) ? $order['nom'] : '')) $score += 1;
+  return $score;
+}
+/* البحث العكسي اللي طلبو المستخدم: هاتف CRM → search API Digylog → Tracking.
+ * كنقبلو عدة صيغ endpoint لأن نسخ seller API ماشي كلها بنفس route. أول route
+ * كيرجع HTTP 200 كنعتمدو عليه لباقي الدفعة. */
+function crm_dl_match_phones($requestedIds) {
+  global $LOCK_FILE;
+  $ids = array(); foreach ($requestedIds as $id) { $id = (string)$id; if ($id !== '') $ids[$id] = true; if (count($ids) >= 20) break; }
+  if (!$ids) return array('ok'=>false, 'err'=>'no-ids');
+  $cfg = crm_dl_cfg_get(); $token = isset($cfg['token']) ? trim((string)$cfg['token']) : '';
+  if ($token === '') return array('ok'=>false, 'err'=>'no-token');
+  $data = crm_read_raw(true);
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  $todo = array();
+  if (is_array($orders)) foreach ($orders as $o) {
+    $id = is_array($o) && isset($o['id']) ? (string)$o['id'] : '';
+    if ($id !== '' && isset($ids[$id]) && empty($o['_del']) && trim((string)(isset($o['tracking']) ? $o['tracking'] : '')) === '') $todo[] = $o;
+  }
+  $templates = array('/orders?phone={phone}','/orders?telephone={phone}','/orders?tel={phone}','/orders/search?phone={phone}','/order?phone={phone}','/orders?search={phone}');
+  $working = ''; $tests = array(); $found = array(); $ambiguous = 0; $checked = 0;
+  foreach ($todo as $o) {
+    $phone = crm_dl_phone_norm(isset($o['telephone']) ? $o['telephone'] : ''); if ($phone === '') continue;
+    $variants = array($phone); if (strlen($phone) === 10 && $phone[0] === '0') $variants[] = '212' . substr($phone, 1);
+    $try = $working !== '' ? array($working) : $templates; $records = array();
+    foreach ($try as $tpl) {
+      foreach ($variants as $pv) {
+        $path = str_replace('{phone}', rawurlencode($pv), $tpl);
+        list($code, $body, $err) = crm_dl_http('GET', $path, $token);
+        if (count($tests) < 12) $tests[] = array('path'=>str_replace(rawurlencode($pv), 'PHONE', $path), 'code'=>$code, 'err'=>$err !== '' ? substr($err,0,80) : '');
+        if ($code < 200 || $code >= 300 || $body === '') continue;
+        if ($working === '') $working = $tpl;
+        $j = json_decode($body, true); if (is_array($j)) crm_dl_phone_records($j, $phone, $records);
+        if ($records) break 2;
+      }
+    }
+    $checked++;
+    /* إلا حتى route ما رجع 2xx، باقي الهواتف غادي يعطيو نفس النتيجة؛ نوقفو
+       باش ما نضربوش API بعشرات الطلبات الفارغة. */
+    if ($working === '' && $checked >= 1) break;
+    if (!$records) continue;
+    $bestTr = ''; $bestScore = -1; $ties = 0;
+    foreach ($records as $tr => $info) {
+      $sc = crm_dl_phone_record_score($info, $o);
+      if ($sc > $bestScore) { $bestScore=$sc; $bestTr=$tr; $ties=1; }
+      elseif ($sc === $bestScore) $ties++;
+    }
+    if (count($records) === 1 || ($bestScore > 0 && $ties === 1)) $found[(string)$o['id']] = array('tracking'=>$bestTr, 'info'=>$records[$bestTr]);
+    else $ambiguous++;
+  }
+  $linked=0; $updated=0;
+  if ($found) {
+    $fh=@fopen($LOCK_FILE,'c'); if($fh)@flock($fh,LOCK_EX);
+    $data=crm_read_raw(true); $cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array(); if(!is_array($cur))$cur=array();
+    $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0; $now=(int)(microtime(true)*1000);
+    foreach($cur as $i=>$o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id===''||!isset($found[$id])||trim((string)(isset($o['tracking'])?$o['tracking']:''))!=='')continue;
+      if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();$rec=$found[$id];$info=$rec['info'];$o['tracking']=$rec['tracking'];$o['_f']['tracking']=$now;
+      $st=crm_dl_hook_pick($info,array('status','statusName','status_name','orderStatus','order_status','label'));$sid=crm_dl_hook_pick($info,array('idStatus','statusId','status_id','id_status'));$liv=crm_dl_status_to_crm($sid,$st);
+      $o['dlStatus']=$st;$o['dlStatusId']=$sid;$o['_f']['dlStatus']=$now;$o['_f']['dlStatusId']=$now;
+      if($liv!==''&&(string)(isset($o['livraison'])?$o['livraison']:'')!==$liv){$o['livraison']=$liv;$o['_f']['livraison']=$now;$updated++;if($liv==='Livrée'&&trim((string)(isset($o['dateLiv'])?$o['dateLiv']:''))===''){$o['dateLiv']=date('Y-m-d');$o['_f']['dateLiv']=$now;}}
+      $o['_u']=$now;$cur[$i]=$o;$linked++;}
+    if($linked>0){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
+    if($fh){@flock($fh,LOCK_UN);@fclose($fh);}
+  }
+  crm_audit('digylog-phone-match | checked='.$checked.' | linked='.$linked.' | updated='.$updated.' | ambiguous='.$ambiguous.' | endpoint='.$working);
+  return array('ok'=>true,'checked'=>$checked,'linked'=>$linked,'updated'=>$updated,'notFound'=>max(0,$checked-$linked-$ambiguous),'ambiguous'=>$ambiguous,'endpoint'=>$working,'tests'=>$tests);
 }
 
 /* إصلاح الطلبيات اللي النسخة القديمة علماتها Expédier vers من HTTP 200 ديال

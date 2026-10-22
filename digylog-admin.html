@@ -78,7 +78,9 @@
       <div class="card">
         <h2>2) استرجاع جميع Livrée / Retournée</h2>
         <div class="hint">ما محتاجش يكون عندك عمود Tracking ظاهر: النظام كيجمع الأرقام المخفية أوتوماتيكياً من أجوبة Digylog ومن سجل الـwebhook، كيجيب الهاتف والاسم والمدينة، وكيطابقهم مع الـCRM على دفعات. خلي الصفحة محلولة حتى تسالي.</div>
-        <button class="primary" id="reconcileAll" style="width:100%;margin-top:12px">🔄 مزامنة جميع طلبيات Digylog دابا</button>
+        <button class="primary" id="matchPhones" style="width:100%;margin-top:12px;background:#2563eb">📞 جلب Tracking بمطابقة أرقام الهاتف</button>
+        <div class="hint">كيأخذ هواتف CRM أوتوماتيكياً، كيقلب عليها فـAPI ديال Digylog، وكيخزن Tracking المطابق. ما خاصك تلصق حتى رقم.</div>
+        <button id="reconcileAll" style="width:100%;margin-top:10px">🔄 مزامنة Trackings المعروفة</button>
         <button id="repairUntracked" style="width:100%;margin-top:10px;background:#fff7ed;color:#c2410c;border:1px solid #fdba74">🛠️ إصلاح Expédier vers اللي بلا Tracking</button>
         <div class="hint">هاد الزر كيعيد نفس أرقام الطلبات القديمة مع حماية checkDuplicate، وما كيبدل والو إلا رجع Digylog Tracking صريح.</div>
         <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
@@ -172,6 +174,28 @@
       run($('dry'), { action: 'digylog_admin', op: 'dry' }, function (j) {
         show(j.ok ? '👀 هادي الطلبيات لي غاديين يمشيو (ما تصيفطاتش)' : '❌ ' + (j.err || 'error'), !!j.ok);
       });
+    };
+    $('matchPhones').onclick = async function () {
+      var btn = $('matchPhones'), checked = 0, linked = 0, updated = 0, notFound = 0, ambiguous = 0, last = null;
+      btn.disabled = true;
+      try {
+        show('⏳ كنوجد أرقام الهاتف من CRM…', true);
+        var list = await call({ action: 'digylog_admin', op: 'phone_candidates' });
+        if (!list.ok) throw new Error(list.err || 'candidates-failed');
+        var ids = list.ids || [];
+        for (var i = 0; i < ids.length; i += 20) {
+          show('⏳ مطابقة الهواتف: ' + Math.min(i + 20, ids.length) + ' من ' + ids.length + '…', true);
+          last = await call({ action: 'digylog_admin', op: 'match_phones', ids: ids.slice(i, i + 20) });
+          if (!last.ok) throw new Error(last.err || 'match-failed');
+          checked += Number(last.checked || 0); linked += Number(last.linked || 0); updated += Number(last.updated || 0);
+          notFound += Number(last.notFound || 0); ambiguous += Number(last.ambiguous || 0);
+          out({ ok:true, total:list.total, progress:Math.min(i+20,ids.length), checked:checked, linked:linked, updated:updated, notFound:notFound, ambiguous:ambiguous, endpoint:last.endpoint || '', tests:last.tests || [] });
+          if (!last.endpoint) break;
+        }
+        if (last && !last.endpoint) show('❌ API ديال Digylog ما قبل حتى endpoint ديال البحث بالهاتف. شوف tests فالنتيجة.', false);
+        else show('✅ تسالات مطابقة الهاتف: تربط Tracking مع ' + linked + ' طلبية', true);
+      } catch (e) { show('❌ مطابقة الهاتف فشلات: ' + (e.message || 'error'), false); }
+      finally { btn.disabled = false; }
     };
     $('repairUntracked').onclick = function () {
       var btn = $('repairUntracked');
