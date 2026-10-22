@@ -109,7 +109,7 @@ $ALLOWED_KEYS = array(
   'paraveda_catalog_v1','sheet_pièce','paraveda_team_photos_v1','tabs_list_v1',
   'custom_sheets_v1','paraveda_period_v1','paraveda_period_v2',
   'paraveda_backup_v1','paraveda_backup_v1_agents',
-  'paraveda_dupok_v1'   // v3.94: المكررات لي تعلّمات «ماشي مكررة»
+  'paraveda_dupok_v1','paraveda_returns_v1','paraveda_return_audit_v1','paraveda_stock_movements_v1'   // v3.94 + retours: المكررات لي تعلّمات «ماشي مكررة»
 );
 
 /* ---------- helpers ---------- */
@@ -1409,6 +1409,111 @@ function crm_dl_hook() {
 }
 if (isset($_GET['action']) && $_GET['action'] === 'digylog_hook') crm_out(array('ok'=>true,'disabled'=>true,'changed'=>false));
 
+
+/* ================================================================
+ * Suivi des Retours — linked to paraveda_orders_v5 by order_id.
+ * Stores warehouse reception facts only; livraison remains independent.
+ * ================================================================ */
+function crm_returns_norm($v) {
+  $v=trim((string)$v);$v=function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);
+  $v=str_replace(array('é','è','ê','ë','à','â','ä','î','ï','ô','ö','ù','û','ü','ç'),array('e','e','e','e','a','a','a','i','i','o','o','u','u','u','c'),$v);
+  return preg_replace('/[^a-z0-9]+/u','',$v);
+}
+function crm_returns_is_return($o) {
+  $s=crm_returns_norm(isset($o['livraison'])?$o['livraison']:'');
+  return strpos($s,'retour')!==false||$s==='rembourse';
+}
+function crm_returns_tracking($o) {
+  foreach(array('Tracking','tracking','dlTracking','digylogTracking','trackingAlt') as $k){$v=strtoupper(trim((string)(isset($o[$k])?$o[$k]:'')));if($v!=='')return $v;}
+  return '';
+}
+function crm_returns_iso($ms=null) {
+  try{$tz=new DateTimeZone('Africa/Casablanca');$d=new DateTime('now',$tz);if($ms!==null&&is_numeric($ms))$d->setTimestamp((int)floor((float)$ms/1000));return $d->format(DateTime::ATOM);}catch(Exception $e){return date('c');}
+}
+function crm_returns_actor($b,$data,$need='view') {
+  $id=isset($b['actorId'])?(string)$b['actorId']:'';$users=isset($data['paraveda_users_v1']['d'])?crm_unwrap($data['paraveda_users_v1']['d']):array();if(!is_array($users))$users=array();$u=null;
+  foreach($users as $x)if(is_array($x)&&empty($x['_del'])&&isset($x['id'])&&(string)$x['id']===$id){$u=$x;break;}
+  if(!$u)return array('ok'=>false,'err'=>'user-not-found');$base=isset($u['role'])?(string)$u['role']:'user';$rr=isset($u['returnRole'])?(string)$u['returnRole']:'';
+  $role=$base==='admin'?'admin':($rr==='supervisor'?'supervisor':'agent_retour');
+  $allowed=$need==='view'||$need==='scan'||(($need==='override'||$need==='restock'||$need==='correct')&&($role==='admin'||$role==='supervisor'));
+  return array('ok'=>$allowed,'err'=>$allowed?'':'forbidden','id'=>$id,'name'=>(string)(isset($u['username'])?$u['username']:(isset($u['agent'])?$u['agent']:'Utilisateur')),'role'=>$role);
+}
+function crm_returns_map($data) {
+  $rows=isset($data['paraveda_returns_v1']['d'])?crm_unwrap($data['paraveda_returns_v1']['d']):array();if(!is_array($rows))$rows=array();$m=array();foreach($rows as $r)if(is_array($r)&&isset($r['order_id']))$m[(string)$r['order_id']]=$r;return array($rows,$m);
+}
+function crm_returns_audit(&$data,$event,$orderId,$tracking,$actor,$details=array()) {
+  global $DATA_DIR;$now=crm_returns_iso();$a=array('id'=>(string)(microtime(true)*1000000),'event'=>$event,'order_id'=>(string)$orderId,'tracking'=>(string)$tracking,'at'=>$now,'actor_id'=>(string)$actor['id'],'actor'=>(string)$actor['name'],'role'=>(string)$actor['role'],'details'=>$details);
+  $list=isset($data['paraveda_return_audit_v1']['d'])?crm_unwrap($data['paraveda_return_audit_v1']['d']):array();if(!is_array($list))$list=array();array_unshift($list,$a);if(count($list)>5000)$list=array_slice($list,0,5000);$t=(int)(microtime(true)*1000);$data['paraveda_return_audit_v1']=array('t'=>$t,'d'=>$list);
+  @file_put_contents($DATA_DIR.'/returns_audit.log',json_encode($a,JSON_UNESCAPED_UNICODE)."\n",FILE_APPEND|LOCK_EX);return $a;
+}
+function crm_returns_item($o,$r,$audit=array()) {
+  $id=(string)(isset($o['id'])?$o['id']:'');$tr=crm_returns_tracking($o);$declMs=isset($o['_f']['livraison'])?$o['_f']['livraison']:null;
+  return array('order_id'=>$id,'commande'=>trim((string)(isset($o['idCmd'])?$o['idCmd']:''))!==''?(string)$o['idCmd']:'ORD-'.$id,'tracking'=>$tr,'client'=>(string)(isset($o['nom'])?$o['nom']:''),'phone'=>(string)(isset($o['telephone'])?$o['telephone']:''),'ville'=>(string)(isset($o['ville'])?$o['ville']:''),'adresse'=>(string)(isset($o['adresse'])?$o['adresse']:''),'produit'=>(string)(isset($o['produit'])?$o['produit']:''),'qte'=>max(1,(int)(isset($o['qte'])?$o['qte']:1)),'prix'=>(float)(isset($o['prix'])?$o['prix']:0),'transporteur'=>(string)(isset($o['livreur'])&&trim((string)$o['livreur'])!==''?$o['livreur']:'Digylog'),'return_reason'=>(string)(isset($o['motif'])&&trim((string)$o['motif'])!==''?$o['motif']:'Non renseigné'),'created_at'=>(string)(isset($o['dateCreation'])?$o['dateCreation']:''),'confirmed_at'=>(string)(isset($o['dateConfirmation'])?$o['dateConfirmation']:''),'shipped_at'=>(string)(isset($o['dateExp'])?$o['dateExp']:''),'returned_at'=>isset($r['returned_at'])?$r['returned_at']:($declMs?crm_returns_iso($declMs):''),'delivery_status'=>(string)(isset($o['livraison'])?$o['livraison']:''),'warehouse_status'=>isset($r['warehouse_status'])?$r['warehouse_status']:'En attente','scanned_at'=>isset($r['scanned_at'])?$r['scanned_at']:'','scanned_by'=>isset($r['scanned_by'])?$r['scanned_by']:'','product_condition'=>isset($r['product_condition'])?$r['product_condition']:'','notes'=>isset($r['notes'])?$r['notes']:'','stock_reintegrated_at'=>isset($r['stock_reintegrated_at'])?$r['stock_reintegrated_at']:'','audit'=>$audit);
+}
+function crm_returns_list($b) {
+  $data=crm_read_raw(true);$actor=crm_returns_actor($b,$data,'view');if(empty($actor['ok']))crm_out(array('ok'=>false,'err'=>$actor['err']),403);list($records,$rm)=crm_returns_map($data);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();$aud=isset($data['paraveda_return_audit_v1']['d'])?crm_unwrap($data['paraveda_return_audit_v1']['d']):array();if(!is_array($aud))$aud=array();$byOrder=array();foreach($aud as $a)if(is_array($a)&&isset($a['order_id'])){$oid=(string)$a['order_id'];if(!isset($byOrder[$oid]))$byOrder[$oid]=array();if(count($byOrder[$oid])<50)$byOrder[$oid][]=$a;}
+  $items=array();foreach($orders as $o){if(!is_array($o)||!empty($o['_del']))continue;$id=(string)$o['id'];if(!crm_returns_is_return($o)&&!isset($rm[$id]))continue;$items[]=crm_returns_item($o,isset($rm[$id])?$rm[$id]:array(),isset($byOrder[$id])?$byOrder[$id]:array());}
+  usort($items,function($a,$b){return strcmp((string)($b['scanned_at']?:$b['returned_at']),(string)($a['scanned_at']?:$a['returned_at']));});$today=(new DateTime('now',new DateTimeZone('Africa/Casablanca')))->format('Y-m-d');$received=0;$todayN=0;foreach($items as $x){if($x['warehouse_status']==='Reçu au dépôt')$received++;if(substr((string)$x['scanned_at'],0,10)===$today)$todayN++;}
+  crm_out(array('ok'=>true,'actor'=>array('name'=>$actor['name'],'role'=>$actor['role']),'items'=>$items,'kpis'=>array('total'=>count($items),'pending'=>count($items)-$received,'received'=>$received,'today'=>$todayN),'serverTime'=>crm_returns_iso()));
+}
+function crm_returns_find_order(&$orders,$query,&$matches) {
+  $q=strtoupper(trim(preg_replace('/\s+/','',(string)$query)));$hit=-1;$matches=0;foreach($orders as $i=>$o){if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim(preg_replace('/\s+/','',crm_returns_tracking($o))));$id=strtoupper(trim((string)(isset($o['id'])?$o['id']:'')));$cmd=strtoupper(trim((string)(isset($o['idCmd'])?$o['idCmd']:'')));if($q!==''&&($tr===$q||$id===$q||$cmd===$q||('ORD-'.$id)===$q)){$hit=$i;$matches++;}}return $hit;
+}
+function crm_returns_scan($b) {
+  global $LOCK_FILE;$q=isset($b['tracking'])?(string)$b['tracking']:'';if(trim($q)==='')crm_out(array('ok'=>false,'err'=>'empty-tracking'),400);$fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$actor=crm_returns_actor($b,$data,'scan');if(empty($actor['ok'])){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>$actor['err']),403);}$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();$matches=0;$idx=crm_returns_find_order($orders,$q,$matches);if($matches!==1){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>$matches>1?'tracking-ambiguous':'tracking-not-found'),$matches>1?409:404);}$o=$orders[$idx];$override=!empty($b['override']);$reason=trim((string)(isset($b['overrideReason'])?$b['overrideReason']:''));if(!crm_returns_is_return($o)){if(!$override){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'not-declared-return','canOverride'=>$actor['role']==='admin'||$actor['role']==='supervisor'),409);} $oa=crm_returns_actor($b,$data,'override');if(empty($oa['ok'])||$reason===''){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'override-forbidden-or-reason-required'),403);}}
+  list($records,$rm)=crm_returns_map($data);$id=(string)$o['id'];$tr=crm_returns_tracking($o);$r=isset($rm[$id])?$rm[$id]:array('id'=>(string)(microtime(true)*1000000),'order_id'=>$id,'tracking_number'=>$tr,'returned_at'=>crm_returns_iso(isset($o['_f']['livraison'])?$o['_f']['livraison']:null),'warehouse_status'=>'En attente','created_at'=>crm_returns_iso());if(isset($r['scanned_at'])&&$r['scanned_at']!==''){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'already-received','existing'=>crm_returns_item($o,$r)),409);}
+  $now=crm_returns_iso();$r['tracking_number']=$tr;$r['warehouse_status']=$override?'À vérifier':'Reçu au dépôt';$r['scanned_at']=$now;$r['scanned_by']=$actor['name'];$r['scanned_by_id']=$actor['id'];$r['updated_at']=$now;if($override){$r['override_reason']=$reason;$r['override_by']=$actor['name'];}
+  $found=false;foreach($records as $i=>$x)if(is_array($x)&&isset($x['order_id'])&&(string)$x['order_id']===$id){$records[$i]=$r;$found=true;break;}if(!$found)$records[]=$r;$ms=(int)(microtime(true)*1000);$data['paraveda_returns_v1']=array('t'=>$ms,'d'=>array_values($records));if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();$o['warehouseReturnStatus']=$r['warehouse_status'];$o['returnScannedAt']=$now;$o['returnScannedBy']=$actor['name'];$o['_f']['warehouseReturnStatus']=$ms;$o['_f']['returnScannedAt']=$ms;$o['_f']['returnScannedBy']=$ms;$o['_u']=$ms;$orders[$idx]=$o;$ot=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$data['paraveda_orders_v5']=array('t'=>max($ot+1,$ms),'d'=>array_values($orders));crm_returns_audit($data,$override?'return_received_override':'return_received',$id,$tr,$actor,$override?array('reason'=>$reason):array());crm_backup();$ok=crm_write_all($data);if($ok){crm_journal_append('paraveda_returns_v1',$ms,array_values($records));crm_journal_append('paraveda_orders_v5',$data['paraveda_orders_v5']['t'],array_values($orders));crm_journal_append('paraveda_return_audit_v1',$data['paraveda_return_audit_v1']['t'],$data['paraveda_return_audit_v1']['d']);}if($fh){@flock($fh,LOCK_UN);@fclose($fh);}if(!$ok)crm_out(array('ok'=>false,'err'=>'save-failed'),500);crm_out(array('ok'=>true,'message'=>'Retour reçu avec succès','item'=>crm_returns_item($o,$r)));
+}
+function crm_returns_control($b) {
+  global $LOCK_FILE;
+  $id=(string)(isset($b['orderId'])?$b['orderId']:'');
+  $cond=(string)(isset($b['productCondition'])?$b['productCondition']:'');
+  $allowed=array('Produit intact','Emballage endommagé','Produit endommagé','Produit manquant','Colis vide','À vérifier');
+  if(!in_array($cond,$allowed,true))crm_out(array('ok'=>false,'err'=>'bad-condition'),400);
+  $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);
+  $data=crm_read_raw(true);$actor=crm_returns_actor($b,$data,'scan');
+  if(empty($actor['ok'])){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>$actor['err']),403);}
+  list($records,$rm)=crm_returns_map($data);$hit=-1;
+  foreach($records as $i=>$r)if(is_array($r)&&isset($r['order_id'])&&(string)$r['order_id']===$id){$hit=$i;break;}
+  if($hit<0||empty($records[$hit]['scanned_at'])){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'return-not-received'),409);}
+  $warehouse=$cond==='À vérifier'?'À vérifier':(in_array($cond,array('Produit endommagé','Produit manquant','Colis vide'),true)?'Anomalie':'Reçu au dépôt');
+  $notes=trim((string)(isset($b['notes'])?$b['notes']:''));$now=crm_returns_iso();$ms=(int)(microtime(true)*1000);
+  $records[$hit]['product_condition']=$cond;$records[$hit]['notes']=$notes;$records[$hit]['warehouse_status']=$warehouse;$records[$hit]['updated_at']=$now;
+  $data['paraveda_returns_v1']=array('t'=>$ms,'d'=>$records);
+  $orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
+  foreach($orders as $i=>$o){if(!is_array($o)||!isset($o['id'])||(string)$o['id']!==$id)continue;if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();$o['warehouseReturnStatus']=$warehouse;$o['returnProductCondition']=$cond;$o['returnNotes']=$notes;foreach(array('warehouseReturnStatus','returnProductCondition','returnNotes')as$f)$o['_f'][$f]=$ms;$o['_u']=$ms;$orders[$i]=$o;break;}
+  $ot=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$data['paraveda_orders_v5']=array('t'=>max($ot+1,$ms),'d'=>array_values($orders));
+  crm_returns_audit($data,'return_controlled',$id,(string)$records[$hit]['tracking_number'],$actor,array('condition'=>$cond,'warehouse_status'=>$warehouse));
+  crm_backup();$ok=crm_write_all($data);if($ok){crm_journal_append('paraveda_returns_v1',$ms,$records);crm_journal_append('paraveda_orders_v5',$data['paraveda_orders_v5']['t'],array_values($orders));crm_journal_append('paraveda_return_audit_v1',$data['paraveda_return_audit_v1']['t'],$data['paraveda_return_audit_v1']['d']);}
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>(bool)$ok,'warehouse_status'=>$warehouse));
+}
+function crm_returns_restock($b) {
+  global $LOCK_FILE;
+  $id=(string)(isset($b['orderId'])?$b['orderId']:'');
+  $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);
+  $data=crm_read_raw(true);$actor=crm_returns_actor($b,$data,'restock');
+  if(empty($actor['ok'])){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>$actor['err']),403);}
+  list($records,$rm)=crm_returns_map($data);$ri=-1;
+  foreach($records as $i=>$r){if(is_array($r)&&isset($r['order_id'])&&(string)$r['order_id']===$id){$ri=$i;break;}}
+  if($ri<0||empty($records[$ri]['scanned_at'])||(isset($records[$ri]['product_condition'])?$records[$ri]['product_condition']:'')!=='Produit intact'){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'intact-control-required'),409);}
+  if(!empty($records[$ri]['stock_reintegrated_at'])){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'already-restocked'),409);}
+  $orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();$order=null;
+  if(is_array($orders))foreach($orders as $o){if(is_array($o)&&isset($o['id'])&&(string)$o['id']===$id){$order=$o;break;}}
+  if(!$order){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'order-not-found'),404);}
+  $cat=isset($data['paraveda_catalog_v1']['d'])?crm_unwrap($data['paraveda_catalog_v1']['d']):array();if(!is_array($cat))$cat=array();$pi=-1;
+  foreach($cat as $i=>$p){if(is_array($p)&&crm_returns_norm(isset($p['nom'])?$p['nom']:'')===crm_returns_norm(isset($order['produit'])?$order['produit']:'')){$pi=$i;break;}}
+  if($pi<0){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'product-not-found-in-catalog'),404);}
+  $q=max(1,(int)(isset($order['qte'])?$order['qte']:1));$oldStock=(int)(isset($cat[$pi]['stock'])?$cat[$pi]['stock']:0);$cat[$pi]['stock']=(string)($oldStock+$q);$now=crm_returns_iso();
+  $records[$ri]['stock_reintegrated_at']=$now;$records[$ri]['stock_reintegrated_by']=$actor['name'];$records[$ri]['updated_at']=$now;
+  $moves=isset($data['paraveda_stock_movements_v1']['d'])?crm_unwrap($data['paraveda_stock_movements_v1']['d']):array();if(!is_array($moves))$moves=array();
+  array_unshift($moves,array('id'=>(string)(microtime(true)*1000000),'type'=>'RETURN_IN','order_id'=>$id,'tracking'=>$records[$ri]['tracking_number'],'product'=>$order['produit'],'quantity'=>$q,'at'=>$now,'by'=>$actor['name']));
+  $ms=(int)(microtime(true)*1000);$data['paraveda_catalog_v1']=array('t'=>$ms,'d'=>$cat);$data['paraveda_returns_v1']=array('t'=>$ms,'d'=>$records);$data['paraveda_stock_movements_v1']=array('t'=>$ms,'d'=>$moves);
+  crm_returns_audit($data,'return_restocked',$id,$records[$ri]['tracking_number'],$actor,array('product'=>$order['produit'],'quantity'=>$q));crm_backup();$ok=crm_write_all($data);
+  if($ok){crm_journal_append('paraveda_catalog_v1',$ms,$cat);crm_journal_append('paraveda_returns_v1',$ms,$records);crm_journal_append('paraveda_stock_movements_v1',$ms,$moves);crm_journal_append('paraveda_return_audit_v1',$data['paraveda_return_audit_v1']['t'],$data['paraveda_return_audit_v1']['d']);}
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>(bool)$ok,'quantity'=>$q,'newStock'=>(int)$cat[$pi]['stock']));
+}
+
 $m = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 /* ---------- GET: full snapshot ---------- */
@@ -1701,6 +1806,10 @@ if ($m === 'POST') {
     if ($a === 'push_test') crm_push_test($b);             // v3.98
     if ($a === 'quick_order') crm_quick_order($b);         // v3.100: طلبية سريعة من البنت
     if ($a === 'digylog_admin') crm_dl_admin($b);          // v3.101: إعدادات Digylog (أدمين)
+    if ($a === 'returns_list') crm_returns_list($b);
+    if ($a === 'returns_scan') crm_returns_scan($b);
+    if ($a === 'returns_control') crm_returns_control($b);
+    if ($a === 'returns_restock') crm_returns_restock($b);
     if (strpos($a, 'digylog') === 0) crm_out(array('ok'=>false, 'err'=>'digylog-removed', 'msg'=>'الربط مع Digylog تحيد فـ v3.41'), 410);
     crm_out(array('ok'=>false, 'err'=>'unknown-action'), 400);
   }
