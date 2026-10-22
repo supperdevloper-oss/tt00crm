@@ -1072,6 +1072,13 @@ function crm_dl_admin($b) {
     $out['/reconcile'] = crm_dl_reconcile_recent();
     crm_out(array('ok'=>true, 'test'=>$out));
   }
+  if ($op === 'known_trackings') {
+    /* زر واحد لاسترجاع جميع الحالات القديمة بلا نسخ الأرقام واحداً واحداً.
+       كنرجعو غير tracking المخزن فعلاً فالـCRM؛ الواجهة كتقسمهم دفعات صغيرة
+       باش shared hosting ما يقطعش الطلب الطويل. */
+    $all = crm_dl_known_trackings(false);
+    crm_out(array('ok'=>true, 'trackings'=>$all, 'total'=>count($all)));
+  }
   if ($op === 'reconcile') {
     $raw = isset($b['trackings']) ? $b['trackings'] : array();
     if (is_string($raw)) $raw = preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY);
@@ -1229,8 +1236,13 @@ function crm_dl_run($dry = false) {
     if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
   }
   if ($runLock) { @flock($runLock, LOCK_UN); @fclose($runLock); }
-  crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied);
-  return array('ok'=>true, 'sent'=>count($sent), 'failed'=>count($failed), 'skipped'=>count($skipped), 'applied'=>$applied, 'errors'=>$failed);
+
+  /* Filet de sécurité ديال الـwebhook: كل تشغيل cron كيراجع دفعة صغيرة من
+     trackings المخزنين مباشرة عند Digylog. هكذا Livrée/Retournée كيتصلحو
+     أوتوماتيكياً حتى إلا ضاع webhook واحد، بلا تدخل من الأدمين. */
+  $polled = (!$dry && $token !== '') ? crm_dl_reconcile_known_batch(8) : array('checked'=>0, 'updated'=>0);
+  crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied . ' | polled=' . (isset($polled['checked']) ? $polled['checked'] : 0) . ' | pollUpdated=' . (isset($polled['updated']) ? $polled['updated'] : 0));
+  return array('ok'=>true, 'sent'=>count($sent), 'failed'=>count($failed), 'skipped'=>count($skipped), 'applied'=>$applied, 'polled'=>$polled, 'errors'=>$failed);
 }
 
 /* v3.103: Digylog webhook — أي طلبية تـLivرات فـDigylog كتولي Livrée فالـCRM.
@@ -1350,6 +1362,46 @@ function crm_dl_match_order($orders, $phone, $info, &$matches = 0) {
   }
   return ($bestScore > 0 && $ties === 1) ? $best : -1;
 }
+/* جميع أرقام Digylog اللي مخزنين فالـCRM. ما كنحتاجوش endpoint ديال listing
+ * (الـseller API ما كيوفروش): كل طلبية خرجات من CRM خاص tracking ديالها يبقى
+ * محفوظ، وكنراجع حالتها مباشرة بـ/order/{tracking}/infos. */
+function crm_dl_known_trackings($onlyNonFinal = false) {
+  $data = crm_read_raw(true);
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  if (!is_array($orders)) return array();
+  $out = array();
+  foreach ($orders as $o) {
+    if (!is_array($o) || !empty($o['_del'])) continue;
+    if ($onlyNonFinal) {
+      $liv = crm_dl_hook_norm(isset($o['livraison']) ? $o['livraison'] : '');
+      if (strpos($liv, 'livr') !== false || strpos($liv, 'retour') !== false) continue;
+    }
+    foreach (array('tracking','dlTracking','digylogTracking') as $k) {
+      $tr = isset($o[$k]) ? strtoupper(trim((string)$o[$k])) : '';
+      if ($tr !== '' && preg_match('/^[A-Z0-9_-]{5,40}$/', $tr)) $out[$tr] = true;
+    }
+  }
+  return array_keys($out);
+}
+/* كتراجع دفعة مختلفة مع كل cron. 8 فقط باش ما نطولوش execution ديال shared
+ * hosting؛ cursor كيدور حتى تتراجع جميع الطلبيات غير النهائية. */
+function crm_dl_reconcile_known_batch($limit = 8) {
+  $all = crm_dl_known_trackings(true);
+  $total = count($all);
+  if ($total === 0) return array('ok'=>true, 'checked'=>0, 'pending'=>0, 'updated'=>0);
+  $cfg = crm_dl_cfg_get();
+  $cursor = isset($cfg['pollCursor']) ? max(0, (int)$cfg['pollCursor']) : 0;
+  if ($cursor >= $total) $cursor = 0;
+  $take = min(max(1, (int)$limit), $total);
+  $batch = array();
+  for ($i = 0; $i < $take; $i++) $batch[] = $all[($cursor + $i) % $total];
+  $cfg['pollCursor'] = ($cursor + $take) % max(1, $total);
+  crm_dl_cfg_set($cfg);
+  $r = crm_dl_reconcile_recent($batch);
+  $r['checked'] = count($batch); $r['pending'] = $total;
+  return $r;
+}
+
 /* كيرجع يعالج آخر webhooks اللي وصلو قبل الإصلاح وكانو found=false. كيتشغل
  * مع زر اختبار الاتصال، باش Livrée/Retournée القديمة تلحق بالـCRM بلا انتظار حدث جديد. */
 function crm_dl_reconcile_recent($requestedTrackings = array()) {

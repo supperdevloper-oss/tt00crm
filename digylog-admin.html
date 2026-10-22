@@ -76,10 +76,13 @@
       </div>
 
       <div class="card">
-        <h2>2) استرجاع الطلبيات القديمة Livrée / Retournée</h2>
-        <div class="hint">لسّق أرقام التتبع ديال Digylog، رقم واحد فكل سطر. السيرفر غادي يجيب الحالة والهاتف مباشرة من Digylog ويحدّث الطلبية المطابقة فالـCRM.</div>
+        <h2>2) استرجاع جميع Livrée / Retournée</h2>
+        <div class="hint">ضغطة وحدة: كيتراجعو أوتوماتيكياً جميع أرقام Digylog المحفوظة فالـCRM، على دفعات، وكتتحول الحالات القديمة بلا ما تلصق كل رقم بوحدو. خلي الصفحة محلولة حتى تسالي.</div>
+        <button class="primary" id="reconcileAll" style="width:100%;margin-top:12px">🔄 مزامنة جميع طلبيات Digylog دابا</button>
+        <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
+        <div class="hint">إلا كانت طلبية قديمة بزاف وما عندهاش tracking محفوظ فالـCRM، تقدر تلصق أرقامها هنا (كاملين مرة وحدة، رقم فكل سطر).</div>
         <textarea id="trackings" placeholder="S06478B0E&#10;S1889FE6M&#10;S3CB5780T"></textarea>
-        <button class="primary" id="reconcile" style="width:100%;margin-top:12px">🔄 مزامنة هاد الطلبيات دابا</button>
+        <button id="reconcile" style="width:100%;margin-top:12px">مزامنة الأرقام الملصقة</button>
       </div>
 
       <div class="card">
@@ -167,6 +170,28 @@
       run($('dry'), { action: 'digylog_admin', op: 'dry' }, function (j) {
         show(j.ok ? '👀 هادي الطلبيات لي غاديين يمشيو (ما تصيفطاتش)' : '❌ ' + (j.err || 'error'), !!j.ok);
       });
+    };
+    $('reconcileAll').onclick = async function () {
+      var btn = $('reconcileAll'), totalUpdated = 0, totalResolved = 0, failed = 0;
+      btn.disabled = true;
+      try {
+        show('⏳ كنوجد لائحة الطلبيات المرتبطة…', true);
+        var list = await call({ action: 'digylog_admin', op: 'known_trackings' });
+        if (!list.ok) throw new Error(list.err || 'list-failed');
+        var trackings = list.trackings || [];
+        if (!trackings.length) { show('⚠️ ما لقيت حتى tracking محفوظ فالـCRM', false); out(list); return; }
+        for (var i = 0; i < trackings.length; i += 8) {
+          var part = trackings.slice(i, i + 8);
+          show('⏳ تراجعو ' + Math.min(i + part.length, trackings.length) + ' من ' + trackings.length + '…', true);
+          var j = await call({ action: 'digylog_admin', op: 'reconcile', trackings: part });
+          if (j.ok) { totalUpdated += Number(j.updated || 0); totalResolved += Number(j.resolved || 0); }
+          else failed++;
+          out({ ok: failed === 0, progress: Math.min(i + part.length, trackings.length), total: trackings.length, resolved: totalResolved, updated: totalUpdated, failedBatches: failed });
+        }
+        show('✅ تسالات: تراجعو ' + trackings.length + ' وتبدلات ' + totalUpdated + ' طلبية فالـCRM', true);
+      } catch (e) {
+        show('❌ توقفت المزامنة: ' + (e.message || 'error') + '. عاود ضغط الزر باش تكمل.', false);
+      } finally { btn.disabled = false; }
     };
     $('reconcile').onclick = function () {
       var values = $('trackings').value.trim();
