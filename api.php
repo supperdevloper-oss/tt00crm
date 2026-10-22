@@ -1092,6 +1092,10 @@ function crm_dl_admin($b) {
     if (!is_array($raw) || count($raw) === 0) crm_out(array('ok'=>false, 'err'=>'no-trackings'), 400);
     crm_out(crm_dl_reconcile_recent($raw));
   }
+  if ($op === 'repair_untracked') {
+    $limit = isset($b['limit']) ? (int)$b['limit'] : 100;
+    crm_out(crm_dl_repair_untracked(max(1, min(100, $limit))));
+  }
   if ($op === 'dry') crm_out(crm_dl_run(true));
   crm_out(array('ok'=>false, 'err'=>'bad-op'), 400);
 }
@@ -1264,6 +1268,84 @@ function crm_dl_run($dry = false) {
   $polled = (!$dry && $token !== '') ? crm_dl_reconcile_known_batch(8) : array('checked'=>0, 'updated'=>0);
   crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied . ' | polled=' . (isset($polled['checked']) ? $polled['checked'] : 0) . ' | pollUpdated=' . (isset($polled['updated']) ? $polled['updated'] : 0));
   return array('ok'=>true, 'sent'=>count($sent), 'failed'=>count($failed), 'skipped'=>count($skipped), 'applied'=>$applied, 'polled'=>$polled, 'errors'=>$failed);
+}
+
+/* إصلاح الطلبيات اللي النسخة القديمة علماتها Expédier vers من HTTP 200 ديال
+ * batch بلا ما تحفظ Tracking. كنعاود نفس num وبـcheckDuplicate=1 (Digylog
+ * كيرفض التكرار) والهدف الوحيد هو نسترجعو tracking من جواب existing/duplicate.
+ * ما كنبدلو لا الحالة لا الطلبية إلا رجع Tracking صريح. */
+function crm_dl_repair_untracked($limit = 10) {
+  global $LOCK_FILE;
+  $cfg = crm_dl_cfg_get();
+  $token = isset($cfg['token']) ? trim((string)$cfg['token']) : '';
+  if ($token === '') return array('ok'=>false, 'err'=>'no-token');
+  $network = isset($cfg['network']) ? (int)$cfg['network'] : 1;
+  $sentType = isset($cfg['sentType']) ? (int)$cfg['sentType'] : 0;
+  $stores = isset($cfg['stores']) && is_array($cfg['stores']) ? $cfg['stores'] : array();
+
+  $data = crm_read_raw(true);
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  if (!is_array($orders)) $orders = array();
+  $groups = array(); $totalUntracked = 0;
+  foreach ($orders as $o) {
+    if (!is_array($o) || !empty($o['_del'])) continue;
+    if (crm_dl_hook_norm(isset($o['livraison']) ? $o['livraison'] : '') !== 'expedier vers') continue;
+    if (trim((string)(isset($o['tracking']) ? $o['tracking'] : '')) !== '') continue;
+    $totalUntracked++;
+    if (array_sum(array_map('count', $groups)) >= $limit) continue;
+    $ag = isset($o['agent']) ? (string)$o['agent'] : '';
+    $store = isset($stores[$ag]) ? trim((string)$stores[$ag]) : '';
+    if ($store === '') continue;
+    $valid = true;
+    foreach (array('nom','telephone','adresse','ville','produit') as $f) if (trim((string)(isset($o[$f]) ? $o[$f] : '')) === '') { $valid = false; break; }
+    if ($valid) $groups[$store][] = array('id'=>(string)$o['id'], 'row'=>crm_dl_order_row($o));
+  }
+  $selected = 0; foreach ($groups as $rows) $selected += count($rows);
+  if ($selected === 0) return array('ok'=>true, 'candidates'=>$totalUntracked, 'checked'=>0, 'recovered'=>0, 'remaining'=>$totalUntracked);
+
+  $found = array(); $diag = array();
+  foreach ($groups as $store => $rows) {
+    $body = crm_dl_body($store, $network, $sentType, array_map(function($r){ return $r['row']; }, $rows));
+    list($code, $resp, $err) = crm_dl_http('POST', '/orders/standard', $token, $body);
+    $records = array(); $j = json_decode($resp, true);
+    if ($code >= 200 && $code < 300 && is_array($j)) crm_dl_response_records($j, $records);
+    foreach ($rows as $ri => $r) {
+      $rr = null;
+      foreach ($records as $candidate) {
+        $orig = crm_dl_response_value($candidate, array('num','orderNum','order_num','externalReference','external_reference','clientReference','client_reference','reference','ref','sourceNum','source_num'));
+        if ($orig !== '' && $orig === (string)$r['id']) { $rr = $candidate; break; }
+      }
+      if ($rr === null && count($records) === count($rows) && isset($records[$ri])) $rr = $records[$ri];
+      $tr = crm_dl_response_value($rr, array('traking','tracking','trackingId','tracking_id','trackingNumber','tracking_number'));
+      if ($tr !== '') $found[(string)$r['id']] = strtoupper(trim($tr));
+    }
+    $diag[] = array('store'=>$store, 'code'=>$code, 'rows'=>count($rows), 'records'=>count($records), 'trackings'=>count($found), 'err'=>$err !== '' ? substr($err,0,100) : '');
+  }
+
+  $recovered = 0;
+  if ($found) {
+    $fh = @fopen($LOCK_FILE, 'c'); if ($fh) @flock($fh, LOCK_EX);
+    $data = crm_read_raw(true);
+    $cur = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+    if (!is_array($cur)) $cur = array();
+    $prevT = isset($data['paraveda_orders_v5']['t']) ? (int)$data['paraveda_orders_v5']['t'] : 0;
+    $now = (int)(microtime(true) * 1000);
+    foreach ($cur as $i => $o) {
+      $id = is_array($o) && isset($o['id']) ? (string)$o['id'] : '';
+      if ($id === '' || !isset($found[$id]) || trim((string)(isset($o['tracking']) ? $o['tracking'] : '')) !== '') continue;
+      if (!isset($o['_f']) || !is_array($o['_f'])) $o['_f'] = array();
+      $o['tracking'] = $found[$id]; $o['_f']['tracking'] = $now; $o['_u'] = $now;
+      unset($o['dlErr']); $cur[$i] = $o; $recovered++;
+    }
+    if ($recovered > 0) {
+      crm_backup(); $t = max($prevT + 1, $now);
+      $data['paraveda_orders_v5'] = array('t'=>$t, 'd'=>array_values($cur));
+      $ok = crm_write_all($data); if ($ok) crm_journal_append('paraveda_orders_v5', $t, array_values($cur));
+    }
+    if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
+  }
+  crm_audit('digylog-repair-untracked | candidates=' . $totalUntracked . ' | checked=' . $selected . ' | recovered=' . $recovered);
+  return array('ok'=>true, 'candidates'=>$totalUntracked, 'checked'=>$selected, 'recovered'=>$recovered, 'remaining'=>max(0,$totalUntracked-$recovered), 'diagnostic'=>$diag);
 }
 
 /* v3.103: Digylog webhook — أي طلبية تـLivرات فـDigylog كتولي Livrée فالـCRM.

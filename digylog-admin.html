@@ -79,6 +79,8 @@
         <h2>2) استرجاع جميع Livrée / Retournée</h2>
         <div class="hint">ما محتاجش يكون عندك عمود Tracking ظاهر: النظام كيجمع الأرقام المخفية أوتوماتيكياً من أجوبة Digylog ومن سجل الـwebhook، كيجيب الهاتف والاسم والمدينة، وكيطابقهم مع الـCRM على دفعات. خلي الصفحة محلولة حتى تسالي.</div>
         <button class="primary" id="reconcileAll" style="width:100%;margin-top:12px">🔄 مزامنة جميع طلبيات Digylog دابا</button>
+        <button id="repairUntracked" style="width:100%;margin-top:10px;background:#fff7ed;color:#c2410c;border:1px solid #fdba74">🛠️ إصلاح Expédier vers اللي بلا Tracking</button>
+        <div class="hint">هاد الزر كيعيد نفس أرقام الطلبات القديمة مع حماية checkDuplicate، وما كيبدل والو إلا رجع Digylog Tracking صريح.</div>
         <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
         <div class="hint">إلا كانت طلبية قديمة بزاف وما عندهاش tracking محفوظ فالـCRM، تقدر تلصق أرقامها هنا (كاملين مرة وحدة، رقم فكل سطر).</div>
         <textarea id="trackings" placeholder="S06478B0E&#10;S1889FE6M&#10;S3CB5780T"></textarea>
@@ -169,6 +171,14 @@
     $('dry').onclick = function () {
       run($('dry'), { action: 'digylog_admin', op: 'dry' }, function (j) {
         show(j.ok ? '👀 هادي الطلبيات لي غاديين يمشيو (ما تصيفطاتش)' : '❌ ' + (j.err || 'error'), !!j.ok);
+      });
+    };
+    $('repairUntracked').onclick = function () {
+      var btn = $('repairUntracked');
+      if (!confirm('إصلاح طلبيات Expédier vers اللي بلا Tracking؟ النظام غادي يستعمل checkDuplicate وما غادي يحفظ والو إلا رجع Tracking صريح.')) return;
+      run(btn, { action: 'digylog_admin', op: 'repair_untracked', limit: 100 }, function (j) {
+        if (j.ok) show('✅ تفحصو ' + (j.checked || 0) + ' واسترجع Tracking ديال ' + (j.recovered || 0) + ' طلبية', true);
+        else show('❌ الإصلاح فشل (' + (j.err || 'error') + ')', false);
       });
     };
     $('reconcileAll').onclick = async function () {
