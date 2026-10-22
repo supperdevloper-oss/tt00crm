@@ -32,13 +32,13 @@ checks = {
     "UI filtering and pagination": all(x in ui for x in ("carrierFilter", "employeeFilter", "dateFilter", "prevBtn", "nextBtn")),
     "UI CSV and Excel export": "exportCsv" in ui and "exportExcel" in ui,
     "UI live refresh": "setInterval(()=>{if(!document.hidden&&!scanLock)load(true)},4000)" in ui,
-    "CRM navigation integration": "Suivi des Retours" in index and "retours.html" in index,
-    "Navigation script after app bundle": index.rfind("document.addEventListener('click'") > index.rfind('<div id="root"></div>'),
+    "CRM navigation integration": "Suivi des Retours" in index and 'w==="Suivi des Retours"&&s.jsx("iframe"' in index,
+    "Embedded module mode": "retours.html?embed=1" in index and "body.embedded .side{display:none}" in ui,
 }
 
 package = ROOT / "paraveda-crm-retours.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php", "index.html", "retours.html", "digylog-admin.html"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php", "index.html", "retours.html"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
