@@ -41,13 +41,15 @@ checks = {
     "Returns tab cannot be deleted": '"LIVRAISON","Suivi des Retours"]' in index,
     "Ready-to-ship product summary": all(x in index for x in ("__pvProdAll", "pv-prod-sum", "pv-prod-list", "pv-prod-cols", "توزيع الكمية", "ملخص المنتجات الجاهزة للإرسال")),
     "Tracking opens live Digylog status": all(x in index for x in ("__pvDigylogOrder", "digylog_order_status", "pv-dl-status", "عرض Statut الحقيقي ديال الطلبية من Digylog")) and all(x in api for x in ("function crm_dl_order_status", "'/order/' . rawurlencode($tracking) . '/infos'", "tracking-not-in-crm", "if ($a === 'digylog_order_status')")),
+    "Automatic exact Digylog Tracking sync": all(x in api for x in ("function crm_tracking_auto_sync", "function crm_tracking_exact_from_payload", "'trackingSync'=>crm_tracking_auto_sync(30)", "$trackingSync=crm_tracking_auto_sync(30)", "'exactOnly'=>true", "$o['tracking']=$found[$id]")),
+    "Immediate Tracking from send response": all(x in api for x in ("$sentTracking = array()", "crm_tracking_exact_from_payload($j, $r['id'])", "$o['tracking']=$sentTracking[$id]")),
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
     "Embedded module mode": "retours.html?embed=1" in index and "body.embedded .side{display:none}" in ui,
 }
 
 package = ROOT / "paraveda-crm-retours.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
