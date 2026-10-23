@@ -17,7 +17,8 @@ returns = api[start:end]
 checks = {
     "API routes": all(x in api for x in ("returns_list", "returns_scan", "returns_control", "returns_restock")),
     "Exact Tracking field supported": "array('Tracking','tracking'" in returns,
-    "Digylog QR resolves to existing exact Tracking": all(x in returns for x in ("crm_returns_resolve_qr_tracking", "digylog-exact", "qr-tracking-unresolved", "resolved_tracking")),
+    "Digylog QR resolves to existing exact Tracking": all(x in returns for x in ("crm_returns_resolve_qr_tracking", "digylog-exact", "digylog-qr-search-exact", "qr-tracking-unresolved", "resolved_tracking")),
+    "Safe visible Tracking fallback": all(x in returns for x in ("visibleTracking", "operator-visible-exact", "canPairVisibleTracking")),
     "QR resolution performs no phone matching": "crm_tracking_phone" not in returns,
     "Unknown tracking rejected": "tracking-not-found" in returns,
     "Ambiguous tracking rejected": "tracking-ambiguous" in returns,
@@ -41,7 +42,7 @@ checks = {
 
 package = ROOT / "paraveda-crm-retours.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php", "retours.html"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php", "index.html", "retours.html"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

@@ -1462,6 +1462,12 @@ function crm_returns_collect_known_tracking($v,$known,&$hits,$depth=0) {
   if(is_object($v)){crm_returns_collect_known_tracking((array)$v,$known,$hits,$depth+1);return;}
   $n=strtoupper(trim(preg_replace('/\s+/','',(string)$v)));if($n!==''&&isset($known[$n]))$hits[$known[$n]]=true;
 }
+function crm_returns_has_exact_value($v,$needle,$depth=0) {
+  if($depth>10)return false;if(is_array($v)){foreach($v as $x)if(crm_returns_has_exact_value($x,$needle,$depth+1))return true;return false;}if(is_object($v))return crm_returns_has_exact_value((array)$v,$needle,$depth+1);return strcasecmp(trim((string)$v),trim((string)$needle))===0;
+}
+function crm_returns_digylog_get_url($url,$token) {
+  if(!function_exists('curl_init'))return array(0,'','no-curl');$ch=curl_init($url);curl_setopt_array($ch,array(CURLOPT_HTTPHEADER=>array('Accept: application/json, text/plain, */*','Referer: https://seller.digylog.com/','Origin: https://seller.digylog.com','Authorization: Bearer '.$token),CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>8,CURLOPT_TIMEOUT=>20));$body=curl_exec($ch);$err=(string)curl_error($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);return array($code,$body===false?'':(string)$body,$err);
+}
 function crm_returns_resolve_qr_tracking($qr,$orders) {
   $qr=trim((string)$qr);if(!preg_match('/^tk[a-z0-9]{12,80}$/i',$qr))return array('tracking'=>'','reason'=>'not-digylog-qr');
   $known=array();foreach($orders as $o){if(!is_array($o)||!empty($o['_del']))continue;$tr=crm_returns_tracking($o);$n=strtoupper(trim(preg_replace('/\s+/','',$tr)));if($n!=='')$known[$n]=$tr;}
@@ -1469,6 +1475,11 @@ function crm_returns_resolve_qr_tracking($qr,$orders) {
   $cfg=crm_dl_cfg_get();$token=isset($cfg['token'])?trim((string)$cfg['token']):'';if($token==='')return array('tracking'=>'','reason'=>'no-digylog-token');
   $hits=array();$codes=array();foreach(array('/order/'.rawurlencode($qr).'/infos','/order/'.rawurlencode($qr).'/refs') as $path){list($code,$body,$err)=crm_dl_http('GET',$path,$token);$codes[]=$code;if($code<200||$code>=300)continue;$j=json_decode($body,true);if(is_array($j))crm_returns_collect_known_tracking($j,$known,$hits);}
   $keys=array_keys($hits);if(count($keys)===1)return array('tracking'=>$keys[0],'reason'=>'digylog-exact','codes'=>$codes);
+  /* Some Digylog labels expose an opaque tk... token rather than the visible
+     Tracking. Ask the seller-history search using that exact token and accept
+     only a single Tracking which already exists in CRM. */
+  $base='https://api.digylog.com/api/seller/v48/historic/orders';$qs=array('tracking','search','barcode','q');
+  foreach($qs as $param){$url=$base.'?'.rawurlencode($param).'='.rawurlencode($qr).'&datatype=1&countPerPage=10&currentPage=1&sort=0';list($code,$body,$err)=crm_returns_digylog_get_url($url,$token);$codes[]=$code;if($code<200||$code>=300)continue;$j=json_decode($body,true);$one=array();if(is_array($j)&&crm_returns_has_exact_value($j,$qr))crm_returns_collect_known_tracking($j,$known,$one);$found=array_keys($one);if(count($found)===1)return array('tracking'=>$found[0],'reason'=>'digylog-qr-search-exact','codes'=>$codes);}
   return array('tracking'=>'','reason'=>count($keys)>1?'ambiguous-digylog-response':'digylog-qr-unresolved','codes'=>$codes);
 }
 function crm_returns_find_order(&$orders,$query,&$matches) {
@@ -1481,7 +1492,7 @@ function crm_returns_scan($b) {
      resolver accepts only a Tracking value that already exists exactly in CRM. */
   $pre=crm_read_raw(true);$preActor=crm_returns_actor($b,$pre,'scan');if(empty($preActor['ok']))crm_out(array('ok'=>false,'err'=>$preActor['err']),403);
   $preOrders=isset($pre['paraveda_orders_v5']['d'])?crm_unwrap($pre['paraveda_orders_v5']['d']):array();if(!is_array($preOrders))$preOrders=array();$preMatches=0;$resolved=$query;$preIdx=crm_returns_find_order($preOrders,$resolved,$preMatches);$qrMeta=array('tracking'=>'','reason'=>'direct');
-  if($preMatches===0&&preg_match('/^tk[a-z0-9]{12,80}$/i',$query)){$qrMeta=crm_returns_resolve_qr_tracking($query,$preOrders);if(!empty($qrMeta['tracking']))$resolved=(string)$qrMeta['tracking'];else crm_out(array('ok'=>false,'err'=>'qr-tracking-unresolved','qr'=>$query,'reason'=>$qrMeta['reason']),404);}
+  if($preMatches===0&&preg_match('/^tk[a-z0-9]{12,80}$/i',$query)){$qrMeta=crm_returns_resolve_qr_tracking($query,$preOrders);if(!empty($qrMeta['tracking']))$resolved=(string)$qrMeta['tracking'];elseif(!empty($b['visibleTracking'])){$manualMatches=0;$manualIdx=crm_returns_find_order($preOrders,(string)$b['visibleTracking'],$manualMatches);if($manualMatches===1){$resolved=crm_returns_tracking($preOrders[$manualIdx]);$qrMeta=array('tracking'=>$resolved,'reason'=>'operator-visible-exact');}else crm_out(array('ok'=>false,'err'=>$manualMatches>1?'tracking-ambiguous':'tracking-not-found'),$manualMatches>1?409:404);}else crm_out(array('ok'=>false,'err'=>'qr-tracking-unresolved','qr'=>$query,'reason'=>$qrMeta['reason'],'canPairVisibleTracking'=>true),404);}
   elseif($preMatches>1)crm_out(array('ok'=>false,'err'=>'tracking-ambiguous'),409);
 
   $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);
