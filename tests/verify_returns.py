@@ -28,7 +28,7 @@ checks = {
     "Atomic write lock": "flock($fh,LOCK_EX)" in returns and "crm_write_all($data)" in returns,
     "Delivery status not written": not re.search(r"\[['\"]livraison['\"]\]\s*=", returns),
     "Delivery date not written": not re.search(r"\[['\"]dateLiv['\"]\]\s*=", returns),
-    "UI camera scanner": all(x in ui for x in ("BarcodeDetector", "ParavedaZXing", "TRY_HARDER", "cameraBtn", "photoInput", "decodeFromImageUrl")),
+    "UI camera scanner": all(x in ui for x in ("BarcodeDetector", "ParavedaZXingCpp", "tryHarder", "tryDenoise", "cameraBtn", "photoInput", "cppRead")),
     "Mobile opens scanner top-level": 'C==="Suivi des Retours"&&window.matchMedia("(max-width:1050px)").matches' in index,
     "UI filtering and pagination": all(x in ui for x in ("carrierFilter", "employeeFilter", "dateFilter", "prevBtn", "nextBtn")),
     "UI CSV and Excel export": "exportCsv" in ui and "exportExcel" in ui,
@@ -39,7 +39,7 @@ checks = {
 
 package = ROOT / "paraveda-crm-retours.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php", "index.html", "retours.html", "zxing-reader.min.js"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php", "index.html", "retours.html", "zxing-cpp-reader.min.js", "zxing_reader.wasm"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
