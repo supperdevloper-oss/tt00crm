@@ -39,7 +39,7 @@ checks = {
 
 package = ROOT / "paraveda-crm-retours.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php", "index.html", "retours.html", "zxing-cpp-reader.min.js", "zxing_reader.wasm"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"retours.html", "zxing-cpp-reader.min.js", "zxing_reader.wasm"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
