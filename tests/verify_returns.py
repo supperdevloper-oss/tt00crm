@@ -40,13 +40,13 @@ checks = {
     "CRM navigation integration": "Suivi des Retours" in index and 'w==="Suivi des Retours"&&s.jsx("iframe"' in index,
     "Returns tab cannot be deleted": '"LIVRAISON","Suivi des Retours"]' in index,
     "Ready-to-ship product summary": all(x in index for x in ("__pvProdAll", "pv-prod-sum", "pv-prod-list", "pv-prod-cols", "توزيع الكمية", "ملخص المنتجات الجاهزة للإرسال")),
-    "Tracking links open Digylog": all(x in index for x in ("https://seller.digylog.com/overview?tracking=", "pv-track-link", "فتح هاد الطلبية مباشرة فـ Digylog")),
+    "Tracking opens live Digylog status": all(x in index for x in ("__pvDigylogOrder", "digylog_order_status", "pv-dl-status", "عرض Statut الحقيقي ديال الطلبية من Digylog")) and all(x in api for x in ("function crm_dl_order_status", "'/order/' . rawurlencode($tracking) . '/infos'", "tracking-not-in-crm", "if ($a === 'digylog_order_status')")),
     "Embedded module mode": "retours.html?embed=1" in index and "body.embedded .side{display:none}" in ui,
 }
 
 package = ROOT / "paraveda-crm-retours.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

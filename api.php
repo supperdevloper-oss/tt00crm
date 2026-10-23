@@ -964,6 +964,62 @@ function crm_dl_http($method, $path, $token, $body = null) {
   curl_close($ch);
   return array($code, $resp === false ? '' : (string)$resp, $err);
 }
+/* Read-only Digylog order lookup used by the clickable Tracking cell.
+ * The configured bearer token never leaves the server and no CRM/Digylog data
+ * is modified. Only Tracking numbers already present in this CRM are accepted. */
+function crm_dl_order_status($b) {
+  $tracking = strtoupper(trim((string)(isset($b['tracking']) ? $b['tracking'] : '')));
+  if ($tracking === '' || !preg_match('/^[A-Z0-9_-]{3,80}$/', $tracking)) crm_out(array('ok'=>false, 'err'=>'bad-tracking'), 400);
+
+  $data = crm_read_raw(true);
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  $found = false;
+  if (is_array($orders)) foreach ($orders as $o) {
+    if (!is_array($o) || !empty($o['_del'])) continue;
+    if (strtoupper(trim((string)(isset($o['tracking']) ? $o['tracking'] : ''))) === $tracking) { $found = true; break; }
+  }
+  if (!$found) crm_out(array('ok'=>false, 'err'=>'tracking-not-in-crm'), 404);
+
+  $cfg = crm_dl_cfg_get();
+  $token = isset($cfg['token']) ? trim((string)$cfg['token']) : '';
+  if ($token === '') crm_out(array('ok'=>false, 'err'=>'no-digylog-token'), 503);
+
+  list($infoCode, $infoBody, $infoErr) = crm_dl_http('GET', '/order/' . rawurlencode($tracking) . '/infos', $token);
+  if ($infoCode < 200 || $infoCode >= 300) {
+    crm_audit('digylog-order-status | tracking=' . $tracking . ' | http=' . $infoCode);
+    crm_out(array('ok'=>false, 'err'=>'digylog-http', 'code'=>$infoCode), $infoCode === 404 ? 404 : 502);
+  }
+  $info = json_decode($infoBody, true);
+  if (!is_array($info)) crm_out(array('ok'=>false, 'err'=>'digylog-invalid-response'), 502);
+
+  list($refsCode, $refsBody, $refsErr) = crm_dl_http('GET', '/order/' . rawurlencode($tracking) . '/refs', $token);
+  $refsRaw = $refsCode >= 200 && $refsCode < 300 ? json_decode($refsBody, true) : array();
+  if (!is_array($refsRaw)) $refsRaw = array();
+  $refs = array();
+  foreach ($refsRaw as $r) if (is_array($r)) $refs[] = array(
+    'designation'=>(string)(isset($r['designation']) ? $r['designation'] : ''),
+    'quantity'=>max(1, (int)(isset($r['quantity']) ? $r['quantity'] : 1))
+  );
+
+  crm_out(array('ok'=>true, 'order'=>array(
+    'tracking'=>(string)(isset($info['traking']) ? $info['traking'] : (isset($info['tracking']) ? $info['tracking'] : $tracking)),
+    'status'=>(string)(isset($info['status']) ? $info['status'] : ''),
+    'statusId'=>isset($info['idStatus']) ? $info['idStatus'] : null,
+    'name'=>(string)(isset($info['name']) ? $info['name'] : ''),
+    'phone'=>(string)(isset($info['phone']) ? $info['phone'] : ''),
+    'city'=>(string)(isset($info['city']) ? $info['city'] : ''),
+    'address'=>(string)(isset($info['address']) ? $info['address'] : ''),
+    'price'=>isset($info['price']) ? $info['price'] : null,
+    'createdAt'=>(string)(isset($info['createdAt']) ? $info['createdAt'] : ''),
+    'updatedAt'=>(string)(isset($info['updatedAt']) ? $info['updatedAt'] : ''),
+    'cashStatus'=>(string)(isset($info['cash_status']) ? $info['cash_status'] : ''),
+    'paidAt'=>(string)(isset($info['paidAt']) ? $info['paidAt'] : ''),
+    'store'=>(string)(isset($info['store']) ? $info['store'] : ''),
+    'bl'=>(string)(isset($info['bl']) ? $info['bl'] : ''),
+    'deliveryCost'=>isset($info['deliveryCost']) ? $info['deliveryCost'] : null,
+    'refs'=>$refs
+  )));
+}
 function crm_dl_order_row($o) {
   return array(
     'num'         => (string)$o['id'],
@@ -1855,6 +1911,7 @@ if ($m === 'POST') {
     if ($a === 'push_subscribe') crm_push_subscribe($b);   // v3.98
     if ($a === 'push_test') crm_push_test($b);             // v3.98
     if ($a === 'quick_order') crm_quick_order($b);         // v3.100: طلبية سريعة من البنت
+    if ($a === 'digylog_order_status') crm_dl_order_status($b); // read-only exact Tracking lookup
     if ($a === 'digylog_admin') crm_dl_admin($b);          // v3.101: إعدادات Digylog (أدمين)
     if ($a === 'returns_list') crm_returns_list($b);
     if ($a === 'returns_scan') crm_returns_scan($b);
