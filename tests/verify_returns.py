@@ -39,7 +39,7 @@ checks = {
     "UI live refresh": "setInterval(()=>{if(!document.hidden&&!scanLock)load(true)},4000)" in ui,
     "CRM navigation integration": "Suivi des Retours" in index and 'w==="Suivi des Retours"&&s.jsx("iframe"' in index,
     "Returns tab cannot be deleted": '"LIVRAISON","Suivi des Retours"]' in index,
-    "Ready-to-ship product summary": all(x in index for x in ("__pvProdAll", "pv-prod-sum", "طلبية بكمية", "ملخص المنتجات — Prêt pour expédition")),
+    "Ready-to-ship product summary": all(x in index for x in ("__pvProdAll", "pv-prod-sum", "pv-prod-table-wrap", "توزيع الكمية", "ملخص المنتجات الجاهزة للإرسال")),
     "Embedded module mode": "retours.html?embed=1" in index and "body.embedded .side{display:none}" in ui,
 }
 
