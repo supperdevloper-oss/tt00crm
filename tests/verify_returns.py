@@ -38,12 +38,13 @@ checks = {
     "UI CSV and Excel export": "exportCsv" in ui and "exportExcel" in ui,
     "UI live refresh": "setInterval(()=>{if(!document.hidden&&!scanLock)load(true)},4000)" in ui,
     "CRM navigation integration": "Suivi des Retours" in index and 'w==="Suivi des Retours"&&s.jsx("iframe"' in index,
+    "Returns tab cannot be deleted": '"LIVRAISON","Suivi des Retours"]' in index,
     "Embedded module mode": "retours.html?embed=1" in index and "body.embedded .side{display:none}" in ui,
 }
 
 package = ROOT / "paraveda-crm-retours.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "retours.html"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
