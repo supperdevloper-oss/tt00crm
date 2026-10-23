@@ -1456,14 +1456,53 @@ function crm_returns_list($b) {
   usort($items,function($a,$b){return strcmp((string)($b['scanned_at']?:$b['returned_at']),(string)($a['scanned_at']?:$a['returned_at']));});$today=(new DateTime('now',new DateTimeZone('Africa/Casablanca')))->format('Y-m-d');$received=0;$todayN=0;foreach($items as $x){if($x['warehouse_status']==='Reçu au dépôt')$received++;if(substr((string)$x['scanned_at'],0,10)===$today)$todayN++;}
   crm_out(array('ok'=>true,'actor'=>array('name'=>$actor['name'],'role'=>$actor['role']),'items'=>$items,'kpis'=>array('total'=>count($items),'pending'=>count($items)-$received,'received'=>$received,'today'=>$todayN),'serverTime'=>crm_returns_iso()));
 }
+function crm_returns_collect_known_tracking($v,$known,&$hits,$depth=0) {
+  if($depth>10)return;
+  if(is_array($v)){foreach($v as $x)crm_returns_collect_known_tracking($x,$known,$hits,$depth+1);return;}
+  if(is_object($v)){crm_returns_collect_known_tracking((array)$v,$known,$hits,$depth+1);return;}
+  $n=strtoupper(trim(preg_replace('/\s+/','',(string)$v)));if($n!==''&&isset($known[$n]))$hits[$known[$n]]=true;
+}
+function crm_returns_resolve_qr_tracking($qr,$orders) {
+  $qr=trim((string)$qr);if(!preg_match('/^tk[a-z0-9]{12,80}$/i',$qr))return array('tracking'=>'','reason'=>'not-digylog-qr');
+  $known=array();foreach($orders as $o){if(!is_array($o)||!empty($o['_del']))continue;$tr=crm_returns_tracking($o);$n=strtoupper(trim(preg_replace('/\s+/','',$tr)));if($n!=='')$known[$n]=$tr;}
+  if(!$known)return array('tracking'=>'','reason'=>'no-crm-trackings');
+  $cfg=crm_dl_cfg_get();$token=isset($cfg['token'])?trim((string)$cfg['token']):'';if($token==='')return array('tracking'=>'','reason'=>'no-digylog-token');
+  $hits=array();$codes=array();foreach(array('/order/'.rawurlencode($qr).'/infos','/order/'.rawurlencode($qr).'/refs') as $path){list($code,$body,$err)=crm_dl_http('GET',$path,$token);$codes[]=$code;if($code<200||$code>=300)continue;$j=json_decode($body,true);if(is_array($j))crm_returns_collect_known_tracking($j,$known,$hits);}
+  $keys=array_keys($hits);if(count($keys)===1)return array('tracking'=>$keys[0],'reason'=>'digylog-exact','codes'=>$codes);
+  return array('tracking'=>'','reason'=>count($keys)>1?'ambiguous-digylog-response':'digylog-qr-unresolved','codes'=>$codes);
+}
 function crm_returns_find_order(&$orders,$query,&$matches) {
   $q=strtoupper(trim(preg_replace('/\s+/','',(string)$query)));$hit=-1;$matches=0;foreach($orders as $i=>$o){if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim(preg_replace('/\s+/','',crm_returns_tracking($o))));$id=strtoupper(trim((string)(isset($o['id'])?$o['id']:'')));$cmd=strtoupper(trim((string)(isset($o['idCmd'])?$o['idCmd']:'')));if($q!==''&&($tr===$q||$id===$q||$cmd===$q||('ORD-'.$id)===$q)){$hit=$i;$matches++;}}return $hit;
 }
 function crm_returns_scan($b) {
-  global $LOCK_FILE;$q=isset($b['tracking'])?(string)$b['tracking']:'';if(trim($q)==='')crm_out(array('ok'=>false,'err'=>'empty-tracking'),400);$fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$actor=crm_returns_actor($b,$data,'scan');if(empty($actor['ok'])){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>$actor['err']),403);}$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();$matches=0;$idx=crm_returns_find_order($orders,$q,$matches);if($matches!==1){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>$matches>1?'tracking-ambiguous':'tracking-not-found'),$matches>1?409:404);}$o=$orders[$idx];$override=!empty($b['override']);$reason=trim((string)(isset($b['overrideReason'])?$b['overrideReason']:''));if(!crm_returns_is_return($o)){if(!$override){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'not-declared-return','canOverride'=>$actor['role']==='admin'||$actor['role']==='supervisor'),409);} $oa=crm_returns_actor($b,$data,'override');if(empty($oa['ok'])||$reason===''){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'override-forbidden-or-reason-required'),403);}}
-  list($records,$rm)=crm_returns_map($data);$id=(string)$o['id'];$tr=crm_returns_tracking($o);$r=isset($rm[$id])?$rm[$id]:array('id'=>(string)(microtime(true)*1000000),'order_id'=>$id,'tracking_number'=>$tr,'returned_at'=>crm_returns_iso(isset($o['_f']['livraison'])?$o['_f']['livraison']:null),'warehouse_status'=>'En attente','created_at'=>crm_returns_iso());if(isset($r['scanned_at'])&&$r['scanned_at']!==''){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'already-received','existing'=>crm_returns_item($o,$r)),409);}
-  $now=crm_returns_iso();$r['tracking_number']=$tr;$r['warehouse_status']=$override?'À vérifier':'Reçu au dépôt';$r['scanned_at']=$now;$r['scanned_by']=$actor['name'];$r['scanned_by_id']=$actor['id'];$r['updated_at']=$now;if($override){$r['override_reason']=$reason;$r['override_by']=$actor['name'];}
-  $found=false;foreach($records as $i=>$x)if(is_array($x)&&isset($x['order_id'])&&(string)$x['order_id']===$id){$records[$i]=$r;$found=true;break;}if(!$found)$records[]=$r;$ms=(int)(microtime(true)*1000);$data['paraveda_returns_v1']=array('t'=>$ms,'d'=>array_values($records));if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();$o['warehouseReturnStatus']=$r['warehouse_status'];$o['returnScannedAt']=$now;$o['returnScannedBy']=$actor['name'];$o['_f']['warehouseReturnStatus']=$ms;$o['_f']['returnScannedAt']=$ms;$o['_f']['returnScannedBy']=$ms;$o['_u']=$ms;$orders[$idx]=$o;$ot=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$data['paraveda_orders_v5']=array('t'=>max($ot+1,$ms),'d'=>array_values($orders));crm_returns_audit($data,$override?'return_received_override':'return_received',$id,$tr,$actor,$override?array('reason'=>$reason):array());crm_backup();$ok=crm_write_all($data);if($ok){crm_journal_append('paraveda_returns_v1',$ms,array_values($records));crm_journal_append('paraveda_orders_v5',$data['paraveda_orders_v5']['t'],array_values($orders));crm_journal_append('paraveda_return_audit_v1',$data['paraveda_return_audit_v1']['t'],$data['paraveda_return_audit_v1']['d']);}if($fh){@flock($fh,LOCK_UN);@fclose($fh);}if(!$ok)crm_out(array('ok'=>false,'err'=>'save-failed'),500);crm_out(array('ok'=>true,'message'=>'Retour reçu avec succès','item'=>crm_returns_item($o,$r)));
+  global $LOCK_FILE;
+  $query=isset($b['tracking'])?trim((string)$b['tracking']):'';if($query==='')crm_out(array('ok'=>false,'err'=>'empty-tracking'),400);
+  /* Resolve Digylog's printed QR token before taking the write lock. The
+     resolver accepts only a Tracking value that already exists exactly in CRM. */
+  $pre=crm_read_raw(true);$preActor=crm_returns_actor($b,$pre,'scan');if(empty($preActor['ok']))crm_out(array('ok'=>false,'err'=>$preActor['err']),403);
+  $preOrders=isset($pre['paraveda_orders_v5']['d'])?crm_unwrap($pre['paraveda_orders_v5']['d']):array();if(!is_array($preOrders))$preOrders=array();$preMatches=0;$resolved=$query;$preIdx=crm_returns_find_order($preOrders,$resolved,$preMatches);$qrMeta=array('tracking'=>'','reason'=>'direct');
+  if($preMatches===0&&preg_match('/^tk[a-z0-9]{12,80}$/i',$query)){$qrMeta=crm_returns_resolve_qr_tracking($query,$preOrders);if(!empty($qrMeta['tracking']))$resolved=(string)$qrMeta['tracking'];else crm_out(array('ok'=>false,'err'=>'qr-tracking-unresolved','qr'=>$query,'reason'=>$qrMeta['reason']),404);}
+  elseif($preMatches>1)crm_out(array('ok'=>false,'err'=>'tracking-ambiguous'),409);
+
+  $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);
+  $data=crm_read_raw(true);$actor=crm_returns_actor($b,$data,'scan');
+  if(empty($actor['ok'])){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>$actor['err']),403);}
+  $orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();$matches=0;$idx=crm_returns_find_order($orders,$resolved,$matches);
+  if($matches!==1){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>$matches>1?'tracking-ambiguous':'tracking-not-found','qr'=>$query,'resolvedTracking'=>$resolved),$matches>1?409:404);}
+  $o=$orders[$idx];$override=!empty($b['override']);$reason=trim((string)(isset($b['overrideReason'])?$b['overrideReason']:''));
+  if(!crm_returns_is_return($o)){
+    if(!$override){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'not-declared-return','canOverride'=>$actor['role']==='admin'||$actor['role']==='supervisor','resolvedTracking'=>$resolved),409);}
+    $oa=crm_returns_actor($b,$data,'override');if(empty($oa['ok'])||$reason===''){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'override-forbidden-or-reason-required'),403);}
+  }
+  list($records,$rm)=crm_returns_map($data);$id=(string)$o['id'];$tr=crm_returns_tracking($o);
+  $r=isset($rm[$id])?$rm[$id]:array('id'=>(string)(microtime(true)*1000000),'order_id'=>$id,'tracking_number'=>$tr,'returned_at'=>crm_returns_iso(isset($o['_f']['livraison'])?$o['_f']['livraison']:null),'warehouse_status'=>'En attente','created_at'=>crm_returns_iso());
+  if(isset($r['scanned_at'])&&$r['scanned_at']!==''){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>false,'err'=>'already-received','existing'=>crm_returns_item($o,$r),'resolvedTracking'=>$tr),409);}
+  $now=crm_returns_iso();$r['tracking_number']=$tr;if(strcasecmp($query,$tr)!==0)$r['qr_code']=$query;$r['warehouse_status']=$override?'À vérifier':'Reçu au dépôt';$r['scanned_at']=$now;$r['scanned_by']=$actor['name'];$r['scanned_by_id']=$actor['id'];$r['updated_at']=$now;if($override){$r['override_reason']=$reason;$r['override_by']=$actor['name'];}
+  $found=false;foreach($records as $i=>$x)if(is_array($x)&&isset($x['order_id'])&&(string)$x['order_id']===$id){$records[$i]=$r;$found=true;break;}if(!$found)$records[]=$r;
+  $ms=(int)(microtime(true)*1000);$data['paraveda_returns_v1']=array('t'=>$ms,'d'=>array_values($records));if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();$o['warehouseReturnStatus']=$r['warehouse_status'];$o['returnScannedAt']=$now;$o['returnScannedBy']=$actor['name'];$o['_f']['warehouseReturnStatus']=$ms;$o['_f']['returnScannedAt']=$ms;$o['_f']['returnScannedBy']=$ms;$o['_u']=$ms;$orders[$idx]=$o;$ot=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$data['paraveda_orders_v5']=array('t'=>max($ot+1,$ms),'d'=>array_values($orders));
+  $auditDetails=$override?array('reason'=>$reason):array();if(strcasecmp($query,$tr)!==0){$auditDetails['qr_code']=$query;$auditDetails['resolved_tracking']=$tr;}$audit=crm_returns_audit($data,$override?'return_received_override':'return_received',$id,$tr,$actor,$auditDetails);
+  crm_backup();$ok=crm_write_all($data);if($ok){crm_journal_append('paraveda_returns_v1',$ms,array_values($records));crm_journal_append('paraveda_orders_v5',$data['paraveda_orders_v5']['t'],array_values($orders));crm_journal_append('paraveda_return_audit_v1',$data['paraveda_return_audit_v1']['t'],$data['paraveda_return_audit_v1']['d']);}
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}if(!$ok)crm_out(array('ok'=>false,'err'=>'save-failed'),500);crm_out(array('ok'=>true,'message'=>'Retour reçu avec succès','resolvedTracking'=>$tr,'item'=>crm_returns_item($o,$r)));
 }
 function crm_returns_control($b) {
   global $LOCK_FILE;
