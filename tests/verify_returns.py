@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 api = (ROOT / "api.php").read_text(encoding="utf-8")
 ui = (ROOT / "retours.html").read_text(encoding="utf-8")
 index = (ROOT / "index.html").read_text(encoding="utf-8")
+digylog_admin = (ROOT / "digylog-admin.html").read_text(encoding="utf-8")
 start = api.index("* Suivi des Retours")
 end = api.index("$m = $_SERVER['REQUEST_METHOD']", start)
 returns = api[start:end]
@@ -43,6 +44,7 @@ checks = {
     "Tracking opens live Digylog status": all(x in index for x in ("__pvDigylogOrder", "digylog_order_status", "pv-dl-status", "عرض Statut الحقيقي ديال الطلبية من Digylog")) and all(x in api for x in ("function crm_dl_order_status", "'/order/' . rawurlencode($tracking) . '/infos'", "tracking-not-in-crm", "if ($a === 'digylog_order_status')")),
     "Automatic exact Digylog Tracking sync": all(x in api for x in ("function crm_tracking_auto_sync", "function crm_tracking_exact_from_payload", "'trackingSync'=>crm_tracking_auto_sync(30)", "$trackingSync=crm_tracking_auto_sync(30)", "'exactOnly'=>true", "$o['tracking']=$found[$id]")),
     "Open CRM triggers throttled Tracking sync": all(x in api for x in ("function crm_tracking_auto_guarded", ".tracking-auto.lock", "if ($a === 'digylog_tracking_auto')")) and all(x in index for x in ("pv-digylog-tracking-auto", "action:'digylog_tracking_auto'", "setInterval(syncTracking,60000)")),
+    "Seller Authorization saved server-side": all(x in api for x in ("$op === 'tracking_token_save'", "$c['sellerToken'] = $incoming", "'hasSellerToken'", "$cfg['sellerToken']")) and all(x in digylog_admin for x in ("op:'tracking_token_save'", "Seller Authorization محفوظ", "حفظ وتشغيل جلب Tracking الآن")),
     "Immediate Tracking from send response": all(x in api for x in ("$sentTracking = array()", "crm_tracking_exact_from_payload($j, $r['id'])", "$o['tracking']=$sentTracking[$id]")),
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
     "Embedded module mode": "retours.html?embed=1" in index and "body.embedded .side{display:none}" in ui,
@@ -50,7 +52,7 @@ checks = {
 
 package = ROOT / "paraveda-crm-retours.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php", "digylog-admin.html"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

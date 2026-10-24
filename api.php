@@ -1050,6 +1050,7 @@ function crm_dl_admin($b) {
   $op = isset($b['op']) ? (string)$b['op'] : 'get';
   $c = crm_dl_cfg_get();
   $t = isset($c['token']) ? (string)$c['token'] : '';
+  $sellerToken = isset($c['sellerToken']) ? crm_tracking_bearer($c['sellerToken']) : '';
   $stores = array();
   foreach (crm_dl_agents() as $ag) $stores[$ag] = (isset($c['stores'][$ag]) ? (string)$c['stores'][$ag] : '');
 
@@ -1061,8 +1062,18 @@ function crm_dl_admin($b) {
       'stores'    => $stores,
       'since'     => isset($c['since']) ? (int)$c['since'] : 0,
       'hasToken'  => $t !== '',
-      'tokenTail' => $t !== '' ? substr($t, -4) : ''
+      'tokenTail' => $t !== '' ? substr($t, -4) : '',
+      'hasSellerToken' => $sellerToken !== '',
+      'sellerTokenTail' => $sellerToken !== '' ? substr($sellerToken, -4) : ''
     )));
+  }
+  if ($op === 'tracking_token_save') {
+    $incoming = isset($b['sellerToken']) ? crm_tracking_bearer($b['sellerToken']) : '';
+    if ($incoming === '') crm_out(array('ok'=>false,'err'=>'no-seller-token'),400);
+    $c['sellerToken'] = $incoming;
+    crm_dl_cfg_set($c);
+    crm_audit('digylog-seller-token-saved | tail=' . substr($incoming,-4));
+    crm_out(array('ok'=>true,'hasSellerToken'=>true,'sellerTokenTail'=>substr($incoming,-4)));
   }
   if ($op === 'save') {
     if (isset($b['token']) && trim((string)$b['token']) !== '') $c['token'] = trim((string)$b['token']);
@@ -1110,8 +1121,8 @@ function crm_dl_admin($b) {
   if ($op === 'tracking_candidates') crm_out(crm_tracking_candidates());
   if ($op === 'tracking_sync') {
     $ids = isset($b['ids']) && is_array($b['ids']) ? $b['ids'] : array();
-    $sellerToken = isset($b['sellerToken']) ? (string)$b['sellerToken'] : '';
-    crm_out(crm_tracking_sync($ids, $sellerToken));
+    $syncToken = isset($b['sellerToken']) && trim((string)$b['sellerToken']) !== '' ? (string)$b['sellerToken'] : $sellerToken;
+    crm_out(crm_tracking_sync($ids, $syncToken));
   }
   if ($op === 'dry') crm_out(crm_dl_run(true));
   crm_out(array('ok'=>false, 'err'=>'bad-op'), 400);
@@ -1246,8 +1257,8 @@ function crm_tracking_internal_many($phones,$token) {
 }
 function crm_tracking_auto_sync($limit=30) {
   global $LOCK_FILE;
-  $cfg=crm_dl_cfg_get();$token=isset($cfg['token'])?trim((string)$cfg['token']):'';
-  if($token==='')return array('ok'=>false,'err'=>'no-token','checked'=>0,'linked'=>0);
+  $cfg=crm_dl_cfg_get();$token=isset($cfg['sellerToken'])?crm_tracking_bearer($cfg['sellerToken']):'';
+  if($token==='')return array('ok'=>false,'err'=>'no-seller-token','checked'=>0,'linked'=>0);
   $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
   $candidates=array();
   foreach($orders as $o){
