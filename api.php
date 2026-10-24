@@ -1020,6 +1020,190 @@ function crm_dl_order_status($b) {
     'refs'=>$refs
   )));
 }
+
+/* ================================================================
+ * Digylog Chat — server-side proxy with exact CRM Tracking isolation.
+ * The Seller Authorization never reaches the browser. The server derives the
+ * agent from the CRM user id, then intersects every Digylog result with that
+ * agent's own, non-deleted CRM orders. Admins receive the CRM-wide union.
+ * ================================================================ */
+function crm_dl_chat_http($method, $path, $token, $multipart = null) {
+  if (!function_exists('curl_init')) return array(0, '', 'no-curl');
+  $url = 'https://api.digylog.com/api/seller/v48/' . ltrim((string)$path, '/');
+  $ch = curl_init($url);
+  $headers = array(
+    'Accept: application/json, text/plain, */*',
+    'Origin: https://seller.digylog.com',
+    'Referer: https://seller.digylog.com/',
+    'Authorization: Bearer ' . $token,
+    'X-Selected-Language: fr'
+  );
+  curl_setopt_array($ch, array(
+    CURLOPT_CUSTOMREQUEST => strtoupper((string)$method),
+    CURLOPT_HTTPHEADER => $headers,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_CONNECTTIMEOUT => 10,
+    CURLOPT_TIMEOUT => 25
+  ));
+  if ($multipart !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, $multipart);
+  $body = curl_exec($ch);
+  $err = (string)curl_error($ch);
+  $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  return array($code, $body === false ? '' : (string)$body, $err);
+}
+function crm_dl_chat_actor($b, $data) {
+  $viewerId = trim((string)(isset($b['viewerId']) ? $b['viewerId'] : ''));
+  if ($viewerId === '') crm_out(array('ok'=>false, 'err'=>'chat-session-required'), 401);
+  $users = isset($data['paraveda_users_v1']['d']) ? crm_unwrap($data['paraveda_users_v1']['d']) : array();
+  if (!is_array($users)) $users = array();
+  foreach ($users as $u) {
+    if (!is_array($u) || !empty($u['_del']) || !isset($u['id']) || (string)$u['id'] !== $viewerId) continue;
+    $role = isset($u['role']) && (string)$u['role'] === 'admin' ? 'admin' : 'user';
+    $agent = trim((string)(isset($u['agent']) ? $u['agent'] : ''));
+    if ($role !== 'admin' && $agent === '') crm_out(array('ok'=>false, 'err'=>'chat-agent-not-configured'), 403);
+    return array('id'=>(string)$u['id'], 'username'=>(string)(isset($u['username'])?$u['username']:''), 'role'=>$role, 'agent'=>$agent);
+  }
+  crm_out(array('ok'=>false, 'err'=>'chat-user-not-found'), 403);
+}
+function crm_dl_chat_tracking_value($row) {
+  if (!is_array($row)) return '';
+  foreach (array('traking','tracking','Tracking','dlTracking','digylogTracking') as $k) {
+    if (!isset($row[$k])) continue;
+    $v = strtoupper(trim((string)$row[$k]));
+    if ($v !== '') return $v;
+  }
+  return '';
+}
+function crm_dl_chat_allowed_trackings($data, $actor) {
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  if (!is_array($orders)) $orders = array();
+  $out = array();
+  foreach ($orders as $o) {
+    if (!is_array($o) || !empty($o['_del'])) continue;
+    if ($actor['role'] !== 'admin' && trim((string)(isset($o['agent'])?$o['agent']:'')) !== $actor['agent']) continue;
+    $tr = crm_dl_chat_tracking_value($o);
+    if ($tr !== '') $out[$tr] = true;
+  }
+  return $out;
+}
+function crm_dl_chat_collect_conversations($node, &$out) {
+  if (!is_array($node)) return;
+  $tr = crm_dl_chat_tracking_value($node);
+  if ($tr !== '' && (isset($node['id']) || isset($node['chatId']) || isset($node['slug']))) {
+    $out[] = $node;
+    return;
+  }
+  foreach ($node as $v) if (is_array($v)) crm_dl_chat_collect_conversations($v, $out);
+}
+function crm_dl_chat_list_remote($token, $allowed, $onlyTracking = '') {
+  $paths = $onlyTracking !== '' ? array(
+    'conversations?traking=' . rawurlencode($onlyTracking),
+    'newconversations',
+    'closedConversations?traking=' . rawurlencode($onlyTracking) . '&currentPage=1'
+  ) : array(
+    'newconversations',
+    'conversations?traking=',
+    'closedConversations?traking=&currentPage=1'
+  );
+  $rows = array(); $okCalls = 0; $codes = array();
+  foreach ($paths as $path) {
+    list($code, $body, $err) = crm_dl_chat_http('GET', $path, $token);
+    $codes[] = $code;
+    if ($code < 200 || $code >= 300) continue;
+    $okCalls++;
+    $json = json_decode($body, true);
+    if (is_array($json)) crm_dl_chat_collect_conversations($json, $rows);
+  }
+  if (!$okCalls) return array('ok'=>false, 'codes'=>$codes, 'rows'=>array());
+  $unique = array();
+  foreach ($rows as $r) {
+    $tr = crm_dl_chat_tracking_value($r);
+    if ($tr === '' || !isset($allowed[$tr])) continue;
+    if ($onlyTracking !== '' && $tr !== $onlyTracking) continue;
+    $id = (string)(isset($r['id']) ? $r['id'] : (isset($r['chatId']) ? $r['chatId'] : (isset($r['slug']) ? $r['slug'] : $tr)));
+    $key = $id !== '' ? $id : $tr;
+    if (!isset($unique[$key])) $unique[$key] = $r;
+    else {
+      $a = isset($unique[$key]['updatedAt']) ? strtotime((string)$unique[$key]['updatedAt']) : 0;
+      $z = isset($r['updatedAt']) ? strtotime((string)$r['updatedAt']) : 0;
+      if ($z >= $a) $unique[$key] = array_merge($unique[$key], $r);
+    }
+  }
+  $out = array_values($unique);
+  usort($out, function($a, $b) {
+    $at = isset($a['updatedAt']) ? strtotime((string)$a['updatedAt']) : 0;
+    $bt = isset($b['updatedAt']) ? strtotime((string)$b['updatedAt']) : 0;
+    return $at === $bt ? 0 : ($at < $bt ? 1 : -1);
+  });
+  return array('ok'=>true, 'codes'=>$codes, 'rows'=>$out);
+}
+function crm_dl_chat_context($b) {
+  $data = crm_read_raw(true);
+  $actor = crm_dl_chat_actor($b, $data);
+  $allowed = crm_dl_chat_allowed_trackings($data, $actor);
+  $cfg = crm_dl_cfg_get();
+  $token = isset($cfg['sellerToken']) ? crm_tracking_bearer($cfg['sellerToken']) : '';
+  if ($token === '') crm_out(array('ok'=>false, 'err'=>'no-seller-token'), 503);
+  return array($data, $actor, $allowed, $token);
+}
+function crm_dl_chat_list($b) {
+  list($data, $actor, $allowed, $token) = crm_dl_chat_context($b);
+  $remote = crm_dl_chat_list_remote($token, $allowed);
+  if (empty($remote['ok'])) {
+    crm_audit('digylog-chat-list | actor=' . $actor['id'] . ' | http=' . implode(',', $remote['codes']));
+    crm_out(array('ok'=>false, 'err'=>'digylog-chat-http', 'codes'=>$remote['codes']), 502);
+  }
+  crm_out(array(
+    'ok'=>true,
+    'viewer'=>array('role'=>$actor['role'], 'agent'=>$actor['agent']),
+    'allowedTrackingCount'=>count($allowed),
+    'conversations'=>$remote['rows']
+  ));
+}
+function crm_dl_chat_history($b) {
+  list($data, $actor, $allowed, $token) = crm_dl_chat_context($b);
+  $tracking = strtoupper(trim((string)(isset($b['tracking'])?$b['tracking']:'')));
+  if ($tracking === '' || !isset($allowed[$tracking])) crm_out(array('ok'=>false, 'err'=>'chat-tracking-forbidden'), 403);
+  list($code, $body, $err) = crm_dl_chat_http('GET', 'lastconversations?traking=' . rawurlencode($tracking), $token);
+  if ($code < 200 || $code >= 300) {
+    crm_audit('digylog-chat-history | actor=' . $actor['id'] . ' | tracking=' . $tracking . ' | http=' . $code);
+    crm_out(array('ok'=>false, 'err'=>'digylog-chat-http', 'code'=>$code), 502);
+  }
+  $json = json_decode($body, true);
+  if (!is_array($json)) crm_out(array('ok'=>false, 'err'=>'digylog-chat-invalid-response'), 502);
+  crm_out(array('ok'=>true, 'tracking'=>$tracking, 'payload'=>$json));
+}
+function crm_dl_chat_send($b) {
+  list($data, $actor, $allowed, $token) = crm_dl_chat_context($b);
+  $tracking = strtoupper(trim((string)(isset($b['tracking'])?$b['tracking']:'')));
+  $chatId = trim((string)(isset($b['chatId'])?$b['chatId']:''));
+  $message = trim((string)(isset($b['message'])?$b['message']:''));
+  if ($tracking === '' || !isset($allowed[$tracking])) crm_out(array('ok'=>false, 'err'=>'chat-tracking-forbidden'), 403);
+  if ($chatId === '' || !preg_match('/^[0-9A-Za-z_-]{1,80}$/', $chatId)) crm_out(array('ok'=>false, 'err'=>'bad-chat-id'), 400);
+  if ($message === '' || function_exists('mb_strlen') && mb_strlen($message, 'UTF-8') > 2000 || !function_exists('mb_strlen') && strlen($message) > 8000) crm_out(array('ok'=>false, 'err'=>'bad-message'), 400);
+
+  /* Never trust a browser-supplied chat id: prove that Digylog currently maps
+     it to the exact Tracking already authorized from CRM orders. */
+  $remote = crm_dl_chat_list_remote($token, $allowed, $tracking);
+  $verified = false;
+  if (!empty($remote['ok'])) foreach ($remote['rows'] as $row) {
+    $rid = (string)(isset($row['id']) ? $row['id'] : (isset($row['chatId']) ? $row['chatId'] : ''));
+    if ($rid === $chatId && crm_dl_chat_tracking_value($row) === $tracking) { $verified = true; break; }
+  }
+  if (!$verified) crm_out(array('ok'=>false, 'err'=>'chat-conversation-forbidden'), 403);
+
+  /* Captured Digylog contract: multipart/form-data with one `message` field. */
+  list($code, $body, $err) = crm_dl_chat_http('POST', 'conversations/' . rawurlencode($chatId) . '/message', $token, array('message'=>$message));
+  if ($code < 200 || $code >= 300) {
+    crm_audit('digylog-chat-send | actor=' . $actor['id'] . ' | tracking=' . $tracking . ' | http=' . $code);
+    crm_out(array('ok'=>false, 'err'=>'digylog-chat-send-failed', 'code'=>$code), 502);
+  }
+  $json = json_decode($body, true);
+  crm_audit('digylog-chat-send | actor=' . $actor['id'] . ' | tracking=' . $tracking . ' | ok=1');
+  crm_out(array('ok'=>true, 'result'=>is_array($json)?$json:array()));
+}
+
 function crm_dl_order_row($o) {
   return array(
     'num'         => (string)$o['id'],
@@ -1999,6 +2183,9 @@ if ($m === 'POST') {
     if ($a === 'push_test') crm_push_test($b);             // v3.98
     if ($a === 'quick_order') crm_quick_order($b);         // v3.100: طلبية سريعة من البنت
     if ($a === 'digylog_order_status') crm_dl_order_status($b); // read-only exact Tracking lookup
+    if ($a === 'digylog_chat_list') crm_dl_chat_list($b);
+    if ($a === 'digylog_chat_history') crm_dl_chat_history($b);
+    if ($a === 'digylog_chat_send') crm_dl_chat_send($b);
     if ($a === 'digylog_tracking_auto') crm_out(crm_tracking_auto_guarded());
     if ($a === 'digylog_admin') crm_dl_admin($b);          // v3.101: إعدادات Digylog (أدمين)
     if ($a === 'returns_list') crm_returns_list($b);
