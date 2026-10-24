@@ -1223,7 +1223,7 @@ function crm_tracking_sync($requestedIds,$rawToken) {
 function crm_tracking_exact_from_payload($payload,$orderId) {
   $records=array();crm_tracking_records($payload,$records);$hits=array();
   foreach($records as $tracking=>$record){
-    $ref=crm_tracking_deep_pick($record,array('num','externalReference','external_reference','clientReference','client_reference','reference','ref','orderNumber','order_number'));
+    $ref=crm_tracking_deep_pick($record,array('num','orderNum','order_num','externalId','external_id','externalReference','external_reference','clientReference','client_reference','reference','ref','orderNumber','order_number'));
     if($ref!=='' && (string)$ref===(string)$orderId)$hits[strtoupper((string)$tracking)]=true;
   }
   $keys=array_keys($hits);return count($keys)===1?$keys[0]:'';
@@ -1270,6 +1270,17 @@ function crm_tracking_auto_sync($limit=30) {
   }
   crm_audit('digylog-tracking-auto | checked='.count($batch).' | linked='.$linked.' | exactMiss='.$ambiguous.' | httpErrors='.$httpErrors);
   return array('ok'=>true,'checked'=>count($batch),'pending'=>$total,'linked'=>$linked,'exactMiss'=>$ambiguous,'httpErrors'=>$httpErrors,'exactOnly'=>true);
+}
+/* Browser-triggered sync: makes the feature automatic while the CRM is open,
+ * even when hosting cron is missing. A server lock/throttle means all staff
+ * devices together can start at most one Digylog lookup every 45 seconds. */
+function crm_tracking_auto_guarded() {
+  global $DATA_DIR;
+  $lock=@fopen($DATA_DIR.'/.tracking-auto.lock','c');
+  if(!$lock||!@flock($lock,LOCK_EX|LOCK_NB)){if($lock)@fclose($lock);return array('ok'=>true,'skipped'=>'busy','linked'=>0);}
+  $stamp=$DATA_DIR.'/.tracking-auto.stamp';$last=is_file($stamp)?(int)@filemtime($stamp):0;
+  if($last>0&&time()-$last<45){@flock($lock,LOCK_UN);@fclose($lock);return array('ok'=>true,'skipped'=>'throttled','retryAfter'=>45-(time()-$last),'linked'=>0);}
+  @touch($stamp);$result=crm_tracking_auto_sync(30);@flock($lock,LOCK_UN);@fclose($lock);return $result;
 }
 
 /* ================= Livrée-only sync by exact Tracking =================
@@ -1977,6 +1988,7 @@ if ($m === 'POST') {
     if ($a === 'push_test') crm_push_test($b);             // v3.98
     if ($a === 'quick_order') crm_quick_order($b);         // v3.100: طلبية سريعة من البنت
     if ($a === 'digylog_order_status') crm_dl_order_status($b); // read-only exact Tracking lookup
+    if ($a === 'digylog_tracking_auto') crm_out(crm_tracking_auto_guarded());
     if ($a === 'digylog_admin') crm_dl_admin($b);          // v3.101: إعدادات Digylog (أدمين)
     if ($a === 'returns_list') crm_returns_list($b);
     if ($a === 'returns_scan') crm_returns_scan($b);
