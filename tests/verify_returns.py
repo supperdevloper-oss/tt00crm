@@ -55,6 +55,7 @@ checks = {
     "Digylog Seller Authorization stays server-side": "$cfg['sellerToken']" in api and "Authorization: Bearer ' . $token" in api and "sellerToken" not in (ROOT / "digylog-chat.html").read_text(encoding="utf-8"),
     "Digylog message contract": all(x in api for x in ("conversations/' . rawurlencode($chatId) . '/message", "array('message'=>$message)", "lastconversations?traking=")),
     "Digylog Chat integrated UI": all(x in index for x in ("Digylog Chat", "digylog-chat.html?embed=1", "pv-digylog-chat-launcher", "pv-chat-badge")) and all(x in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("digylog_chat_list", "digylog_chat_history", "digylog_chat_send", "setInterval")),
+    "Tracking popup embeds exact-order Chat": all(x in index for x in ("function chatFrame(tracking)", "digylog-chat.html?compact=1&tracking=", "pv-dl-chat-frame", "render(root,data.order||{},tracking)")) and all(x in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("FOCUS_TRACKING", "PARAMS.get('tracking')", "body.compact", "{tracking:FOCUS_TRACKING}")) and "$requested = strtoupper" in api,
 }
 
 package = ROOT / "paraveda-crm-chat.zip"

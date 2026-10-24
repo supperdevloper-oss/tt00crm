@@ -1149,7 +1149,9 @@ function crm_dl_chat_context($b) {
 }
 function crm_dl_chat_list($b) {
   list($data, $actor, $allowed, $token) = crm_dl_chat_context($b);
-  $remote = crm_dl_chat_list_remote($token, $allowed);
+  $requested = strtoupper(trim((string)(isset($b['tracking']) ? $b['tracking'] : '')));
+  if ($requested !== '' && !isset($allowed[$requested])) crm_out(array('ok'=>false, 'err'=>'chat-tracking-forbidden'), 403);
+  $remote = crm_dl_chat_list_remote($token, $allowed, $requested);
   if (empty($remote['ok'])) {
     crm_audit('digylog-chat-list | actor=' . $actor['id'] . ' | http=' . implode(',', $remote['codes']));
     crm_out(array('ok'=>false, 'err'=>'digylog-chat-http', 'codes'=>$remote['codes']), 502);
