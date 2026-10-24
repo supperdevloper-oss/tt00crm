@@ -1138,6 +1138,37 @@ function crm_dl_chat_list_remote($token, $allowed, $onlyTracking = '') {
   });
   return array('ok'=>true, 'codes'=>$codes, 'rows'=>$out);
 }
+function crm_dl_chat_find_chat_id($node, $tracking = '') {
+  if (!is_array($node)) return '';
+  foreach (array('chatId','chat_id','conversationId','conversation_id') as $k) {
+    if (isset($node[$k]) && preg_match('/^[0-9A-Za-z_-]{1,80}$/', (string)$node[$k])) return (string)$node[$k];
+  }
+  $tr = crm_dl_chat_tracking_value($node);
+  if ($tr !== '' && ($tracking === '' || $tr === $tracking) && isset($node['id']) && preg_match('/^[0-9A-Za-z_-]{1,80}$/', (string)$node['id'])) return (string)$node['id'];
+  foreach ($node as $v) if (is_array($v)) { $id = crm_dl_chat_find_chat_id($v, $tracking); if ($id !== '') return $id; }
+  return '';
+}
+function crm_dl_chat_direct_remote($token, $allowed, $tracking) {
+  $list = crm_dl_chat_list_remote($token, $allowed, $tracking);
+  $conversation = !empty($list['rows'][0]) && is_array($list['rows'][0]) ? $list['rows'][0] : null;
+  list($historyCode, $historyBody, $historyErr) = crm_dl_chat_http('GET', 'lastconversations?traking=' . rawurlencode($tracking), $token);
+  $payload = array();
+  if ($historyCode >= 200 && $historyCode < 300) {
+    $decoded = json_decode($historyBody, true);
+    if (is_array($decoded)) $payload = $decoded;
+  }
+  if (!$conversation) {
+    $chatId = crm_dl_chat_find_chat_id($payload, $tracking);
+    if ($chatId !== '') $conversation = array('id'=>$chatId, 'traking'=>$tracking, 'closed'=>false);
+  }
+  return array(
+    'ok'=>(!empty($list['ok']) || ($historyCode >= 200 && $historyCode < 300)),
+    'conversation'=>$conversation,
+    'payload'=>$payload,
+    'historyCode'=>$historyCode,
+    'codes'=>isset($list['codes']) ? $list['codes'] : array()
+  );
+}
 function crm_dl_chat_context($b) {
   $data = crm_read_raw(true);
   $actor = crm_dl_chat_actor($b, $data);
@@ -1161,6 +1192,23 @@ function crm_dl_chat_list($b) {
     'viewer'=>array('role'=>$actor['role'], 'agent'=>$actor['agent']),
     'allowedTrackingCount'=>count($allowed),
     'conversations'=>$remote['rows']
+  ));
+}
+function crm_dl_chat_direct($b) {
+  list($data, $actor, $allowed, $token) = crm_dl_chat_context($b);
+  $tracking = strtoupper(trim((string)(isset($b['tracking']) ? $b['tracking'] : '')));
+  if ($tracking === '' || !isset($allowed[$tracking])) crm_out(array('ok'=>false, 'err'=>'chat-tracking-forbidden'), 403);
+  $direct = crm_dl_chat_direct_remote($token, $allowed, $tracking);
+  if (empty($direct['ok'])) {
+    crm_audit('digylog-chat-direct | actor=' . $actor['id'] . ' | tracking=' . $tracking . ' | history=' . $direct['historyCode'] . ' | list=' . implode(',', $direct['codes']));
+    crm_out(array('ok'=>false, 'err'=>'digylog-chat-http', 'code'=>$direct['historyCode']), 502);
+  }
+  crm_out(array(
+    'ok'=>true,
+    'tracking'=>$tracking,
+    'viewer'=>array('role'=>$actor['role'], 'agent'=>$actor['agent']),
+    'conversation'=>$direct['conversation'],
+    'payload'=>$direct['payload']
   ));
 }
 function crm_dl_chat_history($b) {
@@ -1187,11 +1235,12 @@ function crm_dl_chat_send($b) {
 
   /* Never trust a browser-supplied chat id: prove that Digylog currently maps
      it to the exact Tracking already authorized from CRM orders. */
-  $remote = crm_dl_chat_list_remote($token, $allowed, $tracking);
+  $direct = crm_dl_chat_direct_remote($token, $allowed, $tracking);
   $verified = false;
-  if (!empty($remote['ok'])) foreach ($remote['rows'] as $row) {
+  if (!empty($direct['conversation']) && is_array($direct['conversation'])) {
+    $row = $direct['conversation'];
     $rid = (string)(isset($row['id']) ? $row['id'] : (isset($row['chatId']) ? $row['chatId'] : ''));
-    if ($rid === $chatId && crm_dl_chat_tracking_value($row) === $tracking) { $verified = true; break; }
+    if ($rid === $chatId && crm_dl_chat_tracking_value($row) === $tracking) $verified = true;
   }
   if (!$verified) crm_out(array('ok'=>false, 'err'=>'chat-conversation-forbidden'), 403);
 
@@ -2186,6 +2235,7 @@ if ($m === 'POST') {
     if ($a === 'quick_order') crm_quick_order($b);         // v3.100: طلبية سريعة من البنت
     if ($a === 'digylog_order_status') crm_dl_order_status($b); // read-only exact Tracking lookup
     if ($a === 'digylog_chat_list') crm_dl_chat_list($b);
+    if ($a === 'digylog_chat_direct') crm_dl_chat_direct($b);
     if ($a === 'digylog_chat_history') crm_dl_chat_history($b);
     if ($a === 'digylog_chat_send') crm_dl_chat_send($b);
     if ($a === 'digylog_tracking_auto') crm_out(crm_tracking_auto_guarded());

@@ -1288,7 +1288,7 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
     document.body.appendChild(root);document.addEventListener('keydown',function close(e){if(e.key==='Escape'){root.remove();document.removeEventListener('keydown',close)}});
     return root;
   }
-  function chatFrame(tracking){return '<section class="pv-dl-chat-box"><header class="pv-dl-chat-title"><strong>💬 Chat ديال هاد الطلبية</strong><span>'+esc(tracking)+'</span></header><iframe class="pv-dl-chat-frame" title="Chat '+esc(tracking)+'" src="digylog-chat.html?compact=1&tracking='+encodeURIComponent(tracking)+'&v=2"></iframe></section>'}
+  function chatFrame(tracking){const viewer=String(localStorage.getItem('paraveda_session_v1')||'').trim();return '<section class="pv-dl-chat-box"><header class="pv-dl-chat-title"><strong>💬 Chat ديال هاد الطلبية</strong><span>'+esc(tracking)+'</span></header><iframe class="pv-dl-chat-frame" title="Chat '+esc(tracking)+'" src="digylog-chat.html?compact=1&tracking='+encodeURIComponent(tracking)+'&viewerId='+encodeURIComponent(viewer)+'&v=3"></iframe></section>'}
   function render(root,o,tracking){
     const refs=Array.isArray(o.refs)&&o.refs.length?o.refs.map(r=>'<div class="pv-dl-ref"><b>'+esc(text(r.designation))+'</b><span>× '+esc(r.quantity)+'</span></div>').join(''):'<div class="pv-dl-empty">ما كايناش تفاصيل المنتوج</div>';
     const fields=[['الزبون',o.name],['الهاتف',o.phone],['المدينة',o.city],['الثمن',o.price==null?'—':o.price+' DH'],['تاريخ الإنشاء',date(o.createdAt)],['آخر تحديث',date(o.updatedAt)],['حالة الأداء',o.cashStatus],['المتجر',o.store],['BL',o.bl],['العنوان',o.address]];
