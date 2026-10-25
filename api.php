@@ -937,15 +937,57 @@ function crm_quick_order($b) {
  * ================================================================ */
 function crm_dl_base() { return 'https://api.digylog.com/api/v2/seller'; }
 function crm_dl_agents() { return array('Meryam', 'AYA', 'imane', 'safa'); }
+function crm_dl_cfg_paths() {
+  global $DATA_DIR, $DIR_LOC, $DIR_EXT;
+  $paths = array();
+  foreach (array($DATA_DIR, $DIR_LOC, $DIR_EXT) as $dir) {
+    $dir = rtrim((string)$dir, '/');
+    if ($dir === '') continue;
+    $path = $dir . '/digylog_cfg.json';
+    if (!in_array($path, $paths, true)) $paths[] = $path;
+  }
+  return $paths;
+}
+function crm_dl_cfg_merge_missing($base, $other) {
+  if (!is_array($base)) $base = array();
+  if (!is_array($other)) return $base;
+  foreach ($other as $k => $v) {
+    if ($k === 'stores' && is_array($v)) {
+      if (!isset($base[$k]) || !is_array($base[$k])) $base[$k] = array();
+      foreach ($v as $agent => $store) if ((!isset($base[$k][$agent]) || trim((string)$base[$k][$agent]) === '') && trim((string)$store) !== '') $base[$k][$agent] = $store;
+      continue;
+    }
+    $missing = !array_key_exists($k, $base) || $base[$k] === null || (is_string($base[$k]) && trim($base[$k]) === '');
+    if ($missing && $v !== null && (!is_string($v) || trim($v) !== '')) $base[$k] = $v;
+  }
+  return $base;
+}
 function crm_dl_cfg_get() {
-  global $DATA_DIR;
-  $s = @file_get_contents($DATA_DIR . '/digylog_cfg.json');
-  $j = json_decode((string)$s, true);
-  return is_array($j) ? $j : array();
+  $merged = array(); $sourceCount = 0; $active = null; $index = 0;
+  foreach (crm_dl_cfg_paths() as $path) {
+    $raw = @file_get_contents($path);
+    $cfg = json_decode((string)$raw, true);
+    if ($index === 0 && is_array($cfg)) $active = $cfg;
+    $index++;
+    if (!is_array($cfg)) continue;
+    $merged = crm_dl_cfg_merge_missing($merged, $cfg);
+    $sourceCount++;
+  }
+  /* Heal only when the active copy is missing fields found in its mirror. */
+  if ($sourceCount > 0 && (!is_array($active) || json_encode($active) !== json_encode($merged))) crm_dl_cfg_set($merged);
+  return $merged;
 }
 function crm_dl_cfg_set($c) {
-  global $DATA_DIR;
-  @file_put_contents($DATA_DIR . '/digylog_cfg.json', json_encode($c, JSON_UNESCAPED_UNICODE));
+  if (!is_array($c)) return false;
+  $json = json_encode($c, JSON_UNESCAPED_UNICODE);
+  if ($json === false) return false;
+  $ok = false;
+  foreach (crm_dl_cfg_paths() as $path) {
+    $dir = dirname($path);
+    if (!is_dir($dir)) continue;
+    if (@file_put_contents($path, $json, LOCK_EX) !== false) $ok = true;
+  }
+  return $ok;
 }
 function crm_dl_http($method, $path, $token, $body = null) {
   if (!function_exists('curl_init')) return array(0, '', 'no-curl');
