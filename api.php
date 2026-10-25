@@ -1064,8 +1064,8 @@ function crm_dl_order_status($b) {
 
 /* ================================================================
  * Digylog Chat — server-side proxy with exact CRM Tracking isolation.
- * The Seller Authorization never reaches the browser. The server derives the
- * agent from the CRM user id, then intersects every Digylog result with that
+ * The permanent application token never reaches the browser. The server derives
+ * the agent from the CRM user id, then intersects every Digylog result with that
  * agent's own, non-deleted CRM orders. Admins receive the CRM-wide union.
  * ================================================================ */
 function crm_dl_chat_http($method, $path, $token, $body = null) {
