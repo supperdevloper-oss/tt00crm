@@ -1229,6 +1229,26 @@ function crm_dl_chat_context($b) {
   if ($tokenSource === 'token-fallback') crm_audit('digylog-chat-auth | using-main-token-fallback');
   return array($data, $actor, $allowed, $token);
 }
+function crm_dl_chat_auth_save($b) {
+  $data = crm_read_raw(true);
+  $actor = crm_dl_chat_actor($b, $data);
+  if ($actor['role'] !== 'admin') crm_out(array('ok'=>false, 'err'=>'chat-admin-required'), 403);
+  $incoming = crm_tracking_bearer(isset($b['authorization']) ? $b['authorization'] : '');
+  if ($incoming === '' || strlen($incoming) < 20 || strlen($incoming) > 8192 || preg_match('/[\r\n]/', $incoming)) crm_out(array('ok'=>false, 'err'=>'bad-seller-authorization'), 400);
+
+  /* Validate before persistence. A bad/expired credential must never replace
+     the last configured value. `total` is the lightest captured v48 endpoint. */
+  list($code, $body, $err) = crm_dl_chat_http('GET', 'total', $incoming);
+  if ($code < 200 || $code >= 300) {
+    crm_audit('digylog-chat-auth-save | actor=' . $actor['id'] . ' | rejected-http=' . $code);
+    crm_out(array('ok'=>false, 'err'=>'seller-authorization-rejected', 'code'=>$code), 400);
+  }
+  $cfg = crm_dl_cfg_get();
+  $cfg['sellerToken'] = $incoming;
+  if (!crm_dl_cfg_set($cfg)) crm_out(array('ok'=>false, 'err'=>'seller-authorization-write-failed'), 500);
+  crm_audit('digylog-chat-auth-save | actor=' . $actor['id'] . ' | validated=1');
+  crm_out(array('ok'=>true));
+}
 function crm_dl_chat_list($b) {
   list($data, $actor, $allowed, $token) = crm_dl_chat_context($b);
   $requested = strtoupper(trim((string)(isset($b['tracking']) ? $b['tracking'] : '')));
@@ -2285,6 +2305,7 @@ if ($m === 'POST') {
     if ($a === 'push_test') crm_push_test($b);             // v3.98
     if ($a === 'quick_order') crm_quick_order($b);         // v3.100: طلبية سريعة من البنت
     if ($a === 'digylog_order_status') crm_dl_order_status($b); // read-only exact Tracking lookup
+    if ($a === 'digylog_chat_auth_save') crm_dl_chat_auth_save($b);
     if ($a === 'digylog_chat_list') crm_dl_chat_list($b);
     if ($a === 'digylog_chat_direct') crm_dl_chat_direct($b);
     if ($a === 'digylog_chat_history') crm_dl_chat_history($b);
