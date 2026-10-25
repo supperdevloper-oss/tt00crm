@@ -56,14 +56,14 @@ checks = {
     "Digylog Chat uses only permanent main token": all(x in api for x in ("function crm_dl_chat_context", "$cfg['token']", "no-digylog-token")) and "token-fallback" not in api,
     "Digylog config survives primary/mirror directory switches": all(x in api for x in ("function crm_dl_cfg_paths", "$DATA_DIR, $DIR_LOC, $DIR_EXT", "function crm_dl_cfg_merge_missing", "crm_dl_cfg_set($merged)", "LOCK_EX")),
     "Rejected in-chat Authorization removed": all(x not in api for x in ("function crm_dl_chat_auth_save", "seller-authorization-rejected")) and all(x not in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("chatAuthorization", "digylog_chat_auth_save", "تحقق وحفظ")),
-    "Official Seller v2 conversation contract": all(x in api for x in ("order/' . rawurlencode($tracking) . '/conversations", "conversations/' . rawurlencode((string)$conversation['id']) . '/messages", "array('content'=>$message)", "crm_dl_base()")) and "lastconversations?traking=" not in api,
+    "Official Seller v2 conversation contract": all(x in api for x in ("orders/' . rawurlencode($tracking) . '/conversations", "conversations/' . rawurlencode((string)$conversation['id']) . '/messages", "array('content'=>$message)", "crm_dl_base()")) and "lastconversations?traking=" not in api,
     "Digylog Chat integrated UI": all(x in index for x in ("Digylog Chat", "digylog-chat.html?embed=1", "pv-digylog-chat-launcher", "pv-chat-badge")) and all(x in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("digylog_chat_list", "digylog_chat_history", "digylog_chat_send", "setInterval")),
     "Tracking popup embeds exact-order Chat": all(x in index for x in ("function chatFrame(tracking)", "digylog-chat.html?compact=1&tracking=", "pv-dl-chat-frame", "render(root,data.order||{},tracking)")) and all(x in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("FOCUS_TRACKING", "PARAMS.get('tracking')", "body.compact", "digylog_chat_direct", "focusedError")) and all(x in api for x in ("$requested = strtoupper", "crm_dl_chat_resolve", "crm_dl_chat_conversations_for_tracking")),
 }
 
 package = ROOT / "paraveda-chat-final.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php", "digylog-chat.html"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php", "digylog-chat.html"} and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

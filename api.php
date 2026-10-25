@@ -992,8 +992,7 @@ function crm_dl_cfg_set($c) {
 function crm_dl_http($method, $path, $token, $body = null) {
   if (!function_exists('curl_init')) return array(0, '', 'no-curl');
   $ch = curl_init(crm_dl_base() . $path);
-  $h = array('Accept: application/json', 'Referer: https://apiseller.digylog.com', 'Authorization: Bearer ' . $token);
-  if ($body !== null) $h[] = 'Content-Type: application/json';
+  $h = array('Accept: application/json', 'Content-Type: application/json', 'Referer: https://apiseller.digylog.com', 'Authorization: Bearer ' . $token);
   curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
   curl_setopt($ch, CURLOPT_HTTPHEADER, $h);
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -1109,19 +1108,12 @@ function crm_dl_chat_allowed_trackings($data, $actor) {
   return $out;
 }
 function crm_dl_chat_conversations_for_tracking($token, $tracking) {
-  /* The Postman page displays `order` while its generated curl displays
-     `orders`; use the documented request first and the displayed alternative
-     only when Digylog answers 404. */
-  $paths = array(
-    'order/' . rawurlencode($tracking) . '/conversations',
-    'orders/' . rawurlencode($tracking) . '/conversations'
-  );
-  $last = array(0, '', '');
-  foreach ($paths as $i => $path) {
-    $last = crm_dl_chat_http('GET', $path, $token);
-    if ($last[0] !== 404 || $i === count($paths) - 1) break;
-  }
-  return $last;
+  /* The generated request uses `orders`; an older rendering of the same
+     supplied V2.1.0 page displays `order`. Prefer the generated request and
+     consult the displayed variant only when the route itself answers 404. */
+  $result = crm_dl_chat_http('GET', 'orders/' . rawurlencode($tracking) . '/conversations', $token);
+  if ($result[0] === 404) $result = crm_dl_chat_http('GET', 'order/' . rawurlencode($tracking) . '/conversations', $token);
+  return $result;
 }
 function crm_dl_chat_list_remote($token, $allowed, $onlyTracking = '') {
   $trackings = $onlyTracking !== '' ? array($onlyTracking) : array_keys($allowed);
@@ -1163,6 +1155,14 @@ function crm_dl_chat_list($b) {
   list($data, $actor, $allowed, $token) = crm_dl_chat_context($b);
   $requested = strtoupper(trim((string)(isset($b['tracking']) ? $b['tracking'] : '')));
   if ($requested !== '' && !isset($allowed[$requested])) crm_out(array('ok'=>false, 'err'=>'chat-tracking-forbidden'), 403);
+  /* V2.1.0 exposes conversations by exact order only. Never fan out over all
+     CRM orders: that caused hundreds of sequential requests and PHP timeouts. */
+  if ($requested === '') crm_out(array(
+    'ok'=>true,
+    'viewer'=>array('role'=>$actor['role'],'agent'=>$actor['agent']),
+    'allowedTrackingCount'=>count($allowed),
+    'conversations'=>array()
+  ));
   $remote = crm_dl_chat_list_remote($token, $allowed, $requested);
   if (empty($remote['ok'])) {
     crm_audit('digylog-chat-list-v2 | actor=' . $actor['id'] . ' | http=' . implode(',', $remote['codes']));
