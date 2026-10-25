@@ -53,14 +53,15 @@ checks = {
     "Digylog Chat backend routes": all(x in api for x in ("digylog_chat_list", "digylog_chat_direct", "digylog_chat_history", "digylog_chat_send", "function crm_dl_chat_http")),
     "Digylog Chat backend Tracking isolation": all(x in api for x in ("crm_dl_chat_actor", "crm_dl_chat_allowed_trackings", "chat-tracking-forbidden", "chat-conversation-forbidden", "crm_dl_chat_tracking_value($row) === $tracking")),
     "Digylog Seller Authorization stays server-side": "$cfg['sellerToken']" in api and "Authorization: Bearer ' . $token" in api and "sellerToken" not in (ROOT / "digylog-chat.html").read_text(encoding="utf-8"),
+    "Digylog Chat reuses working main token when Seller token is absent": all(x in api for x in ("$tokenSource = 'sellerToken'", "$tokenSource = 'token-fallback'", "$cfg['token']", "no-digylog-chat-token")),
     "Digylog message contract": all(x in api for x in ("conversations/' . rawurlencode($chatId) . '/message", "array('message'=>$message)", "lastconversations?traking=")),
     "Digylog Chat integrated UI": all(x in index for x in ("Digylog Chat", "digylog-chat.html?embed=1", "pv-digylog-chat-launcher", "pv-chat-badge")) and all(x in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("digylog_chat_list", "digylog_chat_history", "digylog_chat_send", "setInterval")),
     "Tracking popup embeds exact-order Chat": all(x in index for x in ("function chatFrame(tracking)", "digylog-chat.html?compact=1&tracking=", "pv-dl-chat-frame", "render(root,data.order||{},tracking)")) and all(x in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("FOCUS_TRACKING", "PARAMS.get('tracking')", "body.compact", "digylog_chat_direct", "focusedError")) and all(x in api for x in ("$requested = strtoupper", "crm_dl_chat_direct_remote", "crm_dl_chat_find_chat_id")),
 }
 
-package = ROOT / "paraveda-crm-chat.zip"
+package = ROOT / "paraveda-chat-final-fix.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php", "digylog-chat.html"}
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"api.php"}
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

@@ -1174,8 +1174,17 @@ function crm_dl_chat_context($b) {
   $actor = crm_dl_chat_actor($b, $data);
   $allowed = crm_dl_chat_allowed_trackings($data, $actor);
   $cfg = crm_dl_cfg_get();
+  /* Prefer the browser Seller Authorization captured for v48 Chat. On existing
+     installations where that optional field was never saved, reuse the main
+     Digylog bearer that is already proven by the live order-status lookup. */
   $token = isset($cfg['sellerToken']) ? crm_tracking_bearer($cfg['sellerToken']) : '';
-  if ($token === '') crm_out(array('ok'=>false, 'err'=>'no-seller-token'), 503);
+  $tokenSource = 'sellerToken';
+  if ($token === '') {
+    $token = isset($cfg['token']) ? crm_tracking_bearer($cfg['token']) : '';
+    $tokenSource = 'token-fallback';
+  }
+  if ($token === '') crm_out(array('ok'=>false, 'err'=>'no-digylog-chat-token'), 503);
+  if ($tokenSource === 'token-fallback') crm_audit('digylog-chat-auth | using-main-token-fallback');
   return array($data, $actor, $allowed, $token);
 }
 function crm_dl_chat_list($b) {
