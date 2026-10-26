@@ -59,11 +59,12 @@ checks = {
     "CAROUSELL and FEES columns removed": all(x not in index for x in ('label:"CAROUSELL"', 'field:"carousell"', 'fkey:"carousell"', 'label:"FEES"', 'field:"fees"', 'fkey:"fees"')) and all(x in index for x in ('label:"Agent"', 'label:"CAROSELL"', 'label:"commision"')),
     "Menu buttons cannot trigger rename prompt": all(x not in index for x in ('onDoubleClick:()=>{C!=="Waiting CMD"&&X(C)}', "نقرة مزدوجة لإعادة التسمية", "الاسم الجديد:")),
     "Digylog config survives primary/mirror directory switches": all(x in api for x in ("function crm_dl_cfg_paths", "$DATA_DIR, $DIR_LOC, $DIR_EXT", "function crm_dl_cfg_merge_missing", "crm_dl_cfg_set($merged)", "LOCK_EX")),
+    "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
 }
 
-package = ROOT / "paraveda-waiting-cmd-daily.zip"
+package = ROOT / "paraveda-storeep-meryam-only.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Waiting-CMD package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
+    checks["Meryam-only package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php"] and z.read("api.php") == (ROOT / "api.php").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

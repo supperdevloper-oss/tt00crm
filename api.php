@@ -6,8 +6,9 @@
  *   GET  api.php                       → { key: {t, d}, ... }
  *   POST api.php {key, t, d}           → {ok:true, t:<effective t>}   (header X-Sync-Token required)
  *
+ * v3.101 — جميع طلبيات Storeep/الشيت الجداد كيتعيّنو لمريم فقط (server-enforced)
  * v3.99 — إشعار أوتوماتيك ملي تدخل/تتبدل طلبية باسم بنت (CRM + الشيت)
- * v3.98 — توزيع الطلبيات الجداد على: Meryam → AYA → imane → safa (بالدور) + ID ديما = 1
+ * v3.98 — ID ديال طلبيات الشيت ديما = 1
  * v3.97 — الشيت → CRM: POST {action:'sheet_orders', rows:[...]} كيزيد الطلبيات الجداد
  *   (تكرار سيرفر-سايد: تاريخ + هاتف + منتوج). الجبد الكامل من CRM ما تبدلش.
  *
@@ -740,36 +741,8 @@ function crm_sheet_norm($r) {
   $o['commission'] = crm_sheet_num(isset($r['commission']) ? $r['commission'] : '', 0);
   return array(null, $o);
 }
-/* v3.100: عداد الدور ديال الشيت (Meryam → AYA → imane → safa) محفوظ فملف وحدو.
- * قبل كان محسوب من عدد الطلبيات — ولا تبدلات الدمج/الحذف كانو كيرجعوه لصفر
- * → كل الطلبيات كيمشيو لمريم. دابا كل طلبية جديدة من الشيت كتزيد +1 ف الملف. */
-function crm_rr_get() {
-  global $DATA_DIR;
-  $s = @file_get_contents($DATA_DIR . '/sheet_rr.json');
-  $j = json_decode((string)$s, true);
-  return (is_array($j) && isset($j['n'])) ? (int)$j['n'] : null;
-}
-function crm_rr_set($n) {
-  global $DATA_DIR;
-  @file_put_contents($DATA_DIR . '/sheet_rr.json', json_encode(array('n' => (int)$n)));
-}
-/* لائحة البنات اللي كيتقسمو عليهم طلبيات الشيت.
- * كتقرا من sheet_agents.json (فنفس مجلد crm_data.json) — بلا ما تبدل الكود.
- * مثال الملف: ["Meryam","AYA","safa"]   (الأسماء بالضبط كيفما فـCRM)
- * إلا ما كانش الملف ولا خاوي → الافتراضي Meryam, AYA, safa */
-function crm_sheet_agents() {
-  global $DATA_DIR;
-  $def = array('Meryam', 'AYA', 'safa');
-  $s = @file_get_contents($DATA_DIR . '/sheet_agents.json');
-  $j = json_decode((string)$s, true);
-  if (!is_array($j)) return $def;
-  $out = array();
-  foreach ($j as $a) {
-    $a = trim((string)$a);
-    if ($a !== '' && !in_array($a, $out, true)) $out[] = $a;
-  }
-  return count($out) ? $out : $def;
-}
+/* Storeep intake: كل طلبية جديدة كتتعيّن دائماً لمريم فقط.
+ * التعيين مفروض فالسيرفر وما كيعتمدش على agent جاي من الشيت. */
 function crm_sheet_orders($b) {
   global $LOCK_FILE;
   $rows = (isset($b['rows']) && is_array($b['rows'])) ? array_values($b['rows']) : null;
@@ -787,14 +760,9 @@ function crm_sheet_orders($b) {
 
   /* مفاتيح الطلبيات الموجودة (الحية) + أكبر id (حتى الممسوحة) باش ما نعاودوش نستعملو id */
   $keys = array(); $maxId = 0;
-  /* v3.98: توزيع الطلبيات على البنات بالدور (round-robin).
-   * $rr = عدد الطلبيات لي جاو من الشيت (حتى الممسوحين)، كيتزاد كل طلبية جديدة. */
-  $agents = crm_sheet_agents();   // لائحة البنات ديال الشيت (ملف sheet_agents.json)
-  $rr = 0;
   foreach ($cur as $o) {
     if (!is_array($o)) continue;
     if (isset($o['id']) && is_numeric($o['id']) && (int)$o['id'] > $maxId) $maxId = (int)$o['id'];
-    if (isset($o['src']) && $o['src'] === 'sheet') $rr++;
     $keys[crm_sheet_key(
       isset($o['dateCreation']) ? (string)$o['dateCreation'] : '',
       isset($o['telephone'])    ? $o['telephone'] : '',
@@ -803,8 +771,6 @@ function crm_sheet_orders($b) {
     )] = true;
   }
 
-  $rrS = crm_rr_get();              // v3.100: العداد المحفوظ هو المرجع
-  $rr = ($rrS !== null) ? $rrS : 0;   // أول مرة: تبدا من مريم
   $nowms  = (int)(microtime(true) * 1000);
   $nextId = max((int)(microtime(true) * 1000000), $maxId + 1);
   $out = array(); $added = 0; $dup = 0; $skip = 0;
@@ -816,11 +782,10 @@ function crm_sheet_orders($b) {
     $k = crm_sheet_key($o['dateCreation'], $o['telephone'], $o['nom'], $o['produit']);
     if (isset($keys[$k])) { $out[] = array('i'=>$i, 'st'=>'dup'); $dup++; continue; }
 
-    $o['agent'] = $agents[$rr % count($agents)];   // الدور: Meryam → AYA → safa
+    $o['agent'] = 'Meryam';                       // Storeep → مريم فقط (server-enforced)
     $o['idCmd'] = '1';                              // v3.98: ID ديما default = 1
     $o['src']   = 'sheet';
     $o['originLead'] = 'Facebook';                 // كل طلبيات الشيت جاية من Facebook
-    $rr++;
     $o['id'] = $nextId++;
     $o['_u'] = $nowms;
     $f = array();
@@ -848,7 +813,6 @@ function crm_sheet_orders($b) {
   if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
 
   if (!$ok) crm_out(array('ok'=>false, 'err'=>'write-failed'), 500);
-  crm_rr_set($rr);                  // v3.100
   crm_audit("sheet-orders | added=$added | dup=$dup | skip=$skip | t=$t");
   try { crm_push_batch($addedBy); } catch (Throwable $__e) { crm_audit('push-error | ' . $__e->getMessage()); }   // v3.98: ما كيوقفش الصيفط
   crm_out(array('ok'=>true, 'added'=>$added, 'dup'=>$dup, 'skip'=>$skip, 't'=>$t, 'results'=>$out));
