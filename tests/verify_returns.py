@@ -39,7 +39,7 @@ checks = {
     "UI CSV and Excel export": "exportCsv" in ui and "exportExcel" in ui,
     "UI live refresh": "setInterval(()=>{if(!document.hidden&&!scanLock)load(true)},4000)" in ui,
     "CRM navigation integration": "Suivi des Retours" in index and 'w==="Suivi des Retours"&&s.jsx("iframe"' in index,
-    "Returns tab cannot be deleted": '"LIVRAISON","Suivi des Retours","Waiting CMD"]' in index,
+    "Returns tab cannot be deleted": 'tg=["COMONDES"' in index and '"Suivi des Retours"' in index and '"Waiting CMD","CMD Annuler"]' in index,
     "Ready-to-ship product summary": all(x in index for x in ("__pvProdAll", "pv-prod-sum", "pv-prod-list", "pv-prod-cols", "توزيع الكمية", "ملخص المنتجات الجاهزة للإرسال")),
     "Tracking opens live Digylog status": all(x in index for x in ("__pvDigylogOrder", "digylog_order_status", "pv-dl-status", "عرض Statut الحقيقي ديال الطلبية من Digylog")) and all(x in api for x in ("function crm_dl_order_status", "'/order/' . rawurlencode($tracking) . '/infos'", "tracking-not-in-crm", "if ($a === 'digylog_order_status')")),
     "Automatic exact Digylog Tracking sync": all(x in api for x in ("function crm_tracking_auto_sync", "function crm_tracking_exact_from_payload", "'trackingSync'=>crm_tracking_auto_sync(30)", "$trackingSync=crm_tracking_auto_sync(30)", "'exactOnly'=>true", "$o['tracking']=$found[$id]")),
@@ -48,7 +48,10 @@ checks = {
     "Immediate Tracking from send response": all(x in api for x in ("$sentTracking = array()", "crm_tracking_exact_from_payload($j, $r['id'])", "$o['tracking']=$sentTracking[$id]")),
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
     "Waiting CMD draft monitor": all(x in index for x in ("function __PvWaitingCmd", "Waiting CMD", "o&&o._d&&!o._del", "pv-wait-tab", "pv-wait-count", 'w==="Waiting CMD"&&s.jsx(__PvWaitingCmd')),
-    "Waiting CMD is permanent": '"LIVRAISON","Suivi des Retours","Waiting CMD"]' in index and 'if(!t.includes("Waiting CMD"))t.push("Waiting CMD")' in index,
+    "Waiting CMD is permanent": '"Suivi des Retours","Waiting CMD","CMD Annuler"]' in index and 'if(!t.includes("Waiting CMD"))t.push("Waiting CMD")' in index,
+    "CMD Annuler is permanent and uses the CRM sheet": all(x in index for x in ('if(!t.includes("CMD Annuler"))', '"Waiting CMD","CMD Annuler"]', '"CMD Annuler":"🚫"', '"CMD Annuler":"red"', 'w==="CMD Annuler"&&s.jsx(t_,{cancelledOnly:!0})')),
+    "COMMANDES and CMD Annuler split only the visible rows": all(x in index for x in ('function t_({cancelledOnly:__pvAnn=!1}={})', 'e0.filter(o=>!o._d)', 'iv=ee.useMemo(()=>ie.filter(o=>(String(o.statut??"").trim()==="Annulé")===__pvAnn)', 'return iv.filter(', 'w==="COMONDES"&&s.jsx(t_,{})')),
+    "Cancelled orders remain in shared calculations": all(x in index for x in ('const st=sum(ie.filter', 'r.conv=ie.length?nc/ie.length*100:0', 'Ce=ie.filter(Fe=>Fe.statut==="Annulé")', 'return{cmd:ie.length')),
     "Waiting CMD exit is permanently stamped": all(x in index for x in ("waitingExitedAt:Number(i.waitingExitedAt)||0", "waitingExitedDate:String(legacyExit?legacyDate:i.waitingExitedDate||", "waitingExitedBy:String(i.waitingExitedBy||", "waitingExitedAt:now,waitingExitedDate:exitDate,waitingExitedBy:exitBy")),
     "Waiting CMD exit snapshot survives later edits": all(x in index for x in ("waitingExitedStatus:String(i.waitingExitedStatus||", "waitingExitedProduct:String(i.waitingExitedProduct||", "waitingExitedQty:Number(i.waitingExitedQty)||", "waitingExitedAgent:String(i.waitingExitedAgent||", "waitingExitedClient:String(i.waitingExitedClient||", "waitingExitedPhone:String(i.waitingExitedPhone||")) and all(x in index for x in ("waitingExitedStatus:String(T.statut", "waitingExitedProduct:String(T.produit", "waitingExitedQty:Math.max(1,Number(T.qte)", "waitingExitedClient:String(T.nom")),
     "Waiting CMD legacy history matches CRM DATE filter": all(x in index for x in ("legacyDate=validDay(i.dateCreation)?String(i.dateCreation).slice(0,10)", "Number(i.waitingExitedLegacy)===1", 'String(i.waitingExitedBy||"")==="Historique avant filtre"', "!i._d&&!i._del", 'String(i.statut||"").trim()==="Confirmé"', "waitingExitedDate:String(legacyExit?legacyDate", 'legacyExit?"Historique avant filtre"', "waitingExitedLegacy:legacyExit?1:0")),
@@ -62,9 +65,9 @@ checks = {
     "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
 }
 
-package = ROOT / "paraveda-storeep-meryam-only.zip"
+package = ROOT / "paraveda-cmd-annuler.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Meryam-only package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php"] and z.read("api.php") == (ROOT / "api.php").read_bytes()
+    checks["CMD-Annuler package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
