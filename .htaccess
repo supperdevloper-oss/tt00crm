@@ -12,6 +12,9 @@
 # مجلد النسخ الاحتياطية كامل
 RedirectMatch 404 ^/backups/
 
+# Digylog Chat removed permanently.
+Redirect gone /digylog-chat.html
+
 # v3.90: أدوات إدارية كانت مكشوفة للعموم بلا حتى كلمة سر.
 #  - import.php      : استيراد الداتا (بلا تحقق)
 #  - manual_sync.php : كان كيصيفط لـ Digylog، وDigylog تحيدات فـ v3.41 → ميت

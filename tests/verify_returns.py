@@ -39,7 +39,7 @@ checks = {
     "UI CSV and Excel export": "exportCsv" in ui and "exportExcel" in ui,
     "UI live refresh": "setInterval(()=>{if(!document.hidden&&!scanLock)load(true)},4000)" in ui,
     "CRM navigation integration": "Suivi des Retours" in index and 'w==="Suivi des Retours"&&s.jsx("iframe"' in index,
-    "Returns tab cannot be deleted": '"LIVRAISON","Suivi des Retours","Waiting CMD","Digylog Chat"]' in index,
+    "Returns tab cannot be deleted": '"LIVRAISON","Suivi des Retours","Waiting CMD"]' in index,
     "Ready-to-ship product summary": all(x in index for x in ("__pvProdAll", "pv-prod-sum", "pv-prod-list", "pv-prod-cols", "توزيع الكمية", "ملخص المنتجات الجاهزة للإرسال")),
     "Tracking opens live Digylog status": all(x in index for x in ("__pvDigylogOrder", "digylog_order_status", "pv-dl-status", "عرض Statut الحقيقي ديال الطلبية من Digylog")) and all(x in api for x in ("function crm_dl_order_status", "'/order/' . rawurlencode($tracking) . '/infos'", "tracking-not-in-crm", "if ($a === 'digylog_order_status')")),
     "Automatic exact Digylog Tracking sync": all(x in api for x in ("function crm_tracking_auto_sync", "function crm_tracking_exact_from_payload", "'trackingSync'=>crm_tracking_auto_sync(30)", "$trackingSync=crm_tracking_auto_sync(30)", "'exactOnly'=>true", "$o['tracking']=$found[$id]")),
@@ -48,22 +48,15 @@ checks = {
     "Immediate Tracking from send response": all(x in api for x in ("$sentTracking = array()", "crm_tracking_exact_from_payload($j, $r['id'])", "$o['tracking']=$sentTracking[$id]")),
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
     "Waiting CMD draft monitor": all(x in index for x in ("function __PvWaitingCmd", "Waiting CMD", "o&&o._d&&!o._del", "pv-wait-tab", "pv-wait-count", 'w==="Waiting CMD"&&s.jsx(__PvWaitingCmd')),
-    "Waiting CMD is permanent": '"LIVRAISON","Suivi des Retours","Waiting CMD","Digylog Chat"]' in index and 'if(!t.includes("Waiting CMD"))t.push("Waiting CMD")' in index,
+    "Waiting CMD is permanent": '"LIVRAISON","Suivi des Retours","Waiting CMD"]' in index and 'if(!t.includes("Waiting CMD"))t.push("Waiting CMD")' in index,
     "Embedded module mode": "retours.html?embed=1" in index and "body.embedded .side{display:none}" in ui,
-    "Digylog Chat backend routes": all(x in api for x in ("digylog_chat_list", "digylog_chat_direct", "digylog_chat_history", "digylog_chat_send", "function crm_dl_chat_http")) and "digylog_chat_auth_save" not in api,
-    "Digylog Chat backend Tracking isolation": all(x in api for x in ("crm_dl_chat_actor", "crm_dl_chat_allowed_trackings", "chat-tracking-forbidden", "chat-conversation-forbidden", "crm_dl_chat_tracking_value($direct['conversation']) !== $tracking")),
-    "Digylog permanent application token stays server-side": all(x in api for x in ("$cfg['token']", "Authorization: Bearer ' . $token", "Referer: https://apiseller.digylog.com")) and "sellerToken" not in (ROOT / "digylog-chat.html").read_text(encoding="utf-8"),
-    "Digylog Chat uses only permanent main token": all(x in api for x in ("function crm_dl_chat_context", "$cfg['token']", "no-digylog-token")) and "token-fallback" not in api,
+    "Digylog Chat removed completely": not (ROOT / "digylog-chat.html").exists() and all(x not in api for x in ("digylog_chat_", "crm_dl_chat", "Digylog Chat")) and all(x not in index for x in ("Digylog Chat", "digylog-chat.html", "pv-digylog-chat-launcher", "pv-dl-chat", "pv-chat-")),
     "Digylog config survives primary/mirror directory switches": all(x in api for x in ("function crm_dl_cfg_paths", "$DATA_DIR, $DIR_LOC, $DIR_EXT", "function crm_dl_cfg_merge_missing", "crm_dl_cfg_set($merged)", "LOCK_EX")),
-    "Rejected in-chat Authorization removed": all(x not in api for x in ("function crm_dl_chat_auth_save", "seller-authorization-rejected")) and all(x not in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("chatAuthorization", "digylog_chat_auth_save", "تحقق وحفظ")),
-    "Official Seller v2 conversation contract": all(x in api for x in ("orders/' . rawurlencode($tracking) . '/conversations", "conversations/' . rawurlencode((string)$conversation['id']) . '/messages", "array('content'=>$message)", "crm_dl_base()")) and "lastconversations?traking=" not in api,
-    "Digylog Chat integrated UI": all(x in index for x in ("Digylog Chat", "digylog-chat.html?embed=1", "pv-digylog-chat-launcher", "pv-chat-badge")) and all(x in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("digylog_chat_list", "digylog_chat_history", "digylog_chat_send", "setInterval")),
-    "Tracking popup embeds exact-order Chat": all(x in index for x in ("function chatFrame(tracking)", "digylog-chat.html?compact=1&tracking=", "pv-dl-chat-frame", "render(root,data.order||{},tracking)")) and all(x in (ROOT / "digylog-chat.html").read_text(encoding="utf-8") for x in ("FOCUS_TRACKING", "PARAMS.get('tracking')", "body.compact", "digylog_chat_direct", "focusedError")) and all(x in api for x in ("$requested = strtoupper", "crm_dl_chat_resolve", "crm_dl_chat_conversations_for_tracking")),
 }
 
-package = ROOT / "paraveda-chat-final.zip"
+package = ROOT / "paraveda-no-chat.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php", "digylog-chat.html", ".htaccess"} and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
+    checks["Removal package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php", ".htaccess"} and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
