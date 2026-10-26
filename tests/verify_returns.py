@@ -63,7 +63,7 @@ checks = {
 
 package = ROOT / "paraveda-chat-final.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php", "digylog-chat.html"} and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
+    checks["Package is valid and minimal"] = z.testzip() is None and set(z.namelist()) == {"index.html", "api.php", "digylog-chat.html", ".htaccess"} and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

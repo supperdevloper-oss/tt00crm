@@ -23,7 +23,7 @@ body.compact{background:#fff}body.compact .app{display:block;height:100dvh}body.
 const API='api.php', TOKEN='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 const PARAMS=new URLSearchParams(location.search), FOCUS_TRACKING=String(PARAMS.get('tracking')||'').trim().toUpperCase(), COMPACT=PARAMS.get('compact')==='1';
 if(COMPACT)document.body.classList.add('compact');
-const $=id=>document.getElementById(id), state={all:[],tab:'open',q:'',active:null,messages:[],loading:false};
+const $=id=>document.getElementById(id), state={all:[],tab:'open',q:'',active:null,messages:[],loading:false}, TRACKING_RE=/^[A-Z0-9_-]{3,80}$/;let searchTimer=0;
 function viewerId(){return String(localStorage.getItem('paraveda_session_v1')||PARAMS.get('viewerId')||'').trim()}
 function viewerIsAdmin(){try{const id=viewerId(),users=JSON.parse(localStorage.getItem('paraveda_users_v1')||'[]');return Array.isArray(users)&&users.some(u=>u&&!u._del&&String(u.id)===id&&u.role==='admin')}catch{return false}}
 async function call(action,extra={}){const r=await fetch(API,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Sync-Token':TOKEN},body:JSON.stringify({action,viewerId:viewerId(),...extra})});const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.err||'request-failed');return j}
@@ -70,14 +70,17 @@ async function load(silent=false){
   if(state.loading)return;state.loading=true;if(!silent)$('sync').textContent='Chargement…';
   try{
     if(FOCUS_TRACKING){await loadFocused(silent);return}
-    const j=await call('digylog_chat_list');state.all=Array.isArray(j.conversations)?j.conversations:[];
-    $('scope').textContent=j.viewer?.role==='admin'?'Admin · tous les Trackings':(j.viewer?.agent||'Compte')+' · Trackings autorisés';
+    const requested=state.q.trim().toUpperCase();
+    if(!requested){state.all=[];$('scope').textContent='Recherche par Tracking';$('sync').textContent='—';renderList();return}
+    if(!TRACKING_RE.test(requested)){state.all=[];$('sync').textContent='Tracking invalide';renderList();return}
+    const j=await call('digylog_chat_list',{tracking:requested});state.all=Array.isArray(j.conversations)?j.conversations:[];
+    $('scope').textContent=j.viewer?.role==='admin'?'Admin · Tracking exact':(j.viewer?.agent||'Compte')+' · Tracking autorisé';
     $('sync').textContent='À jour · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});renderList();
     if(state.active){const same=state.all.find(c=>cid(c)===cid(state.active));if(same){state.active=same;await openConversation(cid(same),true)}else{state.active=null;$('app').classList.remove('chat-open')}}
   }catch(e){$('sync').textContent='Erreur';if(FOCUS_TRACKING)focusedError(e);else if(!silent)$('list').innerHTML='<div class="error"><div><strong>Connexion Digylog impossible</strong><span>'+esc(e.message)+'</span></div></div>'}
   finally{state.loading=false}
 }
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));state.tab=b.dataset.tab;renderList()});$('search').oninput=e=>{state.q=e.target.value.trim();renderList()};$('refresh').onclick=()=>load();$('back').onclick=()=>$('app').classList.remove('chat-open');$('composer').onsubmit=async e=>{e.preventDefault();const text=$('message').value.trim();if(!text||!state.active)return;$('send').disabled=true;try{await call('digylog_chat_send',{tracking:track(state.active),chatId:cid(state.active),message:text});$('message').value='';toast('Message envoyé');await openConversation(cid(state.active),true);await load(true)}catch(err){toast('Échec: '+err.message)}finally{$('send').disabled=!!state.active?.closed}};$('message').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('composer').requestSubmit()}};
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));state.tab=b.dataset.tab;renderList()});$('search').oninput=e=>{state.q=e.target.value.trim().toUpperCase();clearTimeout(searchTimer);searchTimer=setTimeout(()=>load(false),350)};$('search').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(searchTimer);load(false)}};$('refresh').onclick=()=>load();$('back').onclick=()=>$('app').classList.remove('chat-open');$('composer').onsubmit=async e=>{e.preventDefault();const text=$('message').value.trim();if(!text||!state.active)return;$('send').disabled=true;try{await call('digylog_chat_send',{tracking:track(state.active),chatId:cid(state.active),message:text});$('message').value='';toast('Message envoyé');await openConversation(cid(state.active),true);await load(true)}catch(err){toast('Échec: '+err.message)}finally{$('send').disabled=!!state.active?.closed}};$('message').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('composer').requestSubmit()}};
 if(!viewerId()){if(FOCUS_TRACKING)focusedError('chat-session-required');else $('list').innerHTML='<div class="error"><div><strong>Session CRM introuvable</strong><span>Reconnectez-vous au CRM.</span></div></div>'}else{load();setInterval(()=>{if(!document.hidden)load(true)},5000)}
 })();
 </script>

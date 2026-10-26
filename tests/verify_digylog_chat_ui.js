@@ -68,7 +68,33 @@ function response(payload, status = 200) {
   if (!send || send.tracking !== 'S3900385FA' || String(send.chatId) !== '50932' || send.message !== 'réponse test') throw new Error('send request contract is wrong');
 
   dom.window.close();
-  console.log('PASS  Digylog Chat browser flow: exact Tracking, official messages, reply');
+
+  const searchCalls = [];
+  const searchDom = new JSDOM(html, {
+    url: 'https://crm.test/digylog-chat.html?embed=1&viewerId=1&v=5',
+    runScripts: 'dangerously',
+    resources: 'usable',
+    pretendToBeVisual: true,
+    beforeParse(window) {
+      window.setInterval = () => 0;
+      window.fetch = async (_url, options) => {
+        const body = JSON.parse(options.body);
+        searchCalls.push(body);
+        if (body.action === 'digylog_chat_list') return response({ok: true, viewer: {role: 'admin', agent: ''}, conversations: [conversation]});
+        return response({ok: false, err: 'unexpected-action'}, 400);
+      };
+    }
+  });
+  await new Promise(resolve => setTimeout(resolve, 100));
+  const search = searchDom.window.document.getElementById('search');
+  search.value = 's3900385fa';
+  search.dispatchEvent(new searchDom.window.Event('input', {bubbles: true}));
+  await new Promise(resolve => setTimeout(resolve, 450));
+  if (!searchCalls.some(c => c.action === 'digylog_chat_list' && c.tracking === 'S3900385FA')) throw new Error('full Chat search did not query the exact Tracking');
+  if (!searchDom.window.document.querySelector('.conv-title')?.textContent.includes('S3900385FA')) throw new Error('searched conversation was not rendered');
+  searchDom.window.close();
+
+  console.log('PASS  Digylog Chat browser flow: exact popup, remote search, official messages, reply');
 })().catch(error => {
   console.error(error.stack || error);
   process.exit(1);
