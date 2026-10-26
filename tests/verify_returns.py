@@ -52,6 +52,10 @@ checks = {
     "CMD Annuler is permanent and uses the CRM sheet": all(x in index for x in ('if(!t.includes("CMD Annuler"))', '"Waiting CMD","CMD Annuler"]', '"CMD Annuler":"🚫"', '"CMD Annuler":"red"', 'w==="CMD Annuler"&&s.jsx(t_,{cancelledOnly:!0})')),
     "COMMANDES and CMD Annuler split only the visible rows": all(x in index for x in ('function t_({cancelledOnly:__pvAnn=!1}={})', 'e0.filter(o=>!o._d)', 'iv=ee.useMemo(()=>ie.filter(o=>(String(o.statut??"").trim()==="Annulé")===__pvAnn)', 'return iv.filter(', 'w==="COMONDES"&&s.jsx(t_,{})')),
     "Cancelled orders remain in shared calculations": all(x in index for x in ('const st=sum(ie.filter', 'r.conv=ie.length?nc/ie.length*100:0', 'Ce=ie.filter(Fe=>Fe.statut==="Annulé")', 'return{cmd:ie.length')),
+    "Mobile CRM uses editable order cards": all(x in index for x in ("function __PvMobileCmdCards", "pv-cmd-mobile", "pv-mob-card", "جميع المعلومات والتعديل", "catalog-products", "villes-list", "pv-mob-delete")),
+    "Mobile cards preserve full CRM fields": all(x in index for x in ('n(o.id,"dateCreation"', 'n(o.id,"statut"', 'n(o.id,"nom"', 'n(o.id,"telephone"', 'n(o.id,"ville"', 'n(o.id,"produit"', 'n(o.id,"qte"', 'n(o.id,"prix"', 'n(o.id,"adresse"', 'n(o.id,"livraison"', 'n(o.id,"tracking"', 'n(o.id,"agent"', 'n(o.id,"originLead"', 'n(o.id,"commission"')),
+    "Mobile layout prevents page-wide horizontal dragging": all(x in index for x in ('id="pv-mobile-crm-style"', 'html,body,#root{width:100%;max-width:100%;overflow-x:hidden}', '@media(max-width:900px)', '.pv-cmd-table{display:none!important}', '.pv-vscroll{overflow-x:hidden!important')),
+    "Desktop CRM table remains available": 'className:"pv-cmd-table w-full border-collapse text-xs"' in index and 'rows:qp,upd:nt,del:c,selected:D,toggle:en,agents:n' in index,
     "Waiting CMD exit is permanently stamped": all(x in index for x in ("waitingExitedAt:Number(i.waitingExitedAt)||0", "waitingExitedDate:String(legacyExit?legacyDate:i.waitingExitedDate||", "waitingExitedBy:String(i.waitingExitedBy||", "waitingExitedAt:now,waitingExitedDate:exitDate,waitingExitedBy:exitBy")),
     "Waiting CMD exit snapshot survives later edits": all(x in index for x in ("waitingExitedStatus:String(i.waitingExitedStatus||", "waitingExitedProduct:String(i.waitingExitedProduct||", "waitingExitedQty:Number(i.waitingExitedQty)||", "waitingExitedAgent:String(i.waitingExitedAgent||", "waitingExitedClient:String(i.waitingExitedClient||", "waitingExitedPhone:String(i.waitingExitedPhone||")) and all(x in index for x in ("waitingExitedStatus:String(T.statut", "waitingExitedProduct:String(T.produit", "waitingExitedQty:Math.max(1,Number(T.qte)", "waitingExitedClient:String(T.nom")),
     "Waiting CMD legacy history matches CRM DATE filter": all(x in index for x in ("legacyDate=validDay(i.dateCreation)?String(i.dateCreation).slice(0,10)", "Number(i.waitingExitedLegacy)===1", 'String(i.waitingExitedBy||"")==="Historique avant filtre"', "!i._d&&!i._del", 'String(i.statut||"").trim()==="Confirmé"', "waitingExitedDate:String(legacyExit?legacyDate", 'legacyExit?"Historique avant filtre"', "waitingExitedLegacy:legacyExit?1:0")),
@@ -65,9 +69,9 @@ checks = {
     "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
 }
 
-package = ROOT / "paraveda-cmd-annuler.zip"
+package = ROOT / "paraveda-mobile-crm.zip"
 with zipfile.ZipFile(package) as z:
-    checks["CMD-Annuler package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
+    checks["Mobile-CRM package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
