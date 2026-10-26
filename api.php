@@ -1108,11 +1108,18 @@ function crm_dl_chat_allowed_trackings($data, $actor) {
   return $out;
 }
 function crm_dl_chat_conversations_for_tracking($token, $tracking) {
-  /* The generated request uses `orders`; an older rendering of the same
-     supplied V2.1.0 page displays `order`. Prefer the generated request and
-     consult the displayed variant only when the route itself answers 404. */
-  $result = crm_dl_chat_http('GET', 'orders/' . rawurlencode($tracking) . '/conversations', $token);
-  if ($result[0] === 404) $result = crm_dl_chat_http('GET', 'order/' . rawurlencode($tracking) . '/conversations', $token);
+  /* Digylog's supplied V2.1.0 page is inconsistent: its URL line shows
+     `order`, while generated curl shows `orders`. Some installations answer
+     the non-matching variant with 400 instead of 404, so consult the second
+     documented spelling after either not-found response. GET is side-effect free. */
+  $result = crm_dl_chat_http('GET', 'order/' . rawurlencode($tracking) . '/conversations', $token);
+  if ($result[0] === 400 || $result[0] === 404) {
+    $alternate = crm_dl_chat_http('GET', 'orders/' . rawurlencode($tracking) . '/conversations', $token);
+    if ($alternate[0] >= 200 && $alternate[0] < 300) return $alternate;
+    /* Keep an authentication/server error instead of disguising it as an
+       empty conversation result. */
+    if ($alternate[0] !== 400 && $alternate[0] !== 404) return $alternate;
+  }
   return $result;
 }
 function crm_dl_chat_list_remote($token, $allowed, $onlyTracking = '') {

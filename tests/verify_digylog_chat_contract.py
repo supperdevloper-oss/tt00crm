@@ -25,7 +25,7 @@ message = {
 }
 
 checks = {
-    "exact order-conversations route": "'orders/' . rawurlencode($tracking) . '/conversations'" in chat,
+    "documented order-conversations variants": all(value in chat for value in ("'order/' . rawurlencode($tracking) . '/conversations'", "'orders/' . rawurlencode($tracking) . '/conversations'", "$result[0] === 400 || $result[0] === 404")),
     "exact conversation-messages route": "'conversations/' . rawurlencode((string)$conversation['id']) . '/messages'" in chat,
     "no private Seller v48 transport": "/api/seller/v48" not in chat,
     "no temporary Seller Authorization": all(value not in chat + ui for value in ("sellerToken", "chatAuthorization", "digylog_chat_auth_save")),
