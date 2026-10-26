@@ -49,6 +49,10 @@ checks = {
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
     "Waiting CMD draft monitor": all(x in index for x in ("function __PvWaitingCmd", "Waiting CMD", "o&&o._d&&!o._del", "pv-wait-tab", "pv-wait-count", 'w==="Waiting CMD"&&s.jsx(__PvWaitingCmd')),
     "Waiting CMD is permanent": '"LIVRAISON","Suivi des Retours","Waiting CMD"]' in index and 'if(!t.includes("Waiting CMD"))t.push("Waiting CMD")' in index,
+    "Waiting CMD exit is permanently stamped": all(x in index for x in ("waitingExitedAt:Number(i.waitingExitedAt)||0", "waitingExitedDate:String(i.waitingExitedDate", "waitingExitedBy:String(i.waitingExitedBy", "waitingExitedAt:now,waitingExitedDate:exitDate,waitingExitedBy:exitBy")),
+    "Waiting CMD exit snapshot survives later edits": all(x in index for x in ("waitingExitedStatus:String(i.waitingExitedStatus", "waitingExitedProduct:String(i.waitingExitedProduct", "waitingExitedQty:Number(i.waitingExitedQty)||0", "waitingExitedAgent:String(i.waitingExitedAgent", "waitingExitedClient:String(i.waitingExitedClient", "waitingExitedPhone:String(i.waitingExitedPhone")) and all(x in index for x in ("waitingExitedStatus:String(T.statut", "waitingExitedProduct:String(T.produit", "waitingExitedQty:Math.max(1,Number(T.qte)", "waitingExitedClient:String(T.nom")),
+    "Waiting CMD history uses dedicated exit date": all(x in index for x in ("const [day,setDay]=ee.useState(today)", "exitDay(o)===day", 'type:"date",value:day', "Number(o.waitingExitedAt)||0")),
+    "Waiting CMD preparation summary and order detail": all(x in index for x in ("productSummary", "totalPieces", "pv-wait-qty-chip", "توزيع الكمية", "pv-wait-out-details", "وقت الخروج", 'String(o.waitingExitedStatus||"").trim()==="Confirmé"', "o.waitingExitedProduct||o.produit", "o.waitingExitedQty")),
     "Embedded module mode": "retours.html?embed=1" in index and "body.embedded .side{display:none}" in ui,
     "Digylog Chat removed completely": not (ROOT / "digylog-chat.html").exists() and all(x not in api for x in ("digylog_chat_", "crm_dl_chat", "Digylog Chat")) and all(x not in index for x in ("Digylog Chat", "digylog-chat.html", "pv-digylog-chat-launcher", "pv-dl-chat", "pv-chat-")),
     "CAROUSELL and FEES columns removed": all(x not in index for x in ('label:"CAROUSELL"', 'field:"carousell"', 'fkey:"carousell"', 'label:"FEES"', 'field:"fees"', 'fkey:"fees"')) and all(x in index for x in ('label:"Agent"', 'label:"CAROSELL"', 'label:"commision"')),
@@ -56,9 +60,9 @@ checks = {
     "Digylog config survives primary/mirror directory switches": all(x in api for x in ("function crm_dl_cfg_paths", "$DATA_DIR, $DIR_LOC, $DIR_EXT", "function crm_dl_cfg_merge_missing", "crm_dl_cfg_set($merged)", "LOCK_EX")),
 }
 
-package = ROOT / "paraveda-menu-buttons-fixed.zip"
+package = ROOT / "paraveda-waiting-cmd-daily.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Menu-fix package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
+    checks["Waiting-CMD package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
