@@ -1297,20 +1297,31 @@ function crm_tracking_auto_guarded() {
   if(!$lock||!@flock($lock,LOCK_EX|LOCK_NB)){if($lock)@fclose($lock);return array('ok'=>true,'skipped'=>'busy','linked'=>0);}
   $stamp=$DATA_DIR.'/.tracking-auto.stamp';$last=is_file($stamp)?(int)@filemtime($stamp):0;
   if($last>0&&time()-$last<45){@flock($lock,LOCK_UN);@fclose($lock);return array('ok'=>true,'skipped'=>'throttled','retryAfter'=>45-(time()-$last),'linked'=>0);}
-  @touch($stamp);$result=crm_tracking_auto_sync(30);@flock($lock,LOCK_UN);@fclose($lock);return $result;
+  @touch($stamp);
+  $result=crm_tracking_auto_sync(30);
+  /* The same guarded browser heartbeat also checks final Digylog delivery states.
+     This keeps Livrée working and adds Retournée without a second client timer. */
+  $result['deliverySync']=crm_delivery_sync_batch(20);
+  @flock($lock,LOCK_UN);@fclose($lock);return $result;
 }
 
-/* ================= Livrée-only sync by exact Tracking =================
- * كيستعمل tracking المخزن كمفتاح وحيد. الكتابة الوحيدة هي livraison='Livrée'.
- * ما كيكتب لا dateLiv لا Retour لا tracking لا أي حقل آخر. */
-function crm_delivery_is_delivered($info) {
-  if(!is_array($info))return false;
-  $id=crm_tracking_deep_pick($info,array('idStatus','statusId','status_id','id_status'));
-  if((string)$id==='6')return true;
+/* ================= Livrée + Retournée sync by exact Tracking =================
+ * The stored Tracking is the only matching key. The only business field this
+ * process may write is livraison: Digylog Livrée -> Livrée, Retournée -> Retour.
+ * It never writes statut, dateLiv, tracking, client data, prices, or other fields. */
+function crm_delivery_status($info) {
+  if(!is_array($info))return '';
   $st=crm_tracking_deep_pick($info,array('statusName','status_name','orderStatus','order_status','statut','label','status'));
   $n=crm_tracking_norm($st);
-  return $n==='livree'||strpos($n,'livree')===0;
+  /* Digylog currently returns the exact French label “Retournée”. Keep this
+     deliberately strict: a generic intermediate “Retour ...” must not close an order. */
+  if($n==='retournee'||$n==='retourne')return 'Retour';
+  $id=crm_tracking_deep_pick($info,array('idStatus','statusId','status_id','id_status'));
+  if((string)$id==='6'||$n==='livree'||strpos($n,'livree')===0)return 'Livrée';
+  return '';
 }
+function crm_delivery_is_delivered($info) { return crm_delivery_status($info)==='Livrée'; }
+function crm_delivery_is_returned($info) { return crm_delivery_status($info)==='Retour'; }
 function crm_delivery_fetch_infos($trackings,$token) {
   $out=array();if(!function_exists('curl_multi_init'))return $out;
   $mh=curl_multi_init();$chs=array();
@@ -1320,25 +1331,42 @@ function crm_delivery_fetch_infos($trackings,$token) {
     curl_multi_add_handle($mh,$ch);$chs[$tr]=$ch;
   }
   $running=null;do{$mrc=curl_multi_exec($mh,$running);if($running)curl_multi_select($mh,1.0);}while($running&&$mrc===CURLM_OK);
-  foreach($chs as $tr=>$ch){$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);$body=(string)curl_multi_getcontent($ch);$j=json_decode($body,true);$out[$tr]=array('code'=>$code,'delivered'=>($code>=200&&$code<300&&crm_delivery_is_delivered($j)));curl_multi_remove_handle($mh,$ch);curl_close($ch);}curl_multi_close($mh);
-  return $out;
+  foreach($chs as $tr=>$ch){
+    $code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);$body=(string)curl_multi_getcontent($ch);$j=json_decode($body,true);
+    $state=($code>=200&&$code<300&&is_array($j))?crm_delivery_status($j):'';
+    $out[$tr]=array('code'=>$code,'state'=>$state,'delivered'=>$state==='Livrée','returned'=>$state==='Retour');
+    curl_multi_remove_handle($mh,$ch);curl_close($ch);
+  }
+  curl_multi_close($mh);return $out;
 }
 function crm_delivery_sync_batch($limit=20) {
   global $LOCK_FILE;
   $cfg=crm_dl_cfg_get();$token=isset($cfg['token'])?trim((string)$cfg['token']):'';if($token==='')return array('ok'=>false,'err'=>'no-token','checked'=>0,'updated'=>0);
   $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
-  $map=array();foreach($orders as $o){if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));if($tr===''||(string)(isset($o['livraison'])?$o['livraison']:'')==='Livrée')continue;$map[$tr]=true;}
-  $all=array_keys($map);sort($all);$total=count($all);if($total===0)return array('ok'=>true,'checked'=>0,'pending'=>0,'delivered'=>0,'updated'=>0);
+  /* Retour is terminal. Livrée remains eligible because a delivered parcel can
+     later be returned; all other known Tracking rows remain eligible as before. */
+  $map=array();foreach($orders as $o){if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));$liv=trim((string)(isset($o['livraison'])?$o['livraison']:''));if($tr===''||$liv==='Retour')continue;$map[$tr]=isset($map[$tr])?$map[$tr]+1:1;}
+  /* A duplicated Tracking is ambiguous and is never allowed to modify rows. */
+  $all=array();$ambiguous=0;foreach($map as $tr=>$count){if($count===1)$all[]=$tr;else $ambiguous++;}sort($all);$total=count($all);if($total===0)return array('ok'=>true,'checked'=>0,'pending'=>0,'delivered'=>0,'returned'=>0,'updated'=>0,'ambiguous'=>$ambiguous,'exactOnly'=>true);
   $cursor=isset($cfg['deliveryCursor'])?max(0,(int)$cfg['deliveryCursor']):0;if($cursor>=$total)$cursor=0;$take=min(max(1,(int)$limit),$total);$batch=array();for($i=0;$i<$take;$i++)$batch[]=$all[($cursor+$i)%$total];
-  $cfg['deliveryCursor']=($cursor+$take)%max(1,$total);crm_dl_cfg_set($cfg);$infos=crm_delivery_fetch_infos($batch,$token);$delivered=array();foreach($infos as $tr=>$r)if(!empty($r['delivered']))$delivered[$tr]=true;
-  $updated=0;if($delivered){$fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();$prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);
-    foreach($cur as $i=>$o){if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));if(!isset($delivered[$tr])||(string)(isset($o['livraison'])?$o['livraison']:'')==='Livrée')continue;if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();
-      /* السطر التجاري الوحيد اللي كيتبدل فهاد العملية. */
-      $o['livraison']='Livrée';$o['_f']['livraison']=$now;$o['_u']=$now;$cur[$i]=$o;$updated++;}
-    if($updated){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));}
-    if($fh){@flock($fh,LOCK_UN);@fclose($fh);}}
-  crm_audit('digylog-delivered-tracking-only | checked='.count($batch).' | delivered='.count($delivered).' | updated='.$updated);
-  return array('ok'=>true,'checked'=>count($batch),'pending'=>$total,'delivered'=>count($delivered),'updated'=>$updated);
+  $cfg['deliveryCursor']=($cursor+$take)%max(1,$total);crm_dl_cfg_set($cfg);$infos=crm_delivery_fetch_infos($batch,$token);$targets=array();$delivered=0;$returned=0;
+  foreach($infos as $tr=>$r){$state=isset($r['state'])?(string)$r['state']:'';if($state==='Livrée'){$targets[$tr]=$state;$delivered++;}elseif($state==='Retour'){$targets[$tr]=$state;$returned++;}}
+  $updated=0;$writeOk=true;if($targets){
+    $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();$prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);
+    foreach($cur as $i=>$o){
+      if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));if(!isset($targets[$tr]))continue;
+      $next=$targets[$tr];$liv=trim((string)(isset($o['livraison'])?$o['livraison']:''));
+      /* Never regress a confirmed return back to Livrée. */
+      if($liv===$next||($liv==='Retour'&&$next==='Livrée'))continue;
+      if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();
+      /* The only business-field write performed by this sync. */
+      $o['livraison']=$next;$o['_f']['livraison']=$now;$o['_u']=$now;$cur[$i]=$o;$updated++;
+    }
+    if($updated){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$writeOk=crm_write_all($data);if($writeOk)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));else $updated=0;}
+    if($fh){@flock($fh,LOCK_UN);@fclose($fh);}
+  }
+  crm_audit('digylog-delivery-tracking-only | checked='.count($batch).' | delivered='.$delivered.' | returned='.$returned.' | updated='.$updated.' | ambiguous='.$ambiguous.' | writeOk='.($writeOk?1:0));
+  return array('ok'=>(bool)$writeOk,'checked'=>count($batch),'pending'=>$total,'delivered'=>$delivered,'returned'=>$returned,'updated'=>$updated,'ambiguous'=>$ambiguous,'exactOnly'=>true);
 }
 
 /* يشتغل: من cron (GET) أو من admin (dry) */
