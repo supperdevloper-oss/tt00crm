@@ -353,27 +353,26 @@ def creative_mockup(size=(1080, 1350)):
     d.text((m, int(H * 0.115)), "Toutes vos", font=OSW_B(66), fill=PAPER)
     d.text((m, int(H * 0.115) + 74), "recettes.", font=PLA_BI(66), fill=ORANGE_LT)
 
-    # couverture du livre
-    bw = int(W * 0.50); bh = int(bw * 1.35)
-    bx, by = (W - bw) // 2, int(H * 0.285)
+    # couverture RÉELLE du livre (page 1 du PDF, rendue en 1200 px)
+    bw = int(W * 0.455); bh = int(bw * 297 / 210)
+    bx, by = int((W - bw) / 2) - int(W * 0.01), int(H * 0.262)
     sh = Image.new("RGBA", size, (0, 0, 0, 0))
-    ImageDraw.Draw(sh).rounded_rectangle((bx + 14, by + 24, bx + bw + 14, by + bh + 24), 18, fill=(0, 0, 0, 130))
-    img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(20)))
+    ImageDraw.Draw(sh).rounded_rectangle((bx + 16, by + 26, bx + bw + 16, by + bh + 26),
+                                         16, fill=(0, 0, 0, 140))
+    img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(22)))
 
-    rrect(d, (bx, by, bx + bw, by + bh), 16, fill=PAPER, outline=(255, 255, 255, 95), w=3)
-    rrect(d, (bx, by, bx + bw, by + int(bh * 0.52)), 16, fill=GREEN)
-    d.rectangle((bx, by + int(bh * 0.52) - 16, bx + bw, by + int(bh * 0.52)), fill=GREEN)
-    ph = cover(load("dish-poulet.jpg"), bw - 56, int(bh * 0.30), (0.5, 0.5))
-    img.paste(ph, (bx + 28, by + int(bh * 0.555)))
+    cv = Image.open(os.path.join(IMG, "book", "cover-page.jpg")).convert("RGB").resize((bw, bh), Image.LANCZOS)
+    mask = Image.new("L", (bw, bh), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, bw - 1, bh - 1), 10, fill=255)
+    img.paste(cv, (bx, by), mask)
     d = ImageDraw.Draw(img)
+    # tranche du livre (effet 3D léger à gauche)
+    sw_ = max(4, int(W * 0.006))
+    d.rectangle((bx - sw_, by + 6, bx, by + bh - 6), fill=(226, 219, 206))
+    d.line((bx - sw_, by + 6, bx - sw_, by + bh - 6), fill=(190, 182, 168), width=1)
+    d.rounded_rectangle((bx, by, bx + bw, by + bh), 10, outline=(255, 255, 255, 110), width=2)
 
-    draw_tracked(d, (bx + bw / 2, by + 46), "LE GUIDE PRATIQUE", OSW_M(23), ORANGE_LT, 6, "ma")
-    d.text((bx + bw / 2, by + 88), "365", font=OSW_B(126), fill=PAPER, anchor="ma")
-    d.text((bx + bw / 2, by + 222), "recettes", font=PLA_BI(74), fill=ORANGE_LT, anchor="ma")
-    d.text((bx + bw / 2, by + 310), "FRITEUSE À AIR", font=OSW_B(42), fill=PAPER, anchor="ma")
-    draw_tracked(d, (bx + bw / 2, by + int(bh * 0.90)), "ÉDITION 2026", OSW_M(25), MUTED, 5, "mm")
-
-    price_badge(img, d, int(W * 0.845), int(H * 0.535), int(W * 0.10))
+    price_badge(img, d, int(W * 0.855), int(H * 0.415), int(W * 0.105))
 
     cta_bar(img, d, H - int(H * 0.16), 110, "JE VEUX CE GUIDE", sub="PDF · 9 € · GARANTIE 14 JOURS")
     footnote(img, d, "Lisible sur téléphone, tablette, ordinateur — aucune application",
@@ -393,9 +392,9 @@ def creative_bonus(size=(1080, 1350)):
     d.text((W / 2, 100), "3 BONUS OFFERTS", font=OSW_B(88), fill=PAPER, anchor="ma")
     d.text((W / 2, 202), "avec votre guide aujourd'hui", font=OSW_R(36), fill=(220, 235, 226), anchor="ma")
 
-    cards = [("MICRO-ONDES", "60 recettes rapides", "15 €", "dish-saumon.jpg"),
-             ("SOUPES LOW-CARB", "40 recettes légères", "15 €", "dish-brownie.jpg"),
-             ("DESSERTS", "50 recettes gourmandes", "17 €", "hero-flatlay.jpg")]
+    cards = [("TABLEAU T°", "42 aliments, à imprimer", "15 €", "dish-poulet.jpg"),
+             ("4 SEMAINES", "28 menus + courses", "15 €", "dish-plats.jpg"),
+             ("50 DESSERTS", "gâteaux & goûters", "17 €", "dish-brownie.jpg")]
     cw = int(W * 0.28); ch = int(H * 0.30); gap = int(W * 0.033)
     x0 = (W - (cw * 3 + gap * 2)) / 2
     y0 = int(H * 0.335)
@@ -428,9 +427,9 @@ def creative_bonus(size=(1080, 1350)):
         d.text((x + cw / 2, vy + 26), "OFFERT", font=OSW_B(24), fill=GREEN, anchor="mm")
 
     yy = y0 + ch + 40
-    d.text((W / 2, yy), "Valeur totale : 47 €", font=OSW_M(38), fill=MUTED, anchor="mm")
+    d.text((W / 2, yy), "Valeur du pack : 85 €", font=OSW_M(38), fill=MUTED, anchor="mm")
     d.text((W / 2, yy + 54), "Aujourd'hui : 9 €", font=OSW_B(62), fill=GREEN, anchor="mm")
-    d.text((W / 2, yy + 104), "soit 83 % de réduction", font=OSW_M(30), fill=ORANGE, anchor="mm")
+    d.text((W / 2, yy + 104), "soit 89 % de réduction", font=OSW_M(30), fill=ORANGE, anchor="mm")
     cta_bar(img, d, yy + 132, 108, "JE PROFITE DES BONUS", bg=GREEN)
     footnote(img, d, "Bonus envoyés par email avec le guide · garantie 14 jours", H - 52, INK, 165)
     return img.convert("RGB")

@@ -19,9 +19,9 @@
 ╔══════════════════════════════════════════════════════════════════════╗
 ║  ⚠️  À PERSONNALISER AVANT MISE EN LIGNE (11 éléments)               ║
 ║                                                                      ║
-║  1. LIGNE 47  → CONFIG.checkout  : votre lien de paiement             ║
-║  2. LIGNE 47  → CONFIG.price     : votre prix (9 par défaut)          ║
-║  3. LIGNE 47  → CONFIG.brand     : nom de votre marque                ║
+║  1. « CONFIG.checkout » → votre lien Gumroad (produit publié)         ║
+║  2. « CONFIG.price »    → votre prix (9 par défaut)                   ║
+║  3. « CONFIG.brand »    → nom de votre marque                         ║
 ║  4. Chercher « TODO-PIXEL » → coller votre Meta Pixel                 ║
 ║  5. Chercher « TODO-PREUVE » → remplacer par votre chiffre réel       ║
 ║  6. Chercher « TODO-AVIS »  → remplacer par de vrais avis clients     ║
@@ -380,7 +380,8 @@ footer.site p{margin:0 0 8px}
       <li><span class="ck">✓</span><div><b>365 recettes</b> classées par catégorie — une idée pour chaque jour de l'année.</div></li>
       <li><span class="ck">✓</span><div><b>Le tableau temps &amp; température</b> : les réglages de base pour chaque aliment.</div></li>
       <li><span class="ck">✓</span><div><b>Des ingrédients simples</b>, déjà dans vos placards, sans matériel spécial.</div></li>
-      <li><span class="ck">✓</span><div><b>Des variantes</b> pour adapter chaque recette à votre goût et à votre budget.</div></li>
+      <li><span class="ck">✓</span><div><b>Une astuce par recette</b> : le geste qui fait la différence, écrit par ceux qui l'ont raté avant vous.</div></li>
+      <li><span class="ck">✓</span><div><b>146 pages mises en page</b>, avec sommaire, index par ingrédient et numérotation — pas un document brut.</div></li>
       <li><span class="ck">✓</span><div><b>Format PDF</b> : téléphone, tablette ou ordinateur — et imprimable si vous préférez le papier.</div></li>
     </ul>
   </div>
@@ -409,29 +410,29 @@ footer.site p{margin:0 0 8px}
     <p class="center muted" style="margin-top:14px">Ils sont inclus dans le même téléchargement. Rien à payer en plus.</p>
     <div class="bonus">
       <div class="bcard">
-        <img src="assets/img/dish-saumon.jpg" loading="lazy" alt="Bonus 1 : recettes au micro-ondes">
+        <img src="assets/img/dish-poulet.jpg" loading="lazy" alt="Bonus 1 : le tableau temps et températures">
         <div class="body">
           <span class="tag">BONUS 1</span>
-          <h4>Micro-ondes express</h4>
-          <p>60 recettes rapides pour les soirs où vous avez 10 minutes.</p>
+          <h4>Tableau temps &amp; températures</h4>
+          <p>Les réglages de 40 aliments, sur une page à imprimer et à coller sur la porte de la friteuse.</p>
           <div class="val"><s>15 €</s><b>OFFERT</b></div>
         </div>
       </div>
       <div class="bcard">
-        <img src="assets/img/dish-brownie.jpg" loading="lazy" alt="Bonus 2 : soupes et plats légers">
+        <img src="assets/img/dish-plats.jpg" loading="lazy" alt="Bonus 2 : quatre semaines de menus">
         <div class="body">
           <span class="tag">BONUS 2</span>
-          <h4>Soupes &amp; plats légers</h4>
-          <p>40 recettes douces, parfaites pour les repas plus légers.</p>
+          <h4>4 semaines de menus</h4>
+          <p>28 dîners déjà choisis, avec la liste de courses de chaque semaine. Plus besoin de réfléchir.</p>
           <div class="val"><s>15 €</s><b>OFFERT</b></div>
         </div>
       </div>
       <div class="bcard">
-        <img src="assets/img/hero-flatlay.jpg" loading="lazy" alt="Bonus 3 : desserts et goûters">
+        <img src="assets/img/dish-brownie.jpg" loading="lazy" alt="Bonus 3 : 50 desserts à la friteuse">
         <div class="body">
           <span class="tag">BONUS 3</span>
-          <h4>Desserts gourmands</h4>
-          <p>50 desserts à la friteuse : gâteaux, fondants, muffins.</p>
+          <h4>50 desserts à la friteuse</h4>
+          <p>Gâteaux, fondants, muffins, cookies : la cuisson douce qui garde la mie moelleuse.</p>
           <div class="val"><s>17 €</s><b>OFFERT</b></div>
         </div>
       </div>
@@ -451,11 +452,10 @@ footer.site p{margin:0 0 8px}
 
     <div class="pricebox" style="margin-top:26px">
       <ul class="stack">
-        <li><span>365 recettes pour friteuse à air (PDF)</span><span>29 €</span></li>
-        <li><span>Tableau temps &amp; températures</span><span>9 €</span></li>
-        <li><span>Bonus 1 — Micro-ondes express</span><span>15 €</span></li>
-        <li><span>Bonus 2 — Soupes &amp; plats légers</span><span>15 €</span></li>
-        <li><span>Bonus 3 — Desserts gourmands</span><span>17 €</span></li>
+        <li><span>Guide 365 recettes pour friteuse à air — 146 pages (PDF)</span><span>38 €</span></li>
+        <li><span>Bonus 1 — Tableau temps &amp; températures</span><span>15 €</span></li>
+        <li><span>Bonus 2 — 4 semaines de menus</span><span>15 €</span></li>
+        <li><span>Bonus 3 — 50 desserts à la friteuse</span><span>17 €</span></li>
         <li class="total"><span>Valeur totale</span><span><s>85 €</s> &nbsp;9 €</span></li>
       </ul>
 
@@ -592,7 +592,9 @@ footer.site p{margin:0 0 8px}
    1) CONFIGURATION — MODIFIEZ CES 4 LIGNES UNIQUEMENT
    ============================================================ */
 const CONFIG = {
-  checkout : "https://pay.hotmart.com/XXXXXXXXX?off=XXXXXXXX",  // ← votre lien de paiement
+  // Lien Gumroad du produit : https://VOTRE-NOM.gumroad.com/l/365-recettes
+  // « wanted=true » ouvre directement le paiement (1 clic de moins = plus de ventes).
+  checkout : "https://VOTRE-NOM.gumroad.com/l/365-recettes?wanted=true",
   price    : "9",                                               // ← prix affiché (doit être identique au checkout)
   brand    : "Friteuse Facile",                                 // ← nom de votre marque
   currency : "EUR"
@@ -604,19 +606,20 @@ var bn = document.getElementById('brandName'); if (bn) bn.textContent = CONFIG.b
 var bf = document.getElementById('brandFoot'); if (bf) bf.textContent = CONFIG.brand;
 document.getElementById('year').textContent = new Date().getFullYear();
 
-/* 3) Liens de paiement + UTM transmis au checkout (Hotmart : src / sck) */
+/* 3) Lien de paiement Gumroad + UTM transmis (attribution)
+   Gumroad : « wanted=true » ouvre directement le checkout, « referrer » force la
+   source affichée dans la fiche de vente, les utm_* restent dans le lien. */
 (function(){
   var params = new URLSearchParams(location.search);
   var passthrough = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid'];
   function buildUrl(){
     try{
       var u = new URL(CONFIG.checkout);
-      // ce qui permet de retrouver la campagne dans Hotmart
-      var src = [params.get('utm_source'), params.get('utm_medium'), params.get('utm_campaign')]
-                 .filter(Boolean).join('_');
-      if (src && !u.searchParams.has('src')) u.searchParams.set('src', src);
-      if (params.get('utm_content') && !u.searchParams.has('sck'))
-        u.searchParams.set('sck', params.get('utm_content').slice(0,90));
+      if (!u.searchParams.has('wanted')) u.searchParams.set('wanted','true');
+      // source lisible dans Gumroad → Ventes → « Referrer »
+      var tag = [params.get('utm_source'), params.get('utm_medium'), params.get('utm_campaign')]
+                .filter(Boolean).join('_');
+      if (tag && !u.searchParams.has('referrer')) u.searchParams.set('referrer', tag);
       passthrough.forEach(function(k){
         if (params.get(k) && !u.searchParams.has(k)) u.searchParams.set(k, params.get(k));
       });

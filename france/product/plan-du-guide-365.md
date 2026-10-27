@@ -1,4 +1,10 @@
 # Créer le produit : « 365 Recettes pour Friteuse à Air »
+
+> ✅ **CE PLAN EST RÉALISÉ.** Le produit final est dans ce dossier :
+> `365-recettes-friteuse-a-air.pdf` (146 pages, 365 recettes) + 3 bonus dans `bonus/`.
+> Les sources sont dans `data/` et le générateur dans `build-pdf.py`.
+> Ce document reste comme référence (sourcing légal, calendrier, checklist).
+
 ### Plan de production réaliste — 4 semaines, sans équipe
 
 > Le produit, c'est 50 % de la réussite. Un bon funnel qui vend un PDF bâclé produit
@@ -121,14 +127,14 @@ puis 30 nouvelles chaque mois pendant 10 mois ». Ça crée même une raison de 
 
 ## 5. Les 3 bonus (à produire en 5 h)
 
-| Bonus | Contenu | Méthode |
-|---|---|---|
-| **Micro-ondes express** (valeur affichée 15 €) | 60 recettes en 15 min max | sélection de recettes rapides du guide, reformatées |
-| **Soupes & plats légers** (15 €) | 40 recettes | compilation + 10 nouvelles |
-| **Desserts gourmands** (17 €) | 50 recettes | extraction des desserts du guide |
+| Bonus | Contenu | Méthode | ✅ Produit |
+|---|---|---|---|
+| **Tableau temps & températures** (15 €) | 42 aliments, 3 pages | page à imprimer + les 6 repères à retenir | `bonus/1-tableau-temps-et-temperatures.pdf` |
+| **4 semaines de menus** (15 €) | 28 dîners + listes de courses | 4 semaines thématiques + méthode | `bonus/2-menus-4-semaines.pdf` |
+| **50 desserts** (17 €) | 50 recettes | extraction + mise en page des desserts du guide | `bonus/3-50-desserts.pdf` |
 
 > Les bonus sont des **extraits réorganisés**. C'est parfaitement acceptable — mais ne dites pas
-> « 3 livres supplémentaires de 200 pages ». Dites : « 3 guides complémentaires de 40 à 60 recettes ».
+> « 3 livres supplémentaires de 200 pages ». Dites : « 3 guides complémentaires, 3 à 18 pages ».
 
 ---
 
@@ -137,9 +143,9 @@ puis 30 nouvelles chaque mois pendant 10 mois ». Ça crée même une raison de 
 | Sujet | Réalité |
 |---|---|
 | **Prix** | 9 € pour le volume (test), **14,90 €** pour la rentabilité. Testez les deux (voir le plan 14 j). |
-| **TVA** | Hotmart est *Merchant of Record* : il collecte et reverse la TVA européenne. Vous n'avez pas à gérer la TVA par pays. |
-| **Frais Hotmart** | ~9,9 % + 0,50 € par vente + frais de retrait (~1–2 €). |
-| **Retrait** | Seuil 50 € / 50 $ via **Payoneer** (Wise n'est pas accepté). Délai : 15 jours après la vente. |
+| **TVA** | **Gumroad** est *Merchant of Record* (depuis janvier 2025) : elle collecte et reverse la TVA européenne. Aucune démarche OSS/TVA à faire. |
+| **Frais Gumroad** | 10 % + 0,50 $ par vente + traitement carte 2,9 % + 0,30 $ → ≈ 2,15 $ sur une vente à 9 € (≈ 12,9 %). |
+| **Retrait** | Seuil **100 $**, virement chaque vendredi. Virement bancaire local (MAD) ou PayPal (USD, 2 %). PayPal Connect indisponible depuis le Maroc. |
 | **Droit de rétractation** | 14 jours en UE. Pour un contenu numérique, il peut être supprimé avec accord explicite — mais **gardez la garantie 14 jours comme argument commercial**, pas comme contrainte. |
 | **Statut** | Vérifiez votre situation (auto-entrepreneur / société) avant les premières ventes. Une facture doit pouvoir être émise. |
 
@@ -150,10 +156,11 @@ puis 30 nouvelles chaque mois pendant 10 mois ». Ça crée même une raison de 
 - [ ] 60 recettes minimum réellement **testées à la maison**
 - [ ] Temps et températures **cohérents** avec plusieurs modèles de friteuses (500 W à 1800 W)
 - [ ] Unités françaises partout (g, ml, °C, c. à s.)
-- [ ] Sommaire cliquable + numérotation des pages
+- [x] Sommaire **avec numéros de page** + folio sur chaque page
+- [x] Index par ingrédient (42 entrées) et pages d'ouverture de chapitre
 - [ ] Photos nettes, lumineuses, sans marque visible sur l'appareil
-- [ ] PDF < 40 Mo et lisible sur téléphone (testez sur un vrai iPhone + un Android)
+- [x] PDF = 5,2 Mo, A4, polices embarquées — à tester sur un vrai iPhone + un Android
 - [ ] Aucune faute de français (relire à voix haute, puis LanguageTool)
 - [ ] Un email de support qui répond en < 24 h
-- [ ] Les 3 bonus prêts et inclus dans le même envoi
-- [ ] Fichier hébergé chez Hotmart (pas un lien Google Drive public)
+- [x] Les 3 bonus prêts (3 PDF séparés, voir `LIVRAISON.md`)
+- [ ] Fichiers hébergés **sur Gumroad** (pas un lien Google Drive public)

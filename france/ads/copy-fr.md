@@ -73,7 +73,7 @@ Et surtout : sans allumer le four, sans sortir la plaque, sans surveiller.
 ```
 Votre friteuse peut faire bien plus que des frites.
 
-365 recettes classées par catégorie + le tableau temps & températures + 3 bonus offerts (micro-ondes, soupes, desserts).
+365 recettes classées par catégorie (146 pages) + le tableau temps & températures + 3 bonus offerts (tableau à imprimer, 4 semaines de menus, 50 desserts).
 
 Le tout dans un seul PDF, lisible sur téléphone.
 
@@ -88,7 +88,7 @@ Vous avez regardé le guide sans le prendre — c'est normal. 🙂
 Petit rappel de ce qu'il contient :
 • 365 recettes testées
 • le tableau temps & températures (le vrai gain de temps)
-• 3 bonus offerts : micro-ondes, soupes, desserts
+• 3 bonus offerts : tableau à imprimer, 4 semaines de menus, 50 desserts
 
 9 €, une seule fois. Remboursé sous 14 jours si ça ne vous plaît pas.
 

@@ -58,12 +58,12 @@ footer{text-align:center;color:var(--muted);font-size:12.5px;margin-top:40px}
   <h2>Comment récupérer votre guide</h2>
   <div class="card">
     <ol class="steps">
-      <li><b>Vérifiez votre boîte mail</b><p>L'email arrive en général en moins d'une minute. L'expéditeur contient le nom de la plateforme de paiement (Hotmart).</p></li>
+      <li><b>Vérifiez votre boîte mail</b><p>L'email arrive en général en moins d'une minute. L'expéditeur contient le nom de la plateforme de paiement (Gumroad) — objet : « Your receipt from … ».</p></li>
       <li><b>Regardez dans les spams</b><p>Si vous ne le voyez pas : dossiers Spam, Promotions ou Indésirables. Ajoutez l'expéditeur à vos contacts pour la suite.</p></li>
       <li><b>Téléchargez le PDF</b><p>Cliquez sur le bouton « Accéder à mon produit ». Le fichier est lisible sur téléphone, tablette et ordinateur.</p></li>
-      <li><b>Gardez le lien</b><p>L'accès est permanent : vous pourrez retélécharger le guide à tout moment depuis votre espace d'achat.</p></li>
+      <li><b>Gardez le lien</b><p>L'accès est permanent : vous pourrez retélécharger le guide à tout moment depuis <b>gumroad.com/library</b>, avec l'email utilisé au paiement.</p></li>
     </ol>
-    <a class="btn" href="https://consumer.hotmart.com" target="_blank" rel="noopener">Accéder à mon achat<small>CONSUMER.HOTMART.COM</small></a>
+    <a class="btn" href="https://gumroad.com/library" target="_blank" rel="noopener">Accéder à mon achat<small>GUMROAD.COM/LIBRARY</small></a>
   </div>
 
   <h2>Et maintenant ?</h2>
@@ -96,13 +96,14 @@ footer{text-align:center;color:var(--muted);font-size:12.5px;margin-top:40px}
 </div>
 
 <script>
-/* TODO : mettre votre lien d'upgrade (Hotmart / autre) */
+/* TODO : mettre votre lien d'upgrade Gumroad (autre produit, ou bundle) */
 var UPSELL_URL = "#";
 document.getElementById('upsell').href = UPSELL_URL;
 document.getElementById('year').textContent = new Date().getFullYear();
 
-/* TODO-PIXEL : décommentez pour la page de remerciement.
-   Le Purchase doit idéalement être envoyé par Hotmart (voir tracking/pixel-hotmart.md).
+/* TODO-PIXEL : ne décommentez QUE si ce n'est pas déjà fait par Gumroad.
+   Gumroad envoie lui-même le Purchase (Réglages → Advanced → Facebook Pixel).
+   Si vous décommentez ici, double comptage garanti. Voir tracking/pixel-gumroad.md.
 --------------------------------------------------------------------------
 if (window.fbq) fbq('track', 'Purchase', { value: 9.00, currency: 'EUR' });
 -------------------------------------------------------------------------- */

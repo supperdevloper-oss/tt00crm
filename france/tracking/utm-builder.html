@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Générateur de liens UTM — Meta Ads → Hotmart</title>
+<title>Générateur de liens UTM — Meta Ads → Gumroad</title>
 <style>
 :root{--green:#0f3d2a;--cream:#f6f2e9;--paper:#fffdf7;--line:#e3dccd;--orange:#d95a1e;--ink:#1b1a17;--muted:#6f685c}
 *{box-sizing:border-box}
@@ -38,7 +38,7 @@ code{background:#efeade;padding:1px 5px;border-radius:4px;font-size:12.5px}
 <body>
 <div class="wrap">
   <h1>Générateur de liens UTM</h1>
-  <p class="sub">Meta Ads → votre landing → Hotmart. Remplissez, copiez, collez dans le champ « Paramètres d'URL » de l'annonce.</p>
+  <p class="sub">Meta Ads → votre landing → Gumroad. Remplissez, copiez, collez dans le champ « Paramètres d'URL » de l'annonce.</p>
 
   <div class="panel">
     <label>URL de destination <span>(votre landing)</span></label>
@@ -66,7 +66,7 @@ code{background:#efeade;padding:1px 5px;border-radius:4px;font-size:12.5px}
 
     <div class="row">
       <div>
-        <label>Contenu <span>→ devient <code>sck</code> dans Hotmart</span></label>
+        <label>Contenu <span>→ devient <code>referrer</code> dans Gumroad</span></label>
         <input type="text" id="cnt" value="C1_erreurs" placeholder="C1_erreurs">
       </div>
       <div>
@@ -100,10 +100,10 @@ code{background:#efeade;padding:1px 5px;border-radius:4px;font-size:12.5px}
     <h3 style="margin:0;font-size:17px">Ce que chaque paramètre devient</h3>
     <table class="table">
       <tr><th>Paramètre</th><th>Destination</th><th>Où le lire</th></tr>
-      <tr><td><code>utm_source</code></td><td>landing → <code>src</code> Hotmart</td><td>Hotmart → Ventes → Origine</td></tr>
-      <tr><td><code>utm_campaign</code></td><td>landing → <code>src</code> Hotmart</td><td>Hotmart → Ventes → Origine</td></tr>
-      <tr><td><code>utm_content</code></td><td>landing → <code>sck</code> Hotmart</td><td>Hotmart → Ventes → Sck / Origine</td></tr>
+      <tr><td><code>utm_source</code> + <code>utm_medium</code> + <code>utm_campaign</code></td><td>landing → <code>referrer</code> Gumroad</td><td>Gumroad → Sales → Referrer</td></tr>
+      <tr><td><code>utm_content</code></td><td>landing → <code>referrer</code> + <code>utm_content</code></td><td>Gumroad → Sales → Referrer</td></tr>
       <tr><td><code>ad_id</code></td><td>landing (analytics)</td><td>Meta → Rapport par annonce</td></tr>
+      <tr><td>—</td><td>Gumroad <code>Purchase</code> (pixel natif)</td><td>Meta → Events Manager (par campagne / annonce)</td></tr>
     </table>
     <div class="note">
       <b>Règle d'or :</b> un seul nommage, toujours pareil.

@@ -17,20 +17,32 @@
 | CTR | clics ÷ impressions | ≥ 1,5 % |
 | Taux landing → checkout | clics checkout ÷ clics landing | ≥ 8 % |
 | Taux checkout → achat | achats ÷ checkout | ≥ 30 % |
-| **CPA** | dépenses ÷ achats | **≤ 7 €** pour être rentable à 9 € |
+| **CPA** | dépenses ÷ achats | **≤ 6,80 €** pour être rentable à 9 € |
 
-### Combien vous gagnez réellement sur 9 €
+### Combien vous gagnez réellement sur 9 € (Gumroad)
 ```
-Prix affiché ..................  9,00 €
-Frais Hotmart (9,9 % + 0,50) ..  −1,39 €
-Frais de retrait (amortis) ....  −0,15 €
-------------------------------------------
-Net par vente .................  ~7,40 €
-Remboursements (~8 %) .........  −0,59 €
-------------------------------------------
-Net réel ......................  ~6,80 €
+Prix affiché .....................  9,00 €  (≈ 10,50 $)
+Gumroad 10 % .....................  −1,05 $
+Fixe par vente ...................  −0,50 $
+Carte 2,9 % + 0,30 $ .............  −0,60 $
+-------------------------------------------
+Total frais ......................  −2,15 $ ≈ −1,84 €
+-------------------------------------------
+Net par vente ....................  ≈ 7,15 €
+Remboursements (~5 %) ............  −0,35 €
+-------------------------------------------
+Net réel .........................  ≈ 6,80 €
 ```
 👉 **Seuil de rentabilité : CPA < 6,80 €.**
+
+> Prix à mettre sur la fiche : **devise EUR, 9 €** → le client français voit exactement 9,00 €.
+> Si le compte est déjà en USD : `9.99` s'affiche **8,99 €**, `10` s'affiche **9,00 €** (Gumroad
+> conserve la terminaison du prix). Détail : `product/LIVRAISON.md` §2.
+
+> ⚠️ **Discover** (la marketplace Gumroad) prend **30 %** : sur une vente à 9 € vous ne gardez
+> que ~6,30 €. Au lancement, **désactivez Discover** et n'envoyez que votre propre lien.
+> Bonus : Gumroad est *Merchant of Record* → elle collecte et reverse la TVA française,
+> vous n'avez aucune démarche OSS/TVA à faire.
 En prospection froide, le CPA réel des premiers jours sera plutôt de **8 à 15 €**.
 C'est normal. La rentabilité vient : (a) du retargeting, (b) de l'email, (c) d'un upsell.
 
@@ -91,7 +103,7 @@ Campagne : [CONV] FR_Friteuse_365_Sales        (objectif : Ventes)
 | **J3** | Premier tri. | CTR de chaque créatif | couper les créatifs < 0,8 % |
 | **J4** | Regrouper le budget sur les 2 meilleurs. | CPC, coût par clic checkout | couper si clic > 0,70 € |
 | **J5** | Lire la page : où les gens s'arrêtent ? (Clarity/GA4) | scroll 25/50/75 % | corriger la section qui bloque |
-| **J6** | Vérifier le checkout. | clics Hotmart vs ventes | si 0 vente : problème de paiement, pas d'audience |
+| **J6** | Vérifier le checkout. | clics Gumroad vs ventes | si 0 vente : problème de paiement, pas d'audience |
 | **J7** | **Bilan de la semaine 1.** | CPA, ventes | voir §6 |
 | **J8** | Dupliquer l'ad set gagnant → **prix 14,90 €** (nouvelle page `/14`). | — | test A/B propre |
 | **J9** | Lancer le **retargeting** (voir §5). | — | — |
@@ -187,7 +199,7 @@ d'une fois par jour** — l'optimisation compulsive détruit les campagnes.
 
 - [ ] Page en ligne, HTTPS, testée sur mobile (4G, pas wifi)
 - [ ] Lien de paiement testé avec **un vrai achat à 1 €** + remboursement
-- [ ] Pixel + événements vérifiés (voir `tracking/pixel-hotmart.md`)
+- [ ] Pixel + événements vérifiés (voir `tracking/pixel-gumroad.md`)
 - [ ] Livraison automatique de l'email testée (boîte Gmail + Outlook + Yahoo)
 - [ ] `merci.html` testée
 - [ ] Mentions légales + CGV + politique de confidentialité en ligne
