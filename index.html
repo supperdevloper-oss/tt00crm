@@ -1475,7 +1475,8 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
 @media(min-width:700px) and (max-width:900px){.pv-cmd-mobile{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){
   .pv-period-buttons{grid-template-columns:repeat(3,minmax(0,1fr))}.pv-period-buttons>button{border-bottom:1px solid #e2e8f0!important}
-  .pvk-wrap{grid-template-columns:repeat(2,minmax(0,1fr))}.pvk{min-height:86px!important}.pvk-desc{font-size:9px!important}
+  .pvk-bar{display:none!important}
+  .pv-cmd-toolbar{position:sticky;top:0;z-index:15}
 }
 @media(max-width:390px){
   .pv-cmd-mobile{padding:6px;gap:7px}.pv-mob-grid{grid-template-columns:1fr}.pv-mob-field.is-wide{grid-column:auto}.pv-mob-head{padding:9px}.pv-mob-agent{max-width:68px}.pvk{padding:8px!important}.pvk-value{font-size:17px!important}

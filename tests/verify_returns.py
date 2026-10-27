@@ -53,7 +53,8 @@ checks = {
     "COMMANDES and CMD Annuler split only the visible rows": all(x in index for x in ('function t_({cancelledOnly:__pvAnn=!1}={})', 'e0.filter(o=>!o._d)', 'iv=ee.useMemo(()=>ie.filter(o=>(String(o.statut??"").trim()==="Annulé")===__pvAnn)', 'return iv.filter(', 'w==="COMONDES"&&s.jsx(t_,{})')),
     "Cancelled orders remain in shared calculations": all(x in index for x in ('const st=sum(ie.filter', 'r.conv=ie.length?nc/ie.length*100:0', 'Ce=ie.filter(Fe=>Fe.statut==="Annulé")', 'return{cmd:ie.length')),
     "Mobile CRM uses compact editable order cards": all(x in index for x in ("function __PvMobileCmdCards", "pv-cmd-mobile", "pv-mob-card", "pv-mob-summary", "فتح وتعديل جميع معلومات الطلبية", "catalog-products", "villes-list", "pv-mob-delete")),
-    "Mobile admin controls fit the viewport": all(x in index for x in ("pv-admin-top", "pv-period-buttons", "pv-main-nav", "pv-cmd-toolbar", "pv-cmd-pager", "grid-template-columns:repeat(3,minmax(0,1fr))")),
+    "Mobile admin controls fit the viewport": all(x in index for x in ("pv-admin-top", "pv-admin-tools", "pv-period-buttons", "pv-main-nav", "pv-cmd-toolbar", "pv-cmd-pager", "grid-template-columns:repeat(3,minmax(0,1fr))")),
+    "Phone view prioritizes orders over dashboards": '@media(max-width:600px)' in index and '.pvk-bar{display:none!important}' in index and '.pv-cmd-toolbar{position:sticky;top:0;z-index:15}' in index,
     "Mobile pagination defaults to twenty orders": all(x in index for x in ("__pvSizes=[20,50,100,200,500,0]", 'window.matchMedia("(max-width:900px)").matches', "Number(r)>20))return 20")),
     "Mobile cards preserve full CRM fields": all(x in index for x in ('n(o.id,"dateCreation"', 'n(o.id,"statut"', 'n(o.id,"nom"', 'n(o.id,"telephone"', 'n(o.id,"ville"', 'n(o.id,"produit"', 'n(o.id,"qte"', 'n(o.id,"prix"', 'n(o.id,"adresse"', 'n(o.id,"livraison"', 'n(o.id,"tracking"', 'n(o.id,"agent"', 'n(o.id,"originLead"', 'n(o.id,"commission"')),
     "Mobile layout prevents page-wide horizontal dragging": all(x in index for x in ('id="pv-mobile-crm-style"', 'html,body,#root{width:100%;max-width:100%;overflow-x:hidden}', '@media(max-width:900px)', '.pv-cmd-table{display:none!important}', '.pv-vscroll{overflow-x:hidden!important')),
@@ -71,9 +72,9 @@ checks = {
     "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
 }
 
-package = ROOT / "paraveda-mobile-crm.zip"
+package = ROOT / "paraveda-mobile-final.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Mobile-CRM package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
+    checks["Final mobile package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
