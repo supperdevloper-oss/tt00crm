@@ -57,6 +57,8 @@ checks = {
     "Admin KPI dashboard is not rendered on phones": all(x in index for x in ("function __pvAdminMobile()", "Mobi|Android|iPhone|iPad|iPod", "navigator.maxTouchPoints", "touch>1&&/Macintosh/i.test(u)", '!__pvAdminMobile()&&s.jsxs("div",{className:"pvk-bar"')),
     "Admin KPI dashboard also has CSS phone fallback": '@media(hover:none) and (pointer:coarse){.pvk-bar{display:none!important}}' in index,
     "Admin mobile controls fit the viewport": all(x in index for x in ("pv-admin-top", "pv-admin-tools", "pv-period-buttons", "pv-main-nav", "pv-cmd-toolbar", "pv-cmd-pager")),
+    "Admin phone header has no empty block": all(x in index for x in ('.pv-admin-top{position:relative;display:flex!important;min-height:0!important', '.pv-admin-tools{display:contents!important}', '.pv-admin-period{width:100%;min-width:0;order:3}')),
+    "Phone period filters stay on one row": all(x in index for x in ('.pv-period>span{display:none!important}', 'grid-template-columns:repeat(6,minmax(0,1fr))', 'font-size:9px!important')),
     "Admin mobile preserves desktop pagination": '__pvSizes=[50,100,200,500,0]' in index and 'if(r===null||r==="")return 100' in index,
     "Agent phone workspace remains unchanged": 'function I2({agent:e})' in index and 's.jsx(I2,{agent:c.agent})' in index and 'cancelledOnly' not in index[index.index('function I2({agent:e})'):index.index('function __PvWaitingCmd',index.index('function I2({agent:e})'))],
     "Waiting CMD exit is permanently stamped": all(x in index for x in ("waitingExitedAt:Number(i.waitingExitedAt)||0", "waitingExitedDate:String(legacyExit?legacyDate:i.waitingExitedDate||", "waitingExitedBy:String(i.waitingExitedBy||", "waitingExitedAt:now,waitingExitedDate:exitDate,waitingExitedBy:exitBy")),
@@ -72,9 +74,9 @@ checks = {
     "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
 }
 
-package = ROOT / "paraveda-admin-phone-stable-table.zip"
+package = ROOT / "paraveda-admin-phone-compact-header.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Stable admin phone-table package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
+    checks["Compact admin phone-header package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

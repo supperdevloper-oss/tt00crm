@@ -1388,11 +1388,12 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
 @media(max-width:900px){
   html,body,#root{overscroll-behavior-x:none}
   body{min-width:0!important}
-  .pv-admin-top{flex-wrap:wrap;padding:8px!important}
-  .pv-admin-tools{width:100%;min-width:0;flex-wrap:wrap;margin:0!important}.pv-admin-period{width:100%;min-width:0;order:3}
-  .pv-period{width:100%;min-width:0;justify-content:center}
-  .pv-period-buttons{display:grid!important;width:100%;grid-template-columns:repeat(6,minmax(0,1fr));overflow:visible!important}
-  .pv-period-buttons>button{min-width:0;padding-inline:6px!important;white-space:nowrap}
+  .pv-admin-top{position:relative;display:flex!important;min-height:0!important;flex-wrap:wrap!important;align-items:center!important;gap:4px!important;padding:4px 6px!important}
+  .pv-admin-tools{display:contents!important}.pv-admin-period{width:100%;min-width:0;order:3}
+  .pv-period{width:100%;min-width:0;gap:0!important;justify-content:center}
+  .pv-period>span{display:none!important}
+  .pv-period-buttons{display:grid!important;width:100%;grid-template-columns:repeat(6,minmax(0,1fr));overflow:hidden!important;border-radius:9px!important}
+  .pv-period-buttons>button{min-width:0;padding:6px 2px!important;font-size:10px!important;line-height:1!important;white-space:nowrap}
   .pv-main-nav{max-width:calc(100vw - 16px)!important;margin-inline:8px!important;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
   .pv-admin-sheet{width:100%;min-width:0;max-width:100%;overflow:hidden!important}
   .pv-vscroll{width:100%!important;max-width:100%!important;overflow-x:scroll!important;overflow-y:auto!important;overscroll-behavior-x:none!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:auto!important;touch-action:pan-x pan-y}
@@ -1403,7 +1404,7 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
   .pv-ride{display:none!important}
 }
 @media(max-width:600px){
-  .pv-period-buttons{grid-template-columns:repeat(3,minmax(0,1fr))}.pv-period-buttons>button{border-bottom:1px solid #e2e8f0!important}
+  .pv-period-buttons{grid-template-columns:repeat(6,minmax(0,1fr))}.pv-period-buttons>button{padding-inline:1px!important;font-size:9px!important}
   .pvk-wrap{grid-template-columns:repeat(2,minmax(0,1fr))}.pvk{min-height:86px!important}.pvk-desc{font-size:9px!important}
   .pv-cmd-toolbar{position:sticky;top:0;z-index:15}
 }
