@@ -49,7 +49,9 @@ checks = {
     "Digylog Livrée synchronization is preserved": all(x in api for x in ("function crm_delivery_is_delivered", "return crm_delivery_status($info)==='Livrée'", "if((string)$id==='6'||$n==='livree'||strpos($n,'livree')===0)return 'Livrée'", "'delivered'=>$delivered")),
     "Digylog Retournée synchronizes to CRM Retour": all(x in api for x in ("function crm_delivery_is_returned", "$n==='retournee'||$n==='retourne'", "return 'Retour'", "$o['livraison']=$next", "'returned'=>$returned")),
     "Delivery synchronization stays exact-Tracking-only": all(x in api for x in ("crm_dl_base().'/order/'.rawurlencode($tr).'/infos'", "$targets[$tr]", "'exactOnly'=>true")) and "crm_tracking_phone" not in api[api.index("function crm_delivery_status"):api.index("/* يشتغل: من cron")],
-    "Duplicate Tracking is never auto-updated": all(x in api for x in ("A duplicated Tracking is ambiguous", "if($count===1)$all[]=$tr;else $ambiguous++", "'ambiguous'=>$ambiguous")),
+    "Duplicate Tracking is never auto-updated": all(x in api for x in ("A duplicated Tracking is ambiguous", "if($meta['count']===1)$ranked[]", "else $ambiguous++", "'ambiguous'=>$ambiguous")),
+    "Active deliveries are checked before delivered history": all(x in api for x in ("Active deliveries are checked before already-Livrée rows", "'priority'=>$liv==='Livrée'?1:0", "usort($ranked")),
+    "Admin can synchronize one exact Tracking now": all(x in api for x in ("$op === 'delivery_sync'", "crm_delivery_sync_batch($tracking !== '' ? 1 : 20, $tracking)", "'requestedTracking'=>$onlyTracking")) and all(x in digylog_admin for x in ("3) مزامنة Suivie من Digylog", "deliveryTracking", "syncDelivery", "op:'delivery_sync'")),
     "Returned synchronization changes no other business field": all(x in api for x in ("The only business-field write performed by this sync", "$o['livraison']=$next;$o['_f']['livraison']=$now;$o['_u']=$now", "It never writes statut, dateLiv, tracking, client data, prices, or other fields")),
     "Open CRM heartbeat checks delivery states": "$result['deliverySync']=crm_delivery_sync_batch(20)" in api,
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
@@ -80,9 +82,9 @@ checks = {
     "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
 }
 
-package = ROOT / "paraveda-digylog-return-sync.zip"
+package = ROOT / "paraveda-digylog-status-sync.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Digylog return-sync package is valid and contains only api.php"] = z.testzip() is None and z.namelist() == ["api.php"] and z.read("api.php") == (ROOT / "api.php").read_bytes()
+    checks["Digylog status-sync package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php", "digylog-admin.html"] and z.read("api.php") == (ROOT / "api.php").read_bytes() and z.read("digylog-admin.html") == (ROOT / "digylog-admin.html").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

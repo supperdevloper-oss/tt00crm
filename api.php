@@ -1130,6 +1130,11 @@ function crm_dl_admin($b) {
     $syncToken = isset($b['sellerToken']) && trim((string)$b['sellerToken']) !== '' ? (string)$b['sellerToken'] : $sellerToken;
     crm_out(crm_tracking_sync($ids, $syncToken));
   }
+  if ($op === 'delivery_sync') {
+    $tracking = strtoupper(trim((string)(isset($b['tracking']) ? $b['tracking'] : '')));
+    if ($tracking !== '' && !preg_match('/^[A-Z0-9_-]{3,80}$/', $tracking)) crm_out(array('ok'=>false,'err'=>'bad-tracking'),400);
+    crm_out(crm_delivery_sync_batch($tracking !== '' ? 1 : 20, $tracking));
+  }
   if ($op === 'dry') crm_out(crm_dl_run(true));
   crm_out(array('ok'=>false, 'err'=>'bad-op'), 400);
 }
@@ -1339,18 +1344,26 @@ function crm_delivery_fetch_infos($trackings,$token) {
   }
   curl_multi_close($mh);return $out;
 }
-function crm_delivery_sync_batch($limit=20) {
+function crm_delivery_sync_batch($limit=20,$onlyTracking='') {
   global $LOCK_FILE;
   $cfg=crm_dl_cfg_get();$token=isset($cfg['token'])?trim((string)$cfg['token']):'';if($token==='')return array('ok'=>false,'err'=>'no-token','checked'=>0,'updated'=>0);
+  $onlyTracking=strtoupper(trim((string)$onlyTracking));
   $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
   /* Retour is terminal. Livrée remains eligible because a delivered parcel can
-     later be returned; all other known Tracking rows remain eligible as before. */
-  $map=array();foreach($orders as $o){if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));$liv=trim((string)(isset($o['livraison'])?$o['livraison']:''));if($tr===''||$liv==='Retour')continue;$map[$tr]=isset($map[$tr])?$map[$tr]+1:1;}
+     later be returned. Active deliveries are checked before already-Livrée rows. */
+  $map=array();foreach($orders as $o){
+    if(!is_array($o)||!empty($o['_del']))continue;$tr=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));$liv=trim((string)(isset($o['livraison'])?$o['livraison']:''));
+    if($tr===''||$liv==='Retour'||($onlyTracking!==''&&$tr!==$onlyTracking))continue;
+    if(!isset($map[$tr]))$map[$tr]=array('count'=>0,'priority'=>$liv==='Livrée'?1:0);$map[$tr]['count']++;if($liv!=='Livrée')$map[$tr]['priority']=0;
+  }
   /* A duplicated Tracking is ambiguous and is never allowed to modify rows. */
-  $all=array();$ambiguous=0;foreach($map as $tr=>$count){if($count===1)$all[]=$tr;else $ambiguous++;}sort($all);$total=count($all);if($total===0)return array('ok'=>true,'checked'=>0,'pending'=>0,'delivered'=>0,'returned'=>0,'updated'=>0,'ambiguous'=>$ambiguous,'exactOnly'=>true);
-  $cursor=isset($cfg['deliveryCursor'])?max(0,(int)$cfg['deliveryCursor']):0;if($cursor>=$total)$cursor=0;$take=min(max(1,(int)$limit),$total);$batch=array();for($i=0;$i<$take;$i++)$batch[]=$all[($cursor+$i)%$total];
-  $cfg['deliveryCursor']=($cursor+$take)%max(1,$total);crm_dl_cfg_set($cfg);$infos=crm_delivery_fetch_infos($batch,$token);$targets=array();$delivered=0;$returned=0;
-  foreach($infos as $tr=>$r){$state=isset($r['state'])?(string)$r['state']:'';if($state==='Livrée'){$targets[$tr]=$state;$delivered++;}elseif($state==='Retour'){$targets[$tr]=$state;$returned++;}}
+  $ranked=array();$ambiguous=0;foreach($map as $tr=>$meta){if($meta['count']===1)$ranked[]=array('tracking'=>$tr,'priority'=>$meta['priority']);else $ambiguous++;}
+  usort($ranked,function($a,$b){return $a['priority']===$b['priority']?strcmp($a['tracking'],$b['tracking']):($a['priority']-$b['priority']);});$all=array_map(function($x){return $x['tracking'];},$ranked);
+  $total=count($all);if($total===0)return array('ok'=>true,'checked'=>0,'pending'=>0,'delivered'=>0,'returned'=>0,'updated'=>0,'ambiguous'=>$ambiguous,'requestedTracking'=>$onlyTracking,'exactOnly'=>true);
+  $cursor=$onlyTracking!==''?0:(isset($cfg['deliveryCursor'])?max(0,(int)$cfg['deliveryCursor']):0);if($cursor>=$total)$cursor=0;$take=min(max(1,(int)$limit),$total);$batch=array();for($i=0;$i<$take;$i++)$batch[]=$all[($cursor+$i)%$total];
+  if($onlyTracking===''){$cfg['deliveryCursor']=($cursor+$take)%max(1,$total);crm_dl_cfg_set($cfg);}
+  $infos=crm_delivery_fetch_infos($batch,$token);$targets=array();$delivered=0;$returned=0;$httpErrors=0;$unrecognized=0;
+  foreach($infos as $tr=>$r){$state=isset($r['state'])?(string)$r['state']:'';if(isset($r['code'])&&((int)$r['code']<200||(int)$r['code']>=300))$httpErrors++;elseif($state==='Livrée'){$targets[$tr]=$state;$delivered++;}elseif($state==='Retour'){$targets[$tr]=$state;$returned++;}else $unrecognized++;}
   $updated=0;$writeOk=true;if($targets){
     $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();$prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);
     foreach($cur as $i=>$o){
@@ -1365,8 +1378,8 @@ function crm_delivery_sync_batch($limit=20) {
     if($updated){crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$writeOk=crm_write_all($data);if($writeOk)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));else $updated=0;}
     if($fh){@flock($fh,LOCK_UN);@fclose($fh);}
   }
-  crm_audit('digylog-delivery-tracking-only | checked='.count($batch).' | delivered='.$delivered.' | returned='.$returned.' | updated='.$updated.' | ambiguous='.$ambiguous.' | writeOk='.($writeOk?1:0));
-  return array('ok'=>(bool)$writeOk,'checked'=>count($batch),'pending'=>$total,'delivered'=>$delivered,'returned'=>$returned,'updated'=>$updated,'ambiguous'=>$ambiguous,'exactOnly'=>true);
+  crm_audit('digylog-delivery-tracking-only | checked='.count($batch).' | delivered='.$delivered.' | returned='.$returned.' | updated='.$updated.' | ambiguous='.$ambiguous.' | httpErrors='.$httpErrors.' | unrecognized='.$unrecognized.' | writeOk='.($writeOk?1:0));
+  return array('ok'=>(bool)$writeOk,'checked'=>count($batch),'pending'=>$total,'delivered'=>$delivered,'returned'=>$returned,'updated'=>$updated,'ambiguous'=>$ambiguous,'httpErrors'=>$httpErrors,'unrecognized'=>$unrecognized,'requestedTracking'=>$onlyTracking,'exactOnly'=>true);
 }
 
 /* يشتغل: من cron (GET) أو من admin (dry) */

@@ -84,6 +84,15 @@
       </div>
 
       <div class="card">
+        <h2>3) مزامنة Suivie من Digylog</h2>
+        <div class="hint" style="margin-bottom:10px;color:#166534;font-weight:700">كتقرا الحالة الحقيقية باستعمال Tracking فقط: Livrée كتبقى Livrée وRetournée كتولي Retour. ما كتبدل حتى عمود آخر.</div>
+        <label for="deliveryTracking">Tracking ديال الطلبية (اختياري)</label>
+        <input id="deliveryTracking" type="text" autocomplete="off" placeholder="مثال: S8363F49B8" style="direction:ltr;text-align:left;text-transform:uppercase" />
+        <div class="hint" style="margin-top:6px">دخل Tracking باش تفحص طلبية بعينها دابا. إلا خليتيه فارغ كيتفحصو 20 طلبية تلقائياً.</div>
+        <button class="primary" id="syncDelivery" style="width:100%;margin-top:12px">🔄 مزامنة Suivie الآن</button>
+      </div>
+
+      <div class="card">
         <h2>نتيجة</h2>
         <pre id="out">—</pre>
       </div>
@@ -169,6 +178,19 @@
     $('dry').onclick = function () {
       run($('dry'), { action: 'digylog_admin', op: 'dry' }, function (j) {
         show(j.ok ? '👀 هادي الطلبيات لي غاديين يمشيو (ما تصيفطاتش)' : '❌ ' + (j.err || 'error'), !!j.ok);
+      });
+    };
+    $('syncDelivery').onclick = function () {
+      var tracking=$('deliveryTracking').value.trim().toUpperCase();
+      show('⏳ كنقرا الحالة الحقيقية من Digylog…',true);
+      run($('syncDelivery'), {action:'digylog_admin',op:'delivery_sync',tracking:tracking}, function (j) {
+        if(!j.ok){ show('❌ المزامنة فشلات ('+(j.err||'error')+')',false); return; }
+        if(Number(j.updated||0)>0){ show('✅ تمت المزامنة: Suivie تبدلات بنجاح.',true); return; }
+        if(Number(j.returned||0)>0||Number(j.delivered||0)>0){ show('✅ الحالة متزامنة ديجا وما محتاجاش تبديل.',true); return; }
+        if(Number(j.httpErrors||0)>0){ show('❌ Digylog رفض أو ما لقا Tracking. راجع التوكن وTracking.',false); return; }
+        if(Number(j.ambiguous||0)>0){ show('❌ نفس Tracking مكرر فالـCRM، لذلك ما تبدلات حتى طلبية.',false); return; }
+        if(Number(j.checked||0)===0){ show('❌ Tracking ما موجودش فالـCRM أو الطلبية ديجا Retour.',false); return; }
+        show('ℹ️ Digylog جاوب ولكن الحالة الحالية ماشي Livrée ولا Retournée.',true);
       });
     };
     $('syncTracking').onclick = async function () {
