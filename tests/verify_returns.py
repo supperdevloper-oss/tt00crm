@@ -54,6 +54,7 @@ checks = {
     "Cancelled orders remain in shared calculations": all(x in index for x in ('const st=sum(ie.filter', 'r.conv=ie.length?nc/ie.length*100:0', 'Ce=ie.filter(Fe=>Fe.statut==="Annulé")', 'return{cmd:ie.length')),
     "Admin phone keeps the exact CRM sheet": all(x in index for x in ('className:"pv-cmd-table w-full border-collapse text-xs"', '.pv-cmd-table{display:table!important', 'min-width:1780px!important', '.pv-vscroll{overflow:auto!important')) and "function __PvMobileCmdCards" not in index,
     "Admin phone scroll is contained inside the sheet": all(x in index for x in ('id="pv-mobile-crm-style"', 'html,body,#root{width:100%;max-width:100%;overflow-x:hidden}', 'overscroll-behavior:contain', 'touch-action:pan-x pan-y')),
+    "Admin KPI dashboard is hidden on phones and touch devices": '@media(max-width:1100px),(hover:none) and (pointer:coarse){.pvk-bar{display:none!important}}' in index,
     "Admin mobile controls fit the viewport": all(x in index for x in ("pv-admin-top", "pv-admin-tools", "pv-period-buttons", "pv-main-nav", "pv-cmd-toolbar", "pv-cmd-pager")),
     "Admin mobile preserves desktop pagination": '__pvSizes=[50,100,200,500,0]' in index and 'if(r===null||r==="")return 100' in index,
     "Agent phone workspace remains unchanged": 'function I2({agent:e})' in index and 's.jsx(I2,{agent:c.agent})' in index and 'cancelledOnly' not in index[index.index('function I2({agent:e})'):index.index('function __PvWaitingCmd',index.index('function I2({agent:e})'))],
@@ -70,9 +71,9 @@ checks = {
     "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
 }
 
-package = ROOT / "paraveda-admin-mobile-final.zip"
+package = ROOT / "paraveda-admin-phone-orders-visible.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Final admin-mobile package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
+    checks["Admin-phone orders package is valid and minimal"] = z.testzip() is None and z.namelist() == ["index.html"] and z.read("index.html") == (ROOT / "index.html").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
