@@ -142,9 +142,9 @@ puis 30 nouvelles chaque mois pendant 10 mois ». Ça crée même une raison de 
 
 | Sujet | Réalité |
 |---|---|
-| **Prix** | 9 € pour le volume (test), **14,90 €** pour la rentabilité. Testez les deux (voir le plan 14 j). |
+| **Prix** | **2,97 €** (tripwire d'entrée) + **upsell 19 €**. Tester 9 € en semaine 2 (voir plan 14 j). |
 | **TVA** | **Gumroad** est *Merchant of Record* (depuis janvier 2025) : elle collecte et reverse la TVA européenne. Aucune démarche OSS/TVA à faire. |
-| **Frais Gumroad** | 10 % + 0,50 $ par vente + traitement carte 2,9 % + 0,30 $ → ≈ 2,15 $ sur une vente à 9 € (≈ 12,9 %). |
+| **Frais Gumroad** | 10 % + 0,50 $ + carte 2,9 % + 0,30 $ → **1,07 € sur une vente à 2,97 € = 36 %**. Les frais fixes écrasent un petit prix : c'est l'upsell qui rend l'offre viable. |
 | **Retrait** | Seuil **100 $**, virement chaque vendredi. Virement bancaire local (MAD) ou PayPal (USD, 2 %). PayPal Connect indisponible depuis le Maroc. |
 | **Droit de rétractation** | 14 jours en UE. Pour un contenu numérique, il peut être supprimé avec accord explicite — mais **gardez la garantie 14 jours comme argument commercial**, pas comme contrainte. |
 | **Statut** | Vérifiez votre situation (auto-entrepreneur / société) avant les premières ventes. Une facture doit pouvoir être émise. |

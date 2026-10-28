@@ -52,7 +52,7 @@ def main():
         d.text((44, h + 34), caption, font=font("Lato-Bold.ttf", 34), fill=GREEN)
         d.text((44, h + 74), f"365 Recettes pour Friteuse à Air — page {page}",
                font=font("Lato-Regular.ttf", 22), fill=MUTED)
-        d.text((w - 44, h + 56), "9 €", font=font("Oswald-Bold.ttf", 34), fill=ORANGE, anchor="rm")
+        d.text((w - 44, h + 56), "2,97 €", font=font("Oswald-Bold.ttf", 34), fill=ORANGE, anchor="rm")
 
         out = os.path.join(BOOK, f"apercu-{i}.jpg")
         canvas.save(out, "JPEG", quality=88, optimize=True, progressive=True)

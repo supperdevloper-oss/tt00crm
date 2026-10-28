@@ -99,7 +99,7 @@ def cover_1280():
     cx, cy, r = x + 56, 596, 54
     d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=ORANGE)
     d.ellipse((cx - r + 6, cy - r + 6, cx + r - 6, cy + r - 6), outline=(255, 220, 190), width=3)
-    d.text((cx, cy), "9 €", font=font("Oswald-Bold.ttf", 38), fill=PAPER, anchor="mm")
+    d.text((cx, cy), "2,97 €", font=font("Oswald-Bold.ttf", 30), fill=PAPER, anchor="mm")
     d.text((x + 130, 566), "PDF téléchargeable", font=font("Lato-Bold.ttf", 22), fill=PAPER)
     d.text((x + 130, 594), "immédiatement · garantie 14 jours",
            font=font("Lato-Regular.ttf", 20), fill=(190, 212, 199))
@@ -127,7 +127,7 @@ def thumb_600():
     paste_book(img, cover, (bx, by, bx + cw, by + ch), radius=8)
 
     d = ImageDraw.Draw(img)
-    d.text((S / 2, S - 92), "9 €", font=font("Oswald-Bold.ttf", 34), fill=ORANGE, anchor="ma")
+    d.text((S / 2, S - 92), "2,97 €", font=font("Oswald-Bold.ttf", 32), fill=ORANGE, anchor="ma")
     d.text((S / 2, S - 48), "PDF · accès immédiat", font=font("Lato-Bold.ttf", 16),
            fill=GREEN, anchor="ma")
 

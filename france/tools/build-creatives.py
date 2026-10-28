@@ -171,12 +171,18 @@ def cta_bar(img, d, y, h, text, sub=None, bg=GREEN, fg=PAPER, accent=ORANGE_LT, 
     if arrow:
         ico_arrow(d, W - m - h * 0.52, y + h / 2, h * 0.17, accent, max(4, int(h * 0.045)))
 
-def price_badge(img, d, cx, cy, r, price="9 €", label="SEULEMENT", bg=ORANGE, fg=PAPER):
+def price_badge(img, d, cx, cy, r, price="2,97 €", label="SEULEMENT", bg=ORANGE, fg=PAPER):
+    # garde-fou : le disque reste toujours entièrement dans l'image
+    cx = min(max(cx, r + 6), img.width - r - 6)
+    cy = min(max(cy, r + 6), img.height - r - 6)
     d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=bg)
     d.ellipse((cx - r + 9, cy - r + 9, cx + r - 9, cy + r - 9), outline=(255, 255, 255, 90), width=3)
     draw_tracked(d, (cx, cy - r * 0.44), label, OSW_M(int(r * 0.24)), fg, 3, "mm")
-    f = OSW_B(int(r * 0.92))
-    d.text((cx, cy + r * 0.12), price, font=f, fill=fg, anchor="mm")
+    # auto-ajustement : le prix doit tenir dans ~78 % de la largeur du disque
+    maxw, fs = r * 1.56, int(r * 0.92)
+    while fs > 9 and d.textlength(price, font=OSW_B(fs)) > maxw:
+        fs -= 2
+    d.text((cx, cy + r * 0.12), price, font=OSW_B(fs), fill=fg, anchor="mm")
 
 def benefit_strip(img, d, y, h, items, bg=PAPER, fg=INK, sep=(225, 219, 207)):
     W = img.width
@@ -264,7 +270,7 @@ def creative_erreurs(size=(1080, 1350)):
         draw_tracked(d, (x0 + 34, ys), txt, f, INK, 1, "la")
 
     cta_bar(img, d, by + int(band_h * 0.32), int(band_h * 0.34),
-            "VOIR LA SOLUTION", sub="365 RECETTES TESTÉES · 9 € · PDF IMMÉDIAT")
+            "VOIR LA SOLUTION", sub="365 RECETTES TESTÉES · 2,97 € · PDF IMMÉDIAT")
     footnote(img, d, "Paiement unique · Garantie 14 jours", H - int(band_h * 0.09), INK, 150)
 
     return img.convert("RGB")
@@ -298,7 +304,7 @@ def creative_365(size=(1080, 1350)):
     d.text((W / 2, cy + band * 0.325), "une recette pour chaque jour de l'année",
            font=OSW_R(35), fill=(228, 238, 230), anchor="mm")
 
-    price_badge(img, d, int(W * 0.825), int(H * 0.142), int(W * 0.10))
+    price_badge(img, d, int(W * 0.815), int(H * 0.205), int(W * 0.095))
     pill(d, (int(W * 0.215), int(H * 0.062)), "PDF · ACCÈS IMMÉDIAT", OSW_M(24), PAPER, GREEN, 24, 12, 2)
     footnote(img, d, "Temps & température exacts · ingrédients simples · zéro huile",
              H - int(H * 0.055), (255, 255, 255), 235, size=30)
@@ -336,7 +342,7 @@ def creative_temps(size=(1080, 1350)):
          OSW_R(34), MUTED, W - m * 2, 45)
 
     cta_bar(img, d, by + 300, 106, "TÉLÉCHARGER LES RECETTES", bg=GREEN)
-    footnote(img, d, "9 € · paiement unique · PDF envoyé en 1 minute", H - 46, INK, 165)
+    footnote(img, d, "2,97 € · paiement unique · PDF envoyé en 1 minute", H - 46, INK, 165)
     return img.convert("RGB")
 
 # ================================================================ CRÉATIVE 4 — mockup ebook
@@ -374,7 +380,7 @@ def creative_mockup(size=(1080, 1350)):
 
     price_badge(img, d, int(W * 0.855), int(H * 0.415), int(W * 0.105))
 
-    cta_bar(img, d, H - int(H * 0.16), 110, "JE VEUX CE GUIDE", sub="PDF · 9 € · GARANTIE 14 JOURS")
+    cta_bar(img, d, H - int(H * 0.16), 110, "JE VEUX CE GUIDE", sub="PDF · 2,97 € · GARANTIE 14 JOURS")
     footnote(img, d, "Lisible sur téléphone, tablette, ordinateur — aucune application",
              H - 44, (255, 255, 255), 205)
     return img.convert("RGB")
@@ -428,8 +434,8 @@ def creative_bonus(size=(1080, 1350)):
 
     yy = y0 + ch + 40
     d.text((W / 2, yy), "Valeur du pack : 85 €", font=OSW_M(38), fill=MUTED, anchor="mm")
-    d.text((W / 2, yy + 54), "Aujourd'hui : 9 €", font=OSW_B(62), fill=GREEN, anchor="mm")
-    d.text((W / 2, yy + 104), "soit 89 % de réduction", font=OSW_M(30), fill=ORANGE, anchor="mm")
+    d.text((W / 2, yy + 54), "Aujourd'hui : 2,97 €", font=OSW_B(62), fill=GREEN, anchor="mm")
+    d.text((W / 2, yy + 104), "soit 96 % de réduction", font=OSW_M(30), fill=ORANGE, anchor="mm")
     cta_bar(img, d, yy + 132, 108, "JE PROFITE DES BONUS", bg=GREEN)
     footnote(img, d, "Bonus envoyés par email avec le guide · garantie 14 jours", H - 52, INK, 165)
     return img.convert("RGB")
@@ -453,7 +459,7 @@ def to_story(src_fn, add_cta=False):
         d.rectangle((0, 0, 1080, 285), fill=GREEN)
         d.rectangle((0, 1635, 1080, 1920), fill=GREEN)
         draw_tracked(d, (540, 96), "LE GUIDE DE LA FRITEUSE À AIR", OSW_M(36), PAPER, 6, "ma")
-        draw_tracked(d, (540, 168), "365 recettes · 9 € · PDF immédiat", OSW_R(31), ORANGE_LT, 3, "ma")
+        draw_tracked(d, (540, 168), "365 recettes · 2,97 € · PDF immédiat", OSW_R(31), ORANGE_LT, 3, "ma")
         if add_cta:
             cta_bar(canvas, d, 1690, 116, "JE LE VEUX MAINTENANT", bg=(20, 92, 58))
         else:

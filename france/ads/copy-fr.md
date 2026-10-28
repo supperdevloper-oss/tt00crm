@@ -1,5 +1,5 @@
 # Copys publicitaires — Meta Ads (marché FR)
-### 365 Recettes pour Friteuse à Air · 9 €
+### 365 Recettes pour Friteuse à Air · 2,97 €
 
 Chaque bloc est prêt à copier-coller dans l'éditeur d'annonce.
 Les éléments entre `[CROCHETS]` sont à remplacer. **Un texte = un créatif** (voir `assets/creatives`).
@@ -34,7 +34,7 @@ C'est l'un de ces 3 réglages :
 Notre guide corrige les trois, recette par recette : quantité, temps, température, geste.
 
 365 recettes testées · ingrédients simples · PDF immédiat
-9 € — paiement unique, aucun abonnement.
+2,97 € — paiement unique, aucun abonnement.
 
 👉 Téléchargez le guide
 ```
@@ -51,7 +51,7 @@ Une recette pour chaque jour de l'année. 🍗🥦🍫
 Fini les « qu'est-ce qu'on mange ce soir ? »
 
 📥 PDF téléchargeable immédiatement
-💶 9 € une seule fois — pas d'abonnement
+💶 2,97 € une seule fois — pas d'abonnement
 🔒 Garantie 14 jours
 
 👉 Je veux les 365 recettes
@@ -66,7 +66,7 @@ Et surtout : sans allumer le four, sans sortir la plaque, sans surveiller.
 
 365 recettes avec le temps et la température exacts — pour ne plus jamais rater une cuisson.
 
-📥 Téléchargement immédiat · 9 € · Garantie 14 jours
+📥 Téléchargement immédiat · 2,97 € · Garantie 14 jours
 ```
 
 ### T4 — « guide complet » → créatif `04-guide`
@@ -77,7 +77,7 @@ Votre friteuse peut faire bien plus que des frites.
 
 Le tout dans un seul PDF, lisible sur téléphone.
 
-9 € aujourd'hui — paiement unique.
+2,97 € aujourd'hui — paiement unique.
 📥 Envoyé par email dans la minute.
 ```
 
@@ -90,7 +90,7 @@ Petit rappel de ce qu'il contient :
 • le tableau temps & températures (le vrai gain de temps)
 • 3 bonus offerts : tableau à imprimer, 4 semaines de menus, 50 desserts
 
-9 €, une seule fois. Remboursé sous 14 jours si ça ne vous plaît pas.
+2,97 €, une seule fois. Remboursé sous 14 jours si ça ne vous plaît pas.
 
 👉 Reprendre là où vous en étiez
 ```
@@ -101,7 +101,7 @@ Petit rappel de ce qu'il contient :
 
 | # | Titre | Avec |
 |---|---|---|
-| H1 | `365 recettes — 9 € seulement` | T2 |
+| H1 | `365 recettes — 2,97 € seulement` | T2 |
 | H2 | `Ne ratez plus jamais une cuisson` | T1 |
 | H3 | `45 min au four ou 12 min à la friteuse` | T3 |
 | H4 | `Le guide complet de la friteuse` | T4 |
@@ -110,7 +110,7 @@ Petit rappel de ce qu'il contient :
 
 ## 4. Descriptions
 
-- `Téléchargement immédiat · 9 €`
+- `Téléchargement immédiat · 2,97 €`
 - `Paiement unique · aucun abonnement`
 - `3 bonus offerts aujourd'hui`
 - `Garantie 14 jours — sans justification`
@@ -157,7 +157,7 @@ Petit rappel de ce qu'il contient :
 [14–18 s] Le PDF à l'écran, scroll rapide.
           VOIX : « En PDF, sur votre téléphone. »
 [18–20 s] CTA.
-          TEXTE : « 9 € — lien en bio »
+          TEXTE : « 2,97 € — lien en bio »
 ```
 **Sous-titres obligatoires** (85 % regardent sans le son).
 
@@ -167,7 +167,7 @@ Petit rappel de ce qu'il contient :
 [1–4 s]  Friteuse qui s'ouvre, vapeur, poulet croustillant.
           TEXTE : « 12 minutes. Pas 45. »
 [4–8 s]  Trois plats à la suite + prix.
-          TEXTE : « 365 recettes · 9 € »
+          TEXTE : « 365 recettes · 2,97 € »
 [8–12 s] CTA : « Guide PDF — lien en bio »
 ```
 

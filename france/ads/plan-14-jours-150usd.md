@@ -1,5 +1,5 @@
 # Plan 14 jours — budget 150 $ (≈138 €)
-### Produit propre · marché FR · prix 9 €
+### Produit propre · marché FR · prix 2,97 € (tripwire + upsell 19 €)
 
 > **À lire avant de dépenser un euro.**
 > 150 $ ne servent pas à gagner de l'argent en 14 jours. Ils servent à **acheter des données**
@@ -17,38 +17,66 @@
 | CTR | clics ÷ impressions | ≥ 1,5 % |
 | Taux landing → checkout | clics checkout ÷ clics landing | ≥ 8 % |
 | Taux checkout → achat | achats ÷ checkout | ≥ 30 % |
-| **CPA** | dépenses ÷ achats | **≤ 6,80 €** pour être rentable à 9 € |
+| **CPA** | dépenses ÷ achats | **≤ 1,90 €** (2,97 € seul) · **≤ 5 €** avec upsell |
+| **Panier moyen net** | (CA net ÷ acheteurs) | ≥ 4 € — sinon l'upsell ne fonctionne pas |
 
-### Combien vous gagnez réellement sur 9 € (Gumroad)
+### Combien vous gagnez réellement sur 2,97 € (Gumroad)
 ```
-Prix affiché .....................  9,00 €  (≈ 10,50 $)
-Gumroad 10 % .....................  −1,05 $
-Fixe par vente ...................  −0,50 $
-Carte 2,9 % + 0,30 $ .............  −0,60 $
+Prix affiché .....................  2,97 €  (≈ 3,47 $)
+Gumroad 10 % .....................  −0,30 €
+Fixe par vente ...................  −0,43 €
+Carte 2,9 % + 0,30 $ .............  −0,34 €
 -------------------------------------------
-Total frais ......................  −2,15 $ ≈ −1,84 €
+Total frais ......................  −1,07 €   ⚠️ soit 36 % du prix !
 -------------------------------------------
-Net par vente ....................  ≈ 7,15 €
-Remboursements (~5 %) ............  −0,35 €
+Net par vente ....................  ≈ 1,90 €
+Remboursements (~5 %) ............  −0,09 €
 -------------------------------------------
-Net réel .........................  ≈ 6,80 €
+Net réel .........................  ≈ 1,81 €
 ```
-👉 **Seuil de rentabilité : CPA < 6,80 €.**
 
-> Prix à mettre sur la fiche : **devise EUR, 9 €** → le client français voit exactement 9,00 €.
-> Si le compte est déjà en USD : `9.99` s'affiche **8,99 €**, `10` s'affiche **9,00 €** (Gumroad
-> conserve la terminaison du prix). Détail : `product/LIVRAISON.md` §2.
+👉 **Seuil de rentabilité : CPA < 1,90 €** — et il n'y a pas de marge pour l'erreur.
 
-> ⚠️ **Discover** (la marketplace Gumroad) prend **30 %** : sur une vente à 9 € vous ne gardez
-> que ~6,30 €. Au lancement, **désactivez Discover** et n'envoyez que votre propre lien.
+> ⚠️ **LE POINT CRITIQUE DU PRIX À 2,97 €**
+> Les frais fixes de Gumroad (0,43 € + 0,34 € = **0,77 €**) ne bougent pas avec le prix.
+> À 2,97 € ils représentent **36 %** de la vente ; à 9 € seulement **20 %**.
+> Conséquence : à 2,97 € **vous ne pouvez PAS être rentable sur de la prospection froide seule**
+> (CPA réel d'un trafic froid FR : 3 à 8 €). Le prix bas n'a de sens **que** comme *tripwire* :
+> il sert à faire entrer l'acheteur, et c'est **l'upsell à 19 €** qui paie la publicité.
+
+### Le vrai calcul : l'upsell (19 €) décide de tout
+```
+Net 2,97 € ........................  1,90 €
+Net upsell 19 € ...................  15,86 €   (frais 3,14 € = 16,5 %)
+
+Taux d'acceptation de l'upsell :
+  10 % → panier moyen net  3,49 €  → CPA max 3,49 €
+  20 % → panier moyen net  5,07 €  → CPA max 5,07 €   ← objectif
+  30 % → panier moyen net  6,66 €  → CPA max 6,66 €
+```
+👉 **Objectif : 20 % d'acceptation de l'upsell** = panier moyen net **5,07 €**.
+En dessous de 10 % d'acceptation, coupez l'offre à 2,97 € : elle vous fait perdre de l'argent.
+
+> 📌 **À vérifier avant de lancer** : l'upsell 19 € doit être *dans le tunnel Gumroad*
+> (offre post-achat), pas seulement sur `merci.html`. Un lien sur la page de remerciement
+> ne capte que 5–10 % des acheteurs ; une offre **dans le checkout** peut en capter 20–30 %.
+> Sans ça, le modèle 2,97 € ne tient pas.
+
+> ⚠️ **Discover** (la marketplace Gumroad) prend **30 %** : sur une vente à 2,97 € vous ne gardez
+> que **2,08 €**, et après les frais fixes il ne reste presque rien. Au lancement, **désactivez
+> Discover** et n'envoyez que votre propre lien.
 > Bonus : Gumroad est *Merchant of Record* → elle collecte et reverse la TVA française,
 > vous n'avez aucune démarche OSS/TVA à faire.
-En prospection froide, le CPA réel des premiers jours sera plutôt de **8 à 15 €**.
-C'est normal. La rentabilité vient : (a) du retargeting, (b) de l'email, (c) d'un upsell.
+En prospection froide, le CPA réel des premiers jours sera plutôt de **4 à 10 €**.
+À 2,97 € c'est **normal de perdre de l'argent sur la première vente** : le prix bas achète
+un acheteur, pas une marge. La rentabilité vient de (a) **l'upsell 19 €**, (b) du retargeting,
+(c) de l'email, (d) d'un prix plus haut en semaine 2.
 
-> **Décision à prendre avant de lancer :** à 9 € vous achetez du **volume et des emails**.
-> Si vous voulez être rentable dès la première vente, testez **14,90 €** au jour 8
-> (même campagne, même créatif, seul le prix change). C'est le test le plus rentable du plan.
+> **Plan à 2,97 € : le prix n'est pas le produit, c'est la porte d'entrée.**
+> Semaine 1 à 2,97 € : vous mesurez le CTR et le taux d'acceptation de l'upsell.
+> **J8 : testez 9 € contre 2,97 €** (même campagne, même créatif, seul le prix change).
+> Si 9 € garde le même volume de ventes, vous triplez votre marge nette (1,90 € → 7,15 €)
+> et vous n'avez plus besoin de l'upsell pour être rentable. C'est LE test à ne pas rater.
 
 ---
 
@@ -105,9 +133,9 @@ Campagne : [CONV] FR_Friteuse_365_Sales        (objectif : Ventes)
 | **J5** | Lire la page : où les gens s'arrêtent ? (Clarity/GA4) | scroll 25/50/75 % | corriger la section qui bloque |
 | **J6** | Vérifier le checkout. | clics Gumroad vs ventes | si 0 vente : problème de paiement, pas d'audience |
 | **J7** | **Bilan de la semaine 1.** | CPA, ventes | voir §6 |
-| **J8** | Dupliquer l'ad set gagnant → **prix 14,90 €** (nouvelle page `/14`). | — | test A/B propre |
+| **J8** | Dupliquer l'ad set gagnant → **prix 9 €** (2ᵉ produit Gumroad + page `/9`). | — | test A/B du prix |
 | **J9** | Lancer le **retargeting** (voir §5). | — | — |
-| **J10** | Comparer 9 € vs 14,90 €. | CA par visiteur | garder le plus rentable |
+| **J10** | Comparer **2,97 € vs 9 €** (+ taux d'upsell des deux). | CA net par visiteur | garder le plus rentable |
 | **J11** | Produire **1 nouvelle vidéo** (V1, 20 s) avec les hooks gagnants. | — | — |
 | **J12** | Tester la vidéo contre l'image gagnante. | CTR, CPA | — |
 | **J13** | Écrire la séquence email (3 emails) → automatiser. | — | — |
@@ -159,7 +187,7 @@ J7 — Vous avez dépensé ~70 $.
 - Fréquence > 2,5 sur 7 jours → renouveler le créatif (fatigue).
 
 ### Quand scaler
-- 3 jours consécutifs avec CPA < 7 € → **+20 %** de budget.
+- 3 jours consécutifs avec **panier moyen net > CPA** → **+20 %** de budget.
 - Jamais +50 % d'un coup : vous repartez en phase d'apprentissage.
 
 ---
@@ -181,7 +209,7 @@ d'une fois par jour** — l'optimisation compulsive détruit les campagnes.
 |---|---|---|
 | **A — Ça marche** | CPA ≤ 7 € et ≥ 10 ventes | Passer à 20–30 $/jour, ajouter un upsell (19 €) pour monter le panier moyen, créer un 2ᵉ ad set (Belgique/Suisse) |
 | **B — Mitigé** | 5–10 ventes, CPA 8–15 € | Ne pas scaler. Travailler **le panier moyen** : upsell + email. Un produit à 9 € seul est rarement viable ; à 9 € + upsell à 19 €, il le devient. |
-| **C — Ça ne marche pas** | < 5 ventes, CPA > 20 € | Arrêter la prospection froide. Soit le marché FR à 9 € est trop cher, soit l'offre est faible. Tester : prix 14,90 €, ou l'audience arabe/chinoise, ou un autre produit du même catalogue. |
+| **C — Ça ne marche pas** | < 5 ventes, CPA > 20 € | Arrêter la prospection froide. Soit le trafic froid FR est trop cher pour un panier à 2,97 €, soit l'offre est faible. Tester : prix 9 €, ou un autre angle créatif, ou un autre produit du même catalogue. |
 
 ---
 
