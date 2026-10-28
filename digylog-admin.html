@@ -31,7 +31,7 @@
 </head>
 <body>
   <div class="top">
-    <h1>⚙️ إعدادات Digylog</h1>
+    <h1>⚙️ إعدادات Digylog <span id="apiVer" style="font-size:11px;opacity:.85;font-weight:700"></span></h1>
     <a href="index.html">رجوع للCRM</a>
   </div>
 
@@ -181,6 +181,7 @@
       });
     }
     function fill(cfg) {
+      $('apiVer').textContent = cfg.apiVersion ? ('· v' + cfg.apiVersion) : '';
       $('network').value = cfg.network || 1;
       $('sentType').value = String(cfg.sentType || 0);
       $('enabled').checked = !!cfg.enabled;
@@ -239,6 +240,7 @@
         if (!j || !j.ok) { $('diagOut').textContent='خطأ: '+((j&&j.err)||'error'); return; }
         var st=j.status, last=st.lastRun||{};
         var lines=[];
+        lines.push('نسخة السيرفر: '+(st.apiVersion||'?')+' (جيل المرسل '+(st.senderGen||'?')+')');
         lines.push('token: '+(st.hasToken?'✅ موجود':'❌ ما كاينش — بلا توكن ما يمكنرش نرسلو'));
         lines.push('autoSend: '+(st.autoSend?'✅ مفعّل':'❌ موقوف'));
         lines.push('طلبيات مستعدة (Confirmé + Suivie خاوية): '+st.eligible);
@@ -246,9 +248,17 @@
         lines.push('بلا متجر (Boutique): '+st.noStore);
         lines.push('رقم هاتف ماشي صحيح: '+st.badPhone);
         lines.push('المتاجر Discovery: '+(st.boutiques&&st.boutiques.length?st.boutiques.join(', '):'(ماكاينش)'));
-        lines.push('متجر افتراضي: '+(st.defaultStore||'(ماكAINش)'));
+        lines.push('الشبكات Discovery: '+((st.networks&&st.networks.length)?st.networks.map(function(n){return n.id+' '+(n.name||'');}).join(', '):'(ماكاينش)'));
+        lines.push('متجر افتراضي: '+(st.defaultStore||'(ماكاينش)'));
         lines.push('آخر تشغيل: '+(last.when?new Date(last.when).toLocaleString():'(مازال عمرو)')+' | بعت: '+(last.sent||0)+' | فشل: '+(last.failed||0));
-        if (last.errors && Object.keys(last.errors).length) lines.push('أخطاء: '+JSON.stringify(last.errors).slice(0,600));
+        if (last.errors && Object.keys(last.errors).length) lines.push('أخطاء: '+JSON.stringify(last.errors).slice(0,900));
+        var pend=st.pending||[];
+        if(pend.length){
+          lines.push('--- الطلبيات لي مازال ما تصيفطاتش ---');
+          pend.slice(0,25).forEach(function(p){
+            lines.push('#'+p.id+' | '+(p.agent||'-')+' | محاولات: '+p.tries+(p.stale?' (ستانج: غادي تجرب من جديد)':'')+(p.err?(' | خطأ: '+p.err):''));
+          });
+        }
         $('diagOut').textContent=lines.join('\n');
       }).catch(function () { btn.disabled=false; $('diagOut').textContent='مشكل فالاتصال'; });
     };

@@ -5,9 +5,12 @@
 #    الداتا، السجلات، النسخ الاحتياطية، وملفات الإعداد ما خاصهومش
 #    يتحملو من الويب.
 # ─────────────────────────────────────────────────────────────
-<FilesMatch "^(crm_data\.json|crm_data\.json\.backup|digylog_cfg\.json|audit\.log|audit\.log\.1|journal\.log|journal\.log\.1|\.crm\.lock|\.crm\.etag|INSTALL\.txt|push_keys\.json|push_subs\.json|\.dl\.lock|\.dl-send-auto\.lock|\.dl-send-auto\.stamp|\.dl-auto-state\.json|\.dl-stores-cache\.json|.*\.tmp.*)$">
+<FilesMatch "^(crm_data\.json|crm_data\.json\.backup|digylog_cfg\.json|audit\.log|audit\.log\.1|journal\.log|journal\.log\.1|\.crm\.lock|\.crm\.etag|INSTALL\.txt|push_keys\.json|push_subs\.json|\.dl\.lock|\.dl-send-auto\.lock|\.dl-send-auto\.stamp|\.dl-auto-state\.json|\.dl-stores-cache\.json|\.dl-networks-cache\.json|.*\.tmp.*)$">
   Require all denied
 </FilesMatch>
+
+# dl-diag.json هو ملف تشخيص عام (بلا بيانات زبائن وبلا توكنات) باش يقدر
+# الأدمين يشوف علاش ما تصيفطاتش حتى طلبية. ما كنسدوشو.
 
 # مجلد النسخ الاحتياطية كامل
 RedirectMatch 404 ^/backups/

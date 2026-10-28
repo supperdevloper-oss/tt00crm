@@ -114,7 +114,23 @@ def orders_body(store, network, rows, status):
     return {'network': int(network), 'store': str(store), 'mode': 1, 'status': int(status),
             'checkDuplicate': 1, 'orders': orders}
 
-def eligible(orders, stores_map, default_store, boutiques, disabled=False):
+def store_for_agent(agent, stores_map, default_store, boutiques):
+    """Mirror of crm_dl_store_for_agent."""
+    k = norm(agent)
+    if k and k in stores_map: return stores_map[k]
+    if k and len(boutiques) > 0:
+        best, best_len = '', 9999
+        for st in boutiques:
+            ns = norm(st)
+            if len(ns) < 3: continue
+            if k in ns or ns in k:
+                if len(ns) < best_len: best, best_len = st, len(ns)
+        if best: return best
+    if default_store: return default_store
+    if len(boutiques) == 1: return boutiques[0]
+    return ''
+
+def eligible(orders, stores_map, default_store, boutiques, disabled=False, gen=3, now_ms=0):
     """Mirror of the candidate selection."""
     if disabled: return [], []
     groups, skipped = {}, []
@@ -127,9 +143,14 @@ def eligible(orders, stores_map, default_store, boutiques, disabled=False):
         if miss: skipped.append((o['id'], 'missing-' + miss)); continue
         ph = phone(o.get('telephone'))
         if not phone_ok(ph): skipped.append((o['id'], 'bad-phone')); continue
+        # A new sender generation resets the retry counter and the backoff:
+        # an order can never stay blocked forever by an old failure.
+        g = int(o.get('dlGen') or 0)
+        next_try = int(o.get('dlNextTry') or 0)
+        if g != gen: next_try = 0
+        if next_try > now_ms: continue
         ag = str(o.get('agent') or '')
-        store = stores_map.get(norm(ag), '') or default_store
-        if not store and len(boutiques) == 1: store = boutiques[0]
+        store = store_for_agent(ag, stores_map, default_store, boutiques)
         if not store: skipped.append((o['id'], 'no-store-for-agent')); continue
         groups.setdefault(store, []).append({
             'id': o['id'], 'name': o['nom'], 'phone': ph, 'addr': o['adresse'],
@@ -251,6 +272,29 @@ check('Unnamed order in a partial batch stays pending', not p['1002']['ok'])
 resp = json.dumps([{'num': '1001', 'tracking': 'SA'}, {'num': '1002', 'tracking': 'SB'}])
 p = parse_created(resp, ['1001', '1002'])
 check('Each order keeps its own Tracking', p['1001']['tracking'] == 'SA' and p['1002']['tracking'] == 'SB')
+
+# 17. a boutique named after the agent is resolved automatically
+g6, sk6 = eligible([ORD[1]], {'meryam': 'Slim-Bio-MR'}, '', ['Boutique HAJAR', 'Slim-Bio-MR'])
+check('Boutique named after the agent is used', 'Boutique HAJAR' in g6, str(g6))
+
+# 18. an order blocked by an old failure is retried immediately
+old = dict(ORD[0]); old.update({'dlGen': 1, 'dlTries': 25, 'dlNextTry': 99999999999999})
+g7, sk7 = eligible([old], STORES, '', ['Slim-Bio-MR'], gen=3, now_ms=1000)
+check('Old generation is retried immediately', any(r['id'] == 1001 for rs in g7.values() for r in rs), str(g7))
+
+# 19. the backoff of the current generation is respected
+cur = dict(ORD[0]); cur.update({'dlGen': 3, 'dlTries': 2, 'dlNextTry': 5000})
+g8, sk8 = eligible([cur], STORES, '', ['Slim-Bio-MR'], gen=3, now_ms=1000)
+check('Current generation respects the backoff', not g8, str(g8))
+
+# 20. no permanent kill: many failures still keep the order a candidate
+many = dict(ORD[0]); many.update({'dlGen': 3, 'dlTries': 999, 'dlNextTry': 0})
+g9, sk9 = eligible([many], STORES, '', ['Slim-Bio-MR'], gen=3, now_ms=1000)
+check('Many failures never kill the order', any(r['id'] == 1001 for rs in g9.values() for r in rs), str(g9))
+
+# 21. the boutique named after the agent wins over the generic default store
+g10, _ = eligible([ORD[1]], {'meryam': 'Slim-Bio-MR'}, 'DefStore', ['Boutique HAJAR', 'Slim-Bio-MR'])
+check('Boutique named after the agent beats the default store', 'Boutique HAJAR' in g10 and 'DefStore' not in g10, str(g10))
 
 failed = [r for r in results if not r[1]]
 for n, ok, d in results:

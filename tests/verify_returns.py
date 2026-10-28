@@ -109,7 +109,13 @@ checks = {
     "Digylog phone numbers are normalized": all(x in api for x in ("function crm_dl_phone(", "function crm_dl_phone_ok(", "'bad-phone'")),
     "Successful Digylog acceptance alone marks Expédier vers": all(x in api for x in ("if (isset($sent[$id]))", "$o['dlSent'] = 1", "$o['livraison'] = 'Expédier vers'", "$o['_f']['livraison'] = $now")),
     "Orders are sent exactly once": all(x in api for x in ("!empty($o['dlSent'])) continue;", "$o['_f']['dlSent'] = $now;", "$o['dlSent'] = 1; $o['dlAt'] = $now;")),
-    "Failed Digylog sends stay pending with backoff": all(x in api for x in ("elseif (isset($failed[$id]))", "$o['dlNextTry']=$now+$delay", "$tries >= 20", "$nextTry >", "min(300000,10000*")),
+    "Failed Digylog sends stay pending with backoff": all(x in api for x in ("elseif (isset($failed[$id]))", "$o['dlNextTry']=$now+$delay", "$nextTry >", "min(60000,10000*")) and "$tries >= 20" not in api,
+    "A failed order is never blocked forever": all(x in api for x in ("$gen !== CRM_DL_SENDER_GEN", "$tries = 0; $nextTry = 0;", "$o['dlGen']=CRM_DL_SENDER_GEN")),
+    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '3.84')", "define('CRM_DL_SENDER_GEN', 3)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
+    "Public diagnosis file explains a silent failure": all(x in api for x in ("function crm_dl_diag_save", "function crm_dl_diag_build", "dl-diag.json", "'pendingCount'", "crm_dl_diag_save(crm_dl_diag_build(")),
+    "Digylog boutique is resolved automatically": all(x in api for x in ("Boutique سميات با اسم البنت", "strpos($ns,$k)!==false", "function crm_dl_networks", "!in_array((string)$network, $ids, true)")),
+    "Digylog auth falls back to the seller token": all(x in api for x in ("$code===401 || $code===403", "sellerToken", "crm_tracking_bearer($cfg['sellerToken'])")),
+    "CRM shows the sender result instead of failing silently": all(x in index for x in ("pv-digylog-send-auto", "pv-dl-alert", "Digylog: '+f+' طلبية ما تصيفطاتش", "export=version")) and all(x in digylog_admin for x in ("apiVersion", "الطلبيات لي مازال ما تصيفطاتش", "نسخة السيرفر")),
     "Normal authenticated CRM reads also trigger automatic sending": "{ crm_dl_send_guarded(); crm_delivery_auto_guarded(); }" in api,
 }
 
@@ -121,11 +127,11 @@ checks["Isolated simulation of the automatic sender passes"] = sim.returncode ==
 if sim.returncode != 0:
     print(sim.stdout[-2000:], sim.stderr[-2000:])
 
-package = ROOT / "paraveda-digylog-auto-fix.zip"
+package = ROOT / "paraveda-digylog-send-v3.zip"
 with zipfile.ZipFile(package) as z:
     checks["Digylog automatic fix package is valid and minimal"] = (
         z.testzip() is None
-        and z.namelist() == ["api.php", "index.html", "digylog-admin.html"]
+        and z.namelist() == ["api.php", "index.html", "digylog-admin.html", ".htaccess"]
         and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
     )
 

@@ -49,6 +49,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') { exit; }
 /* ---------- config ---------- */
 $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 
+/* ---------- نسخة السيرفر ----------
+ * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
+ * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
+define('CRM_API_VERSION', '3.84');
+/* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
+ * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
+define('CRM_DL_SENDER_GEN', 3);
+
 /* v3.67: deterministic data dir + mirror.
  * قبل: كان كيبدل المجلد بصمت إلا كان !is_writable → جوج ملفات بيانات مفروشين =
  * طلبيات كتظهر وكتختفي. دابا: كنختارو المجلد بالـ epoch (أحدث بيانات) ونكتبو
@@ -1115,15 +1123,57 @@ function crm_dl_store_map($c) {
 function crm_dl_store_for_agent($agent,$smap,$discovered) {
   $k=crm_tracking_norm($agent);
   if ($k!=='' && isset($smap['map'][$k])) return $smap['map'][$k];
+  /* Boutique سميات با اسم البنت (Meryam -> "Meryam" / "Boutique Meryam" / ...) */
+  if ($k!=='' && is_array($discovered) && count($discovered)>0) {
+    $best='';$bestLen=9999;
+    foreach ($discovered as $st) {
+      $ns=crm_tracking_norm($st);
+      if ($ns==='' || strlen($ns)<3) continue;
+      if (strpos($ns,$k)!==false || strpos($k,$ns)!==false) {
+        if (strlen($ns)<$bestLen) { $best=(string)$st; $bestLen=strlen($ns); }
+      }
+    }
+    if ($best!=='') return $best;
+  }
   if ($smap['default']!=='') return $smap['default'];
   if (is_array($discovered) && count($discovered)===1) return (string)$discovered[0];
   return '';
 }
+/* Réseaux (transporteurs) ديال الحساب — cached 15 minutes. */
+function crm_dl_networks($token) {
+  $cached=crm_dl_state_read('.dl-networks-cache.json');
+  if (is_array($cached)&&isset($cached['at'])&&isset($cached['list'])&&is_array($cached['list'])
+      && ((int)(microtime(true))-(int)$cached['at'])<900) return $cached['list'];
+  $list=array();
+  if ($token!=='') {
+    list($code,$body,$err)=crm_dl_http('GET','/networks',$token);
+    if ($code>=200&&$code<300) {
+      $j=json_decode((string)$body,true);
+      $arr=array();
+      if (is_array($j)) {
+        if (isset($j['networks'])&&is_array($j['networks'])) $arr=$j['networks'];
+        elseif (isset($j['data'])&&is_array($j['data'])) $arr=$j['data'];
+        elseif (isset($j[0])) $arr=$j;
+        foreach ($arr as $n) {
+          if (!is_array($n)) continue;
+          $id=isset($n['id'])?(int)$n['id']:0;
+          if ($id<=0) continue;
+          $list[]=array('id'=>$id,'name'=>isset($n['name'])?trim((string)$n['name']):'');
+        }
+      }
+    }
+  }
+  crm_dl_state_write('.dl-networks-cache.json',array('at'=>(int)(microtime(true)*1000),'list'=>$list));
+  return $list;
+}
 /* Boutiques offered by the connected Digylog account (cached 15 minutes). */
 function crm_dl_discover_stores($token) {
   $cached=crm_dl_state_read('.dl-stores-cache.json');
-  if (is_array($cached)&&isset($cached['at'])&&isset($cached['names'])&&is_array($cached['names'])
-      && ((int)(microtime(true))-(int)$cached['at'])<900) return $cached['names'];
+  if (is_array($cached)&&isset($cached['at'])&&isset($cached['names'])&&is_array($cached['names'])) {
+    $age=((int)(microtime(true))-(int)$cached['at']);
+    /* إلا ما لقينا حتى متجر، ما نخبيوش النتيجة بزاف (60 ثانية برك). */
+    if ($age < (count($cached['names'])>0 ? 900 : 60)) return $cached['names'];
+  }
   $names=array();
   if ($token!=='') {
     list($code,$body,$err)=crm_dl_http('GET','/stores',$token);
@@ -1193,7 +1243,8 @@ function crm_dl_parse_created($resp,$ids) {
     /* Neither a created order nor a success marker: the answer is not a
        confirmation, so the orders stay pending and are retried later. */
     $msg = isset($j['message']) ? (string)$j['message'] : '';
-    foreach ($out as $k=>$v) $out[$k]['err']=mb_substr(($msg!==''?$msg.': ':'').'digylog-no-order-confirmed',0,180);
+    if ($msg==='') $msg = mb_substr((string)$resp, 0, 120);
+    foreach ($out as $k=>$v) $out[$k]['err']=mb_substr(($msg!==''?$msg.': ':'').'digylog-no-order-confirmed',0,200);
     return $out;
   }
   /* 1) exact reference match: the record that carries our own num is the only
@@ -1274,6 +1325,8 @@ function crm_dl_admin($b) {
 
   if ($op === 'get') {
     crm_out(array('ok'=>true, 'cfg'=>array(
+      'apiVersion' => CRM_API_VERSION,
+      'senderGen'  => CRM_DL_SENDER_GEN,
       'enabled'   => !empty($c['enabled']) ? 1 : 0,
       'autoSend'  => array_key_exists('autoSend',$c) ? (int)$c['autoSend'] : 1,
       'network'   => isset($c['network']) ? (int)$c['network'] : 1,
@@ -1370,7 +1423,13 @@ function crm_dl_admin($b) {
     foreach (crm_dl_agents() as $ag) if ($ag!==''&&!in_array($ag,$agents,true)) $agents[]=$ag;
     sort($agents);
     $last = crm_dl_auto_state();
+    $diag = crm_dl_diag_build(array());
     crm_out(array('ok'=>true,'status'=>array(
+      'apiVersion'      => CRM_API_VERSION,
+      'senderGen'       => CRM_DL_SENDER_GEN,
+      'pending'         => $diag['pending'],
+      'pendingCount'    => $diag['pendingCount'],
+      'networks'        => $diag['networks'],
       'hasToken'        => $token !== '',
       'autoSend'        => array_key_exists('autoSend',$c) ? (int)$c['autoSend'] : 1,
       'enabled'         => !empty($c['enabled']) ? 1 : 0,
@@ -1691,6 +1750,79 @@ function crm_dl_auto_state_save($data) {
   $data['when']=(int)(microtime(true)*1000);
   crm_dl_state_write('.dl-auto-state.json',$data);
 }
+/* ================================================================
+ * Diagnostic file (public, sans données clients ni tokens).
+ * permet de voir POURQUOI rien n'a été envoyé, sans devtools.
+ * ================================================================ */
+function crm_dl_diag_file() { return __DIR__ . '/dl-diag.json'; }
+function crm_dl_diag_save($data) {
+  if (!is_array($data)) $data = array();
+  $data['apiVersion'] = CRM_API_VERSION;
+  $data['senderGen']  = CRM_DL_SENDER_GEN;
+  $data['updatedAt']  = gmdate('c');
+  $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+  if ($json === false) return false;
+  /* ما كنبانشش أرقام الهواتف (بلا سبب) فـالملف العام. */
+  $json = preg_replace('/(?<![0-9])0[5-8][0-9]{8}(?![0-9])/', '0*********', (string)$json);
+  $path = crm_dl_diag_file();
+  $last = is_file($path) ? (int)@filemtime($path) : 0;
+  $lastRun = isset($data['lastRun']) && is_array($data['lastRun']) ? $data['lastRun'] : array();
+  $important = (!empty($data['sent']) || !empty($data['failed']) || !empty($data['skipped'])
+                || !empty($lastRun['sent']) || !empty($lastRun['failed']) || !empty($lastRun['skipped'])
+                || !empty($lastRun['errors']) || !empty($lastRun['err']));
+  if (!$important && $last > 0 && (time() - $last) < 30) return true;
+  return @file_put_contents($path, $json, LOCK_EX) !== false;
+}
+function crm_dl_diag_build($extra) {
+  $c = crm_dl_cfg_get();
+  $smap = crm_dl_store_map($c);
+  $token = isset($c['token']) ? trim((string)$c['token']) : '';
+  $seller = isset($c['sellerToken']) ? crm_tracking_bearer($c['sellerToken']) : '';
+  $sc = crm_dl_state_read('.dl-stores-cache.json');
+  $boutiques = (is_array($sc) && isset($sc['names']) && is_array($sc['names'])) ? $sc['names'] : array();
+  $nc = crm_dl_state_read('.dl-networks-cache.json');
+  $networks = (is_array($nc) && isset($nc['list']) && is_array($nc['list'])) ? $nc['list'] : array();
+  /* الطلبيات لي مستعدة (بلا أسماء ولا هواتف) */
+  $pending = array();
+  $data = crm_read_raw();
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  if (is_array($orders)) foreach ($orders as $o) {
+    if (!is_array($o) || !empty($o['_del'])) continue;
+    $st = isset($o['statut']) ? (string)$o['statut'] : '';
+    if (crm_tracking_norm($st) !== 'confirme') continue;
+    if (trim((string)(isset($o['livraison']) ? $o['livraison'] : '')) !== '') continue;
+    if (!empty($o['dlSent'])) continue;
+    $gen = isset($o['dlGen']) ? (int)$o['dlGen'] : 0;
+    $pending[] = array(
+      'id'     => (string)(isset($o['id']) ? $o['id'] : ''),
+      'agent'  => (string)(isset($o['agent']) ? $o['agent'] : ''),
+      'tries'  => isset($o['dlTries']) ? (int)$o['dlTries'] : 0,
+      'err'    => mb_substr((string)(isset($o['dlErr']) ? $o['dlErr'] : ''), 0, 200),
+      'gen'    => $gen,
+      'stale'  => ($gen !== CRM_DL_SENDER_GEN) ? 1 : 0
+    );
+    if (count($pending) >= 40) break;
+  }
+  $out = array(
+    'apiVersion'   => CRM_API_VERSION,
+    'senderGen'    => CRM_DL_SENDER_GEN,
+    'hasToken'     => $token !== '',
+    'hasSellerToken'=> $seller !== '',
+    'autoSend'     => array_key_exists('autoSend',$c) ? (int)$c['autoSend'] : 1,
+    'enabled'      => !empty($c['enabled']) ? 1 : 0,
+    'network'      => isset($c['network']) ? (int)$c['network'] : 1,
+    'sentType'     => isset($c['sentType']) ? (int)$c['sentType'] : 0,
+    'stores'       => $smap['map'],
+    'defaultStore' => $smap['default'],
+    'boutiques'    => $boutiques,
+    'networks'     => $networks,
+    'pending'      => $pending,
+    'pendingCount' => count($pending),
+    'lastRun'      => crm_dl_auto_state()
+  );
+  if (is_array($extra)) foreach ($extra as $k=>$v) $out[$k] = $v;
+  return $out;
+}
 
 /* Send one chunk of CRM orders to Digylog and return the per order result.
  * $route: 'v2'  -> POST /orders          (Digylog API v2.4, status=0 = add only)
@@ -1710,6 +1842,15 @@ function crm_dl_send_chunk($token,$store,$network,$rows,$status,$sentTyp,$route)
     $path = '/orders';
   }
   list($code, $resp, $err) = crm_dl_http('POST', $path, $token, $body);
+  if (($code===401 || $code===403) && $route==='v2') {
+    /* التوكن الرئيسي ما دخلش. نجربو Seller Authorization (نفس-account OAuth2). */
+    $cfg=crm_dl_cfg_get();
+    $st=isset($cfg['sellerToken'])?crm_tracking_bearer($cfg['sellerToken']):'';
+    if ($st!=='' && $st!==$token) {
+      list($c2,$r2,$e2)=crm_dl_http('POST',$path,$st,$body);
+      if ($c2!==401 && $c2!==403) { $code=$c2; $resp=$r2; $err=$e2; }
+    }
+  }
   if ($route==='v2' && ($code===404 || $code===405 || $code===501)) {
     /* This account does not expose the v2 route. Nothing was created by the
        rejected call, so it is safe to try the legacy one. */
@@ -1744,11 +1885,12 @@ function crm_dl_send_chunk($token,$store,$network,$rows,$status,$sentTyp,$route)
     foreach ($ids as $id) $out['failed'][$id] = $why;
     return $out;
   }
-  if ($shapeRejected && $route==='v2') {
-    /* the payload shape was refused by this account: try the legacy route */
-    $out['route']='std';
-    $out['routeUnusable']=true;
-    return crm_dl_send_chunk($token, $store, $network, $rows, $status, $sentTyp, 'std');
+  if ($shapeRejected) {
+    /* Digylog رفض الـpayload (400/415/422). ما كايناش داعي نعاودو بالـroute
+       القديم: غادي يبقى نفس الخطأ. كنخزنو الجواب كامل باش يبقى Diagnosis واضح. */
+    $why = 'http-' . $code . ' ' . mb_substr((string)$resp, 0, 300);
+    foreach ($ids as $id) $out['failed'][$id] = $why;
+    return $out;
   }
   foreach ($parsed as $id => $p) {
     if (!empty($p['ok'])) {
@@ -1775,10 +1917,19 @@ function crm_dl_run($dry = false,$forceSentType=null,$includeExisting=false,$wit
   $network = isset($c['network']) ? (int)$c['network'] : 1;
   $sentTyp = $forceSentType!==null?(int)$forceSentType:(isset($c['sentType'])?(int)$c['sentType']:0);
   $autoOn  = array_key_exists('autoSend',$c) ? (int)$c['autoSend'] : 1;
-  if (!$dry && $auto && $autoOn===0) return array('ok'=>true,'skipped'=>'auto-send-off','sent'=>0);
+  if (!$dry && $auto && $autoOn===0) { crm_dl_diag_save(crm_dl_diag_build(array('lastRun'=>array('ok'=>true,'skipped'=>'auto-send-off','sent'=>0,'when'=>(int)(microtime(true)*1000))))); return array('ok'=>true,'skipped'=>'auto-send-off','sent'=>0); }
   if (!$dry && !$auto && empty($c['enabled'])) return $withStatus?array('ok'=>true,'skipped'=>'sending-disabled','trackingSync'=>crm_tracking_auto_sync(30),'deliveredSync'=>crm_delivery_sync_batch(20)):array('ok'=>true,'skipped'=>'sending-disabled','sent'=>0);
-  if (!$dry && $token === '') return array('ok'=>false, 'err'=>'no-token');
+  if (!$dry && $token === '') { crm_dl_diag_save(crm_dl_diag_build(array('lastRun'=>array('ok'=>false,'err'=>'no-token','sent'=>0,'when'=>(int)(microtime(true)*1000))))); return array('ok'=>false, 'err'=>'no-token'); }
   if ($since <= 0 && !$dry && !$includeExisting) return array('ok'=>false, 'err'=>'not-enabled-properly');
+  /* شبكة (transporteur) غير موجودة فـالحساب => ناخدو أول شبكة متوفرة،
+     حيت Digylog كيرفض الطلبية كاملة إلا كانت الشبكة غالطة. */
+  if (!$dry && $token !== '') {
+    $nets = crm_dl_networks($token);
+    if (is_array($nets) && count($nets)>0) {
+      $ids = array(); foreach ($nets as $n) $ids[] = (string)$n['id'];
+      if (!in_array((string)$network, $ids, true)) $network = (int)$nets[0]['id'];
+    }
+  }
 
   $runLock = @fopen(crm_dl_state_path('.dl.lock'), 'c');
   if ($runLock && !$dry && !@flock($runLock, LOCK_EX | LOCK_NB)) return array('ok'=>true, 'skipped'=>'busy');
@@ -1802,7 +1953,11 @@ function crm_dl_run($dry = false,$forceSentType=null,$includeExisting=false,$wit
     $stamp = (isset($o['_f']['statut']) && is_numeric($o['_f']['statut'])) ? (float)$o['_f']['statut'] : 0;
     if (!$includeExisting && !($since > 0 ? ($stamp >= $since) : $dry)) continue;
     $tries = isset($o['dlTries']) ? (int)$o['dlTries'] : 0;$nextTry=isset($o['dlNextTry'])?(int)$o['dlNextTry']:0;
-    if ($tries >= 20 || (!$dry && $nextTry > (int)(microtime(true)*1000))) continue;
+    /* جيل جديد ديال المرسل => إعادة المحاولة من الصفر. (الطلبيات ما كتبقاوش
+       محبوسة بسبب 20 محاولة قديمة ولا بسبب backoff طويل.) */
+    $gen = isset($o['dlGen']) ? (int)$o['dlGen'] : 0;
+    if ($gen !== CRM_DL_SENDER_GEN) { $tries = 0; $nextTry = 0; }
+    if (!$dry && $nextTry > (int)(microtime(true)*1000)) continue;
     $id = (string)$o['id'];
     $ag = isset($o['agent']) ? (string)$o['agent'] : '';
     $miss = '';
@@ -1812,10 +1967,13 @@ function crm_dl_run($dry = false,$forceSentType=null,$includeExisting=false,$wit
     if ($miss !== '') { $skipped[] = array('id'=>$id, 'why'=>'missing-' . $miss); continue; }
     $phone = crm_dl_phone(isset($o['telephone']) ? $o['telephone'] : '');
     if (!crm_dl_phone_ok($phone)) { $skipped[] = array('id'=>$id, 'why'=>'bad-phone'); continue; }
+    /* إلا البنت ماعندهاش متجر محدد، كنجيبو قائمة Boutiques ديال الحساب
+       (مخزنة 15 دقيقة) باش نقدرو ن-matchيوها با سميتها. */
+    $kAg = crm_tracking_norm($ag);
+    if (!($kAg!=='' && isset($smap['map'][$kAg])) && $discovered === null) $discovered = crm_dl_discover_stores($token);
     $store = crm_dl_store_for_agent($ag, $smap, $discovered);
-    if ($store === '') {
-      /* Only now do we need the boutique list of the account. */
-      if ($discovered === null) $discovered = crm_dl_discover_stores($token);
+    if ($store === '' && $discovered === null) {
+      $discovered = crm_dl_discover_stores($token);
       $store = crm_dl_store_for_agent($ag, $smap, $discovered);
     }
     if ($store === '') { $skipped[] = array('id'=>$id, 'why'=>'no-store-for-agent', 'agent'=>$ag); continue; }
@@ -1884,13 +2042,21 @@ function crm_dl_run($dry = false,$forceSentType=null,$includeExisting=false,$wit
       $id = (string)$o['id'];
       if (!isset($o['_f']) || !is_array($o['_f'])) $o['_f'] = array();
       if (isset($sent[$id])) {
-        $o['dlSent'] = 1; $o['dlAt'] = $now; $o['dlRes'] = $sent[$id];$o['dlErr']='';$o['dlNextTry']=0;
+        $o['dlSent'] = 1; $o['dlAt'] = $now; $o['dlRes'] = $sent[$id];$o['dlErr']='';$o['dlNextTry']=0;$o['dlTries']=0;$o['dlGen']=CRM_DL_SENDER_GEN;
         $o['livraison'] = 'Expédier vers'; $o['_f']['livraison'] = $now;   // بعد ما تتسجل فـDigylog: Suivie = Expédier vers
         if (isset($sentTracking[$id]) && trim((string)(isset($o['tracking'])?$o['tracking']:'')) === '') { $o['tracking']=$sentTracking[$id]; $o['_f']['tracking']=$now; }
         $o['_f']['dlSent'] = $now; $o['_u'] = $now; $applied++;
       } elseif (isset($failed[$id])) {
+        $newErr = substr((string)$failed[$id], 0, 300);
+        $oldErr = (string)(isset($o['dlErr']) ? $o['dlErr'] : '');
+        $oldGen = isset($o['dlGen']) ? (int)$o['dlGen'] : 0;
+        /* نفس الخطأ وعمود dlNextTry مازال فالمستقبل => ما كايناش حاجة تتبدل،
+           وما كيكتبش الداتا من جديد (خفيفة على السيرفر). */
+        if ($newErr === $oldErr && $oldGen === CRM_DL_SENDER_GEN
+            && isset($o['dlNextTry']) && (int)$o['dlNextTry'] > $now) continue;
         $o['dlTries'] = (isset($o['dlTries']) ? (int)$o['dlTries'] : 0) + 1;
-        $o['dlErr'] = substr((string)$failed[$id], 0, 200);$delay=min(300000,10000*(1<<min(5,max(0,$o['dlTries']-1))));$o['dlNextTry']=$now+$delay;
+        $o['dlErr'] = $newErr;$delay=min(60000,10000*(1<<min(5,max(0,$o['dlTries']-1))));$o['dlNextTry']=$now+$delay;
+        $o['dlGen']=CRM_DL_SENDER_GEN;
         $o['_f']['dlTries'] = $now; $o['_f']['dlErr'] = $now;$o['_f']['dlNextTry']=$now;$o['_u'] = $now; $applied++;
       } else continue;
       $cur[$i] = $o;
@@ -1912,7 +2078,8 @@ function crm_dl_run($dry = false,$forceSentType=null,$includeExisting=false,$wit
   crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied . ' | sentType='.$sentTyp.' | status='.$status.' | route='.$route.' | auto='.($auto?1:0).' | trackingLinked=' . (isset($trackingSync['linked'])?(int)$trackingSync['linked']:0) . ' | deliveredUpdated=' . (isset($deliverySync['updated'])?(int)$deliverySync['updated']:0));
   $state = array('ok'=>true,'sent'=>count($sent),'failed'=>count($failed),'skipped'=>count($skipped),'applied'=>$applied,'candidates'=>$candidates,'status'=>$status,'route'=>$route,'errors'=>array_slice($failed,0,10,true),'skipReasons'=>array_slice($skipped,0,10));
   if ($auto) crm_dl_auto_state_save($state);
-  return array('ok'=>true,'sent'=>count($sent),'failed'=>count($failed),'skipped'=>count($skipped),'applied'=>$applied,'sentType'=>$sentTyp,'status'=>$status,'route'=>$route,'destination'=>$status===0?'Commandes non envoyées':'dispatched','errors'=>$failed,'trackingSync'=>$trackingSync,'deliveredSync'=>$deliverySync);
+  crm_dl_diag_save(crm_dl_diag_build(array('lastRun'=>$state,'runType'=>$auto?'auto':'manual','route'=>$route,'status'=>$status,'network'=>$network)));
+  return array('ok'=>true,'sent'=>count($sent),'failed'=>count($failed),'skipped'=>count($skipped),'applied'=>$applied,'sentType'=>$sentTyp,'status'=>$status,'route'=>$route,'destination'=>$status===0?'Commandes non envoyées':'dispatched','errors'=>$failed,'apiVersion'=>CRM_API_VERSION,'trackingSync'=>$trackingSync,'deliveredSync'=>$deliverySync);
 }
 
 /* Digylog webhook: instant Livrée / Retournée synchronization.
@@ -2195,6 +2362,10 @@ if ($m === 'GET') {
   if (isset($_GET['export'])) {
     $__what = (string)$_GET['export'];
     $__d    = crm_read_raw();
+    if ($__what === 'version') {
+      /* نسخة السيرفر + تشخيص المرسل. بلا بيانات زبائن وبلا توكنات. */
+      crm_out(array('ok'=>true,'apiVersion'=>CRM_API_VERSION,'senderGen'=>CRM_DL_SENDER_GEN,'built'=>'2026-10-29','diag'=>crm_dl_diag_build(array())));
+    }
     $__ads  = isset($__d['paraveda_adspend_v1']['d']) ? crm_unwrap($__d['paraveda_adspend_v1']['d']) : array();
     if (!is_array($__ads)) $__ads = array();
     $__adsT = isset($__d['paraveda_adspend_v1']['t']) ? (int)$__d['paraveda_adspend_v1']['t'] : 0;
@@ -2314,6 +2485,8 @@ if ($m === 'GET') {
       ksort($bymonth);
       crm_out(array(
         'ok'            => true,
+        'apiVersion'    => CRM_API_VERSION,
+        'senderGen'     => CRM_DL_SENDER_GEN,
         'total_rows'    => count($__ord),
         'live_orders'   => $live,
         'deleted'       => $del,

@@ -1378,12 +1378,59 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
 </script>
 <script id="pv-digylog-send-auto">
 (function(){
-  const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';let sending=false;
+  const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
+  const EXPECTED='3.84';
+  let sending=false;
+  function say(text){
+    if(!document.body)return;
+    let el=document.getElementById('pv-dl-alert');
+    if(!el){
+      el=document.createElement('div');
+      el.id='pv-dl-alert';
+      el.setAttribute('dir','rtl');
+      el.style.cssText='position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:99999;max-width:92vw;display:none;align-items:center;gap:10px;background:#7f1d1d;color:#fff;border-radius:12px;padding:10px 14px;font:700 12px/1.5 system-ui,Tahoma,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.28)';
+      document.body.appendChild(el);
+    }
+    el.innerHTML='';
+    const s=document.createElement('span');s.textContent=text;el.appendChild(s);
+    const x=document.createElement('button');x.textContent='✕';x.setAttribute('aria-label','close');
+    x.style.cssText='background:transparent;border:0;color:#fff;font-size:15px;font-weight:900;cursor:pointer;line-height:1';
+    x.onclick=function(){el.style.display='none';};
+    el.appendChild(x);
+    el.style.display='flex';
+    return el;
+  }
+  function hideSoon(el,ms){if(!el)return;setTimeout(function(){if(el&&el.style)el.style.display='none';},ms||7000);}
   async function sendConfirmed(){
     if(sending||document.hidden)return;sending=true;
-    try{await fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Sync-Token':token},body:JSON.stringify({action:'digylog_send_auto'})})}catch(e){}finally{sending=false}
+    try{
+      const r=await fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Sync-Token':token},body:JSON.stringify({action:'digylog_send_auto'})});
+      const j=await r.json().catch(function(){return null});
+      if(!j)return;
+      if(j.ok===false&&j.err){say('⚠️ Digylog: '+j.err+' — شوف صفحة الإعدادات');return;}
+      const f=Number(j.failed||0),s=Number(j.skipped||0),n=Number(j.sent||0);
+      if(f>0){
+        const ks=j.errors?Object.keys(j.errors):[];
+        const e=ks.length?String(j.errors[ks[0]]):'';
+        say('⚠️ Digylog: '+f+' طلبية ما تصيفطاتش'+(e?(' — '+e.slice(0,140)):'')+' — شوف صفحة الإعدادات');
+      }else if(s>0){
+        say('⚠️ Digylog: '+s+' طلبية بلا متجر (Boutique) — سجّل المتجر فـصفحة الإعدادات');
+      }else if(n>0){
+        hideSoon(say('✅ Digylog: '+n+' طلبية تصيفطات فـ Commandes non envoyées'),6000);
+      }
+    }catch(e){}finally{sending=false}
+  }
+  async function checkVersion(){
+    try{
+      const r=await fetch('api.php?export=version&token='+encodeURIComponent(token),{cache:'no-store'});
+      const j=await r.json().catch(function(){return null});
+      if(j&&j.apiVersion&&j.apiVersion!==EXPECTED){
+        say('⚠️ ملف api.php على السيرفر قديم ('+j.apiVersion+') — لازم ترفع النسخة الجديدة');
+      }
+    }catch(e){}
   }
   setTimeout(sendConfirmed,2000);setInterval(sendConfirmed,6000);
+  setTimeout(checkVersion,2600);setInterval(checkVersion,300000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)sendConfirmed()});window.addEventListener('online',sendConfirmed);
 })();
 </script>
