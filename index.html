@@ -1376,6 +1376,17 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
   window.addEventListener('online',syncTracking);
 })();
 </script>
+<script id="pv-digylog-send-auto">
+(function(){
+  const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';let sending=false;
+  async function sendConfirmed(){
+    if(sending||document.hidden)return;sending=true;
+    try{await fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Sync-Token':token},body:JSON.stringify({action:'digylog_send_auto'})})}catch(e){}finally{sending=false}
+  }
+  setTimeout(sendConfirmed,2500);setInterval(sendConfirmed,8000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)sendConfirmed()});window.addEventListener('online',sendConfirmed);
+})();
+</script>
 <style id="pv-waiting-cmd-style">
 @keyframes pvWaitBlink{0%,100%{background:#b45309;border-color:#fbbf24;box-shadow:0 0 0 0 rgba(251,191,36,.6)}50%{background:#ef4444;border-color:#fecaca;box-shadow:0 0 0 6px rgba(239,68,68,0)}}
 .pv-wait-tab{animation:pvWaitBlink 1.15s ease-in-out infinite!important}.pv-wait-count{display:grid;min-width:19px;height:19px;place-items:center;border-radius:999px;background:#fff;color:#b91c1c;padding:0 5px;font-size:10px;font-weight:900;box-shadow:0 1px 4px rgba(0,0,0,.2)}.pv-wait-tab:hover{animation-play-state:paused}

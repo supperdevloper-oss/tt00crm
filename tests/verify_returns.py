@@ -46,7 +46,7 @@ checks = {
     "Returns tab cannot be deleted": 'tg=["COMONDES"' in index and '"Suivi des Retours"' in index and '"Waiting CMD","CMD Annuler"]' in index,
     "Ready-to-ship product summary": all(x in index for x in ("__pvProdAll", "pv-prod-sum", "pv-prod-list", "pv-prod-cols", "توزيع الكمية", "ملخص المنتجات الجاهزة للإرسال")),
     "Tracking opens live Digylog status": all(x in index for x in ("__pvDigylogOrder", "digylog_order_status", "pv-dl-status", "عرض Statut الحقيقي ديال الطلبية من Digylog")) and all(x in api for x in ("function crm_dl_order_status", "'/order/' . rawurlencode($tracking) . '/infos'", "tracking-not-in-crm", "if ($a === 'digylog_order_status')")),
-    "Automatic exact Digylog Tracking sync": all(x in api for x in ("function crm_tracking_auto_sync", "function crm_tracking_exact_from_payload", "'trackingSync'=>crm_tracking_auto_sync(30)", "$trackingSync=crm_tracking_auto_sync(30)", "'exactOnly'=>true", "$o['tracking']=$found[$id]")),
+    "Automatic exact Digylog Tracking sync": all(x in api for x in ("function crm_tracking_auto_sync", "function crm_tracking_exact_from_payload", "$trackingSync=$withStatus?crm_tracking_auto_sync(30)", "'exactOnly'=>true", "$o['tracking']=$found[$id]")),
     "Open CRM triggers throttled Tracking sync": all(x in api for x in ("function crm_tracking_auto_guarded", ".tracking-auto.lock", "if ($a === 'digylog_tracking_auto')")) and all(x in index for x in ("pv-digylog-tracking-auto", "action:'digylog_tracking_auto'", "setInterval(syncTracking,60000)")),
     "Seller Authorization saved server-side": all(x in api for x in ("$op === 'tracking_token_save'", "$c['sellerToken'] = $incoming", "'hasSellerToken'", "$cfg['sellerToken']")) and all(x in digylog_admin for x in ("op:'tracking_token_save'", "Seller Authorization محفوظ", "حفظ وتشغيل جلب Tracking الآن")),
     "Immediate Tracking from send response": all(x in api for x in ("$sentTracking = array()", "crm_tracking_exact_from_payload($j, $r['id'])", "$o['tracking']=$sentTracking[$id]")),
@@ -60,7 +60,7 @@ checks = {
     "Admin can synchronize one exact Tracking now": all(x in api for x in ("$op === 'delivery_sync'", "crm_delivery_sync_batch($tracking !== '' ? 1 : 20, $tracking)", "'requestedTracking'=>$onlyTracking")) and all(x in digylog_admin for x in ("3) مزامنة Suivie من Digylog", "deliveryTracking", "syncDelivery", "op:'delivery_sync'")),
     "Returned synchronization changes no other business field": all(x in api for x in ("The only business-field write performed by this sync", "$o['livraison']=$next;$o['_f']['livraison']=$now;$o['_u']=$now", "It never writes statut, dateLiv, tracking, client data, prices, or other fields")),
     "Open CRM heartbeat checks delivery states": all(x in api for x in ("$result['deliverySync']=crm_delivery_auto_guarded()", "function crm_delivery_auto_guarded", ".delivery-auto.lock", ".delivery-auto.stamp", "if ($a === 'digylog_delivery_auto')")) and all(x in index for x in ("action:'digylog_tracking_auto'", "action:'digylog_delivery_auto'", "Promise.all")),
-    "Every authenticated CRM snapshot guarantees automatic fallback": all(x in api for x in ("Guaranteed automatic fallback", "old cached index lacks the heartbeat script", "if (!isset($_GET['export']) && !isset($_GET['pushkey'])) crm_delivery_auto_guarded();")),
+    "Every authenticated CRM snapshot guarantees automatic fallback": all(x in api for x in ("Guaranteed automatic fallback", "old cached index lacks the heartbeat script", "if (!isset($_GET['export']) && !isset($_GET['pushkey'])) { crm_dl_send_guarded(); crm_delivery_auto_guarded(); }")),
     "Digylog webhook applies final status automatically": all(x in api for x in ("function crm_dl_hook()", "order-status-changed", "crm_delivery_status($p)", "if(isset($_GET['action'])&&$_GET['action']==='digylog_hook')crm_dl_hook()", "The webhook's only business-field write", "$o['livraison']=$newLiv")) and "'disabled'=>true" not in api,
     "Webhook matching is exact and never uses phone": all(x in api for x in ("$rowTracking===$tracking", "(string)$o['id']===$num", "count($hits)!==1", "'ambiguous'=>count($hits)>1")) and "telephone" not in api[api.index("function crm_dl_hook()"):api.index("/* ================================================================\n * Suivi des Retours")],
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
@@ -95,11 +95,17 @@ checks = {
     "Existing CRM commissions use the exact requested mapping": all(x in api for x in ("function crm_order_commission_cut_once", "array('40'=>35,'45'=>40,'50'=>45)", "paraveda_commission_cut_20261028_v1", "$row['commission']=$map[$key]", "$row['_f']['commission']=$now", "crm_order_commission_cut_once();")),
     "Commission reduction cannot apply twice": all(x in api for x in (".commission-cut-20261028.done", "if(is_file($stamp))return", "isset($data[$marker]['d']['done'])", "'done'=>1", "commission-cut | changed=")),
     "Commission migration leaves deleted orders untouched": "!empty($row['_del'])" in api[api.index("function crm_order_commission_cut_once"):api.index("crm_order_commission_cut_once();")],
+    "Confirmed empty-Suivie orders are the only automatic send candidates": all(x in api for x in ("crm_tracking_norm($st) !== 'confirme'", "trim((string)(isset($o['livraison']) ? $o['livraison'] : '')) !== ''", "!empty($o['dlSent'])", "$includeExisting")),
+    "Automatic send targets Commandes non envoyées": all(x in api for x in ("crm_dl_run(false,0,true,false)", "$forceSentType!==null?(int)$forceSentType", "'destination'=>$sentTyp===0?'Commandes non envoyées'", "'/orders/standard'")) and "0 — Commandes non envoyées (المطلوب)" in digylog_admin,
+    "Automatic Digylog send runs within ten seconds": all(x in api for x in ("function crm_dl_send_guarded", ".dl-send-auto.lock", ".dl-send-auto.stamp", "time()-$last<7", "if ($a === 'digylog_send_auto')")) and all(x in index for x in ("pv-digylog-send-auto", "action:'digylog_send_auto'", "setInterval(sendConfirmed,8000)", "setTimeout(sendConfirmed,2500)")),
+    "Successful Digylog acceptance alone marks Expédier vers": all(x in api for x in ("if (isset($sent[$id]))", "$o['dlSent'] = 1", "$o['livraison'] = 'Expédier vers'", "$o['_f']['livraison'] = $now")),
+    "Failed Digylog sends stay pending with backoff": all(x in api for x in ("elseif (isset($failed[$id]))", "$o['dlNextTry']=$now+$delay", "$tries >= 20", "$nextTry >", "min(300000,10000*")),
+    "Normal authenticated CRM reads also trigger automatic sending": "{ crm_dl_send_guarded(); crm_delivery_auto_guarded(); }" in api,
 }
 
-package = ROOT / "paraveda-digylog-auto-return-final.zip"
+package = ROOT / "paraveda-digylog-non-envoyees-auto.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Automatic return package is valid and contains only api.php"] = z.testzip() is None and z.namelist() == ["api.php"] and z.read("api.php") == (ROOT / "api.php").read_bytes()
+    checks["Automatic non-envoyées package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php", "index.html", "digylog-admin.html"] and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

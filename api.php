@@ -1406,19 +1406,31 @@ function crm_delivery_auto_guarded() {
   @touch($stamp);$result=crm_delivery_sync_batch(60);@flock($lock,LOCK_UN);@fclose($lock);return $result;
 }
 
-/* يشتغل: من cron (GET) أو من admin (dry) */
-function crm_dl_run($dry = false) {
+/* Automatic Confirmé + empty Suivie sender. A shared 7-second throttle and
+ * the existing .dl.lock guarantee that several CRM devices cannot duplicate an order. */
+function crm_dl_send_guarded() {
+  global $DATA_DIR;
+  $lock=@fopen($DATA_DIR.'/.dl-send-auto.lock','c');
+  if(!$lock||!@flock($lock,LOCK_EX|LOCK_NB)){if($lock)@fclose($lock);return array('ok'=>true,'skipped'=>'busy','sent'=>0);}
+  $stamp=$DATA_DIR.'/.dl-send-auto.stamp';$last=is_file($stamp)?(int)@filemtime($stamp):0;
+  if($last>0&&time()-$last<7){@flock($lock,LOCK_UN);@fclose($lock);return array('ok'=>true,'skipped'=>'throttled','retryAfter'=>7-(time()-$last),'sent'=>0);}
+  @touch($stamp);$result=crm_dl_run(false,0,true,false);@flock($lock,LOCK_UN);@fclose($lock);return $result;
+}
+
+/* يشتغل: من cron (GET) أو من admin (dry). forceSentType=0 means Digylog
+ * Commandes non envoyées; includeExisting includes every eligible CRM row. */
+function crm_dl_run($dry = false,$forceSentType=null,$includeExisting=false,$withStatus=true) {
   global $LOCK_FILE, $DATA_DIR;
   $c = crm_dl_cfg_get();
-  if (!$dry && empty($c['enabled'])) return array('ok'=>true, 'skipped'=>'sending-disabled', 'trackingSync'=>crm_tracking_auto_sync(30), 'deliveredSync'=>crm_delivery_sync_batch(20));
+  if (!$dry && empty($c['enabled'])) return $withStatus?array('ok'=>true,'skipped'=>'sending-disabled','trackingSync'=>crm_tracking_auto_sync(30),'deliveredSync'=>crm_delivery_sync_batch(20)):array('ok'=>true,'skipped'=>'sending-disabled','sent'=>0);
   $since   = isset($c['since']) ? (int)$c['since'] : 0;
   $token   = isset($c['token']) ? (string)$c['token'] : '';
   $network = isset($c['network']) ? (int)$c['network'] : 1;
-  $sentTyp = isset($c['sentType']) ? (int)$c['sentType'] : 0;
+  $sentTyp = $forceSentType!==null?(int)$forceSentType:(isset($c['sentType'])?(int)$c['sentType']:0);
   $stores  = array();
   foreach (crm_dl_agents() as $ag) $stores[$ag] = isset($c['stores'][$ag]) ? trim((string)$c['stores'][$ag]) : '';
   if (!$dry && $token === '') return array('ok'=>false, 'err'=>'no-token');
-  if ($since <= 0 && !$dry) return array('ok'=>false, 'err'=>'not-enabled-properly');
+  if ($since <= 0 && !$dry && !$includeExisting) return array('ok'=>false, 'err'=>'not-enabled-properly');
 
   $runLock = @fopen($DATA_DIR . '/.dl.lock', 'c');
   if ($runLock && !$dry && !@flock($runLock, LOCK_EX | LOCK_NB)) return array('ok'=>true, 'skipped'=>'busy');
@@ -1435,12 +1447,12 @@ function crm_dl_run($dry = false) {
   foreach ($cur as $o) {
     if (!is_array($o) || !empty($o['_del']) || !empty($o['dlSent'])) continue;
     $st = isset($o['statut']) ? (string)$o['statut'] : '';
-    if (stripos($st, 'confirm') === false) continue;
+    if (crm_tracking_norm($st) !== 'confirme') continue;
     if (trim((string)(isset($o['livraison']) ? $o['livraison'] : '')) !== '') continue;   // Suivie فارغ = ما تصيفطاتش بعد
     $stamp = (isset($o['_f']['statut']) && is_numeric($o['_f']['statut'])) ? (float)$o['_f']['statut'] : 0;
-    if (!($since > 0 ? ($stamp >= $since) : $dry)) continue;   // بعد التفعيل: غير الجداد. قبل التفعيل: المعاينة فقط
-    $tries = isset($o['dlTries']) ? (int)$o['dlTries'] : 0;
-    if ($tries >= 5) continue;
+    if (!$includeExisting && !($since > 0 ? ($stamp >= $since) : $dry)) continue;
+    $tries = isset($o['dlTries']) ? (int)$o['dlTries'] : 0;$nextTry=isset($o['dlNextTry'])?(int)$o['dlNextTry']:0;
+    if ($tries >= 20 || (!$dry && $nextTry > (int)(microtime(true)*1000))) continue;
     $id = (string)$o['id'];
     $ag = isset($o['agent']) ? (string)$o['agent'] : '';
     $store = isset($stores[$ag]) ? $stores[$ag] : '';
@@ -1521,14 +1533,14 @@ function crm_dl_run($dry = false) {
       $id = (string)$o['id'];
       if (!isset($o['_f']) || !is_array($o['_f'])) $o['_f'] = array();
       if (isset($sent[$id])) {
-        $o['dlSent'] = 1; $o['dlAt'] = $now; $o['dlRes'] = $sent[$id];
+        $o['dlSent'] = 1; $o['dlAt'] = $now; $o['dlRes'] = $sent[$id];$o['dlErr']='';$o['dlNextTry']=0;
         $o['livraison'] = 'Expédier vers'; $o['_f']['livraison'] = $now;   // بعد ما تتسجل فـDigylog: Suivie = Expédier vers
         if (isset($sentTracking[$id]) && trim((string)(isset($o['tracking'])?$o['tracking']:'')) === '') { $o['tracking']=$sentTracking[$id]; $o['_f']['tracking']=$now; }
         $o['_f']['dlSent'] = $now; $o['_u'] = $now; $applied++;
       } elseif (isset($failed[$id])) {
         $o['dlTries'] = (isset($o['dlTries']) ? (int)$o['dlTries'] : 0) + 1;
-        $o['dlErr'] = substr((string)$failed[$id], 0, 200);
-        $o['_f']['dlTries'] = $now; $o['_f']['dlErr'] = $now; $o['_u'] = $now; $applied++;
+        $o['dlErr'] = substr((string)$failed[$id], 0, 200);$delay=min(300000,10000*(1<<min(5,max(0,$o['dlTries']-1))));$o['dlNextTry']=$now+$delay;
+        $o['_f']['dlTries'] = $now; $o['_f']['dlErr'] = $now;$o['_f']['dlNextTry']=$now; $o['_u'] = $now; $applied++;
       } else continue;
       $cur[$i] = $o;
     }
@@ -1544,10 +1556,10 @@ function crm_dl_run($dry = false) {
   if ($runLock) { @flock($runLock, LOCK_UN); @fclose($runLock); }
   /* Each cron run checks known Trackings exactly and synchronizes only the
      final delivery field: Digylog Livrée -> Livrée, Retournée -> Retour. */
-  $trackingSync=crm_tracking_auto_sync(30);
-  $deliverySync=crm_delivery_sync_batch(20);
-  crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied . ' | trackingLinked=' . (isset($trackingSync['linked'])?(int)$trackingSync['linked']:0) . ' | deliveredUpdated=' . (isset($deliverySync['updated'])?(int)$deliverySync['updated']:0));
-  return array('ok'=>true, 'sent'=>count($sent), 'failed'=>count($failed), 'skipped'=>count($skipped), 'applied'=>$applied, 'errors'=>$failed, 'trackingSync'=>$trackingSync, 'deliveredSync'=>$deliverySync);
+  $trackingSync=$withStatus?crm_tracking_auto_sync(30):array('skipped'=>'fast-send');
+  $deliverySync=$withStatus?crm_delivery_sync_batch(20):array('skipped'=>'fast-send');
+  crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied . ' | sentType='.$sentTyp.' | nonEnvoyees='.($forceSentType===0?1:0).' | trackingLinked=' . (isset($trackingSync['linked'])?(int)$trackingSync['linked']:0) . ' | deliveredUpdated=' . (isset($deliverySync['updated'])?(int)$deliverySync['updated']:0));
+  return array('ok'=>true,'sent'=>count($sent),'failed'=>count($failed),'skipped'=>count($skipped),'applied'=>$applied,'sentType'=>$sentTyp,'destination'=>$sentTyp===0?'Commandes non envoyées':'configured','errors'=>$failed,'trackingSync'=>$trackingSync,'deliveredSync'=>$deliverySync);
 }
 
 /* Digylog webhook: instant Livrée / Retournée synchronization.
@@ -1809,7 +1821,7 @@ if ($m === 'GET') {
 
   /* Guaranteed automatic fallback: every CRM snapshot can start one throttled
      status batch, even when an old cached index lacks the heartbeat script. */
-  if (!isset($_GET['export']) && !isset($_GET['pushkey'])) crm_delivery_auto_guarded();
+  if (!isset($_GET['export']) && !isset($_GET['pushkey'])) { crm_dl_send_guarded(); crm_delivery_auto_guarded(); }
 
   /* PERF v3.90 — أهم إصلاح فالسيرفر.
    * قبل: كل جهاز كيدير GET كل 5 ثواني وكيحمّل 1.1MB حتى إلا ما تبدل والو.
@@ -2093,6 +2105,7 @@ if ($m === 'POST') {
     if ($a === 'digylog_order_status') crm_dl_order_status($b); // read-only exact Tracking lookup
     if ($a === 'digylog_tracking_auto') crm_out(crm_tracking_auto_guarded());
     if ($a === 'digylog_delivery_auto') crm_out(crm_delivery_auto_guarded());
+    if ($a === 'digylog_send_auto') crm_out(crm_dl_send_guarded());
     if ($a === 'digylog_admin') crm_dl_admin($b);          // v3.101: إعدادات Digylog (أدمين)
     if ($a === 'returns_list') crm_returns_list($b);
     if ($a === 'returns_scan') crm_returns_scan($b);
