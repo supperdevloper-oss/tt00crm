@@ -1316,11 +1316,14 @@ function crm_tracking_auto_guarded() {
  * It never writes statut, dateLiv, tracking, client data, prices, or other fields. */
 function crm_delivery_status($info) {
   if(!is_array($info))return '';
-  $st=crm_tracking_deep_pick($info,array('statusName','status_name','orderStatus','order_status','statut','label','status'));
+  /* Prefer real status fields. A generic top-level `label` can be the parcel
+     label/barcode and must never hide the actual Digylog status. */
+  $st=crm_tracking_deep_pick($info,array('statusName','status_name','orderStatus','order_status','statut','status','stateName','state_name','state'));
+  if($st==='')$st=crm_tracking_deep_pick($info,array('label'));
   $n=crm_tracking_norm($st);
-  /* Digylog currently returns the exact French label “Retournée”. Keep this
-     deliberately strict: a generic intermediate “Retour ...” must not close an order. */
-  if($n==='retournee'||$n==='retourne')return 'Retour';
+  /* Digylog may append the return reason to “Retournée”. Match that terminal
+     prefix, while still refusing a generic intermediate “Retour ...” state. */
+  if(strpos($n,'retourne')===0)return 'Retour';
   $id=crm_tracking_deep_pick($info,array('idStatus','statusId','status_id','id_status'));
   if((string)$id==='6'||$n==='livree'||strpos($n,'livree')===0)return 'Livrée';
   return '';
