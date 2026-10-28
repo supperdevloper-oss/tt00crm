@@ -1383,7 +1383,7 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
     if(sending||document.hidden)return;sending=true;
     try{await fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Sync-Token':token},body:JSON.stringify({action:'digylog_send_auto'})})}catch(e){}finally{sending=false}
   }
-  setTimeout(sendConfirmed,2500);setInterval(sendConfirmed,8000);
+  setTimeout(sendConfirmed,2000);setInterval(sendConfirmed,6000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)sendConfirmed()});window.addEventListener('online',sendConfirmed);
 })();
 </script>

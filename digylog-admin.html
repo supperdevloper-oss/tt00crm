@@ -50,20 +50,31 @@
         <div class="hint">كيتجاب من /networks (ديك الخانة كتتأكد بزر "اختبار الاتصال")</div>
 
         <label>المتاجر (store) ديال كل بنت</label>
-        <input id="st_Meryam" type="text" placeholder="Meryam" />
-        <input id="st_AYA" type="text" placeholder="AYA" style="margin-top:8px" />
-        <input id="st_imane" type="text" placeholder="imane" style="margin-top:8px" />
-        <input id="st_safa" type="text" placeholder="safa" style="margin-top:8px" />
+        <div id="storeBox">
+          <input id="st_Meryam" type="text" placeholder="Meryam" />
+          <input id="st_AYA" type="text" placeholder="AYA" style="margin-top:8px" />
+          <input id="st_imane" type="text" placeholder="imane" style="margin-top:8px" />
+          <input id="st_safa" type="text" placeholder="safa" style="margin-top:8px" />
+        </div>
+        <div class="hint">كل بنت كتحتاج متجر (Boutique) ديالها فـ Digylog. إلا بنت جديدة ما لقيتيش، زيدها من التشخيص.</div>
 
-        <label for="sentType">وين كيمشيو الطلبيات (sentType)</label>
+        <label for="sentType">وين كيمشيو الطلبيات</label>
         <select id="sentType">
           <option value="0">0 — Commandes non envoyées (المطلوب)</option>
           <option value="1">1 — يتصيفطو لشركة التوصيل (حقيقي)</option>
           <option value="2">2 — يتصيفطو لمركز الاتصال</option>
         </select>
+        <div class="hint">الإرسال التلقائي ديما كيدخل في Commandes non envoyées (0) وما كيصيفطش لحتى شركة.</div>
 
-        <label class="check"><input id="enabled" type="checkbox" /> تفعيل الإرسال التلقائي (الطلبيات Confirmé)</label>
-        <div class="hint">ملي تفعّل، غير الطلبيات لي تأكدات من بعد هاد اللحظة كتمشي.</div>
+        <label class="check"><input id="autoSend" type="checkbox" /> الإرسال التلقائي ديال الطلبيات Confirmé (بلا ما تضغط على والو)</label>
+        <div class="hint">هاي هي اللي كتخدم بوحدها: كل طلبية Confirmé و Suivie خاوية كتروح تلقائياً لـ Digylog (Commandes non envoyées) فـ ثواني.</div>
+
+        <label for="defaultStore">المتجر (Boutique) الافتراضي</label>
+        <input id="defaultStore" type="text" placeholder="مثال: Slim-Bio-MR" />
+        <div class="hint">كيستعمل ملي شي بنت ماعندهاش متجر خاص بيها.</div>
+
+        <label class="check"><input id="enabled" type="checkbox" /> تفعيل الإرسال اليدوي (من الصفحة هادي)</label>
+        <div class="hint">غير للاختبار اليدوي. الإرسال التلقائي فوق ما كيتوقفش.</div>
 
         <div class="btns">
           <button class="primary" id="save">💾 حفظ</button>
@@ -74,7 +85,14 @@
       </div>
 
       <div class="card">
-        <h2>2) جلب Tracking فقط</h2>
+        <h2>2) حالة الإرسال التلقائي</h2>
+        <div class="hint" style="margin-bottom:10px;color:#166534;font-weight:700">تشخيص بلا تغيير: شحال من طلبية مستعدة، واش جات، واش كان الخطأ.</div>
+        <button class="primary" id="diag" style="width:100%">🔎 شوف الحالة دابا</button>
+        <div id="diagOut" class="hint" style="margin-top:10px;direction:ltr;text-align:left"></div>
+      </div>
+
+      <div class="card">
+        <h2>3) جلب Tracking فقط</h2>
         <div class="hint" style="margin-bottom:10px;color:#166534;font-weight:700">هاد العملية كتكتب غير عمود Tracking. ما كتبدلش Suivie ولا Livrée ولا Retour ولا حتى تاريخ.</div>
         <label for="sellerToken">Seller Authorization ديال seller.digylog.com</label>
         <input id="sellerToken" type="password" autocomplete="new-password" placeholder="لسّق Authorization هنا مرة وحدة" />
@@ -84,7 +102,7 @@
       </div>
 
       <div class="card">
-        <h2>3) مزامنة Suivie من Digylog</h2>
+        <h2>4) مزامنة Suivie من Digylog</h2>
         <div class="hint" style="margin-bottom:10px;color:#166534;font-weight:700">كتقرا الحالة الحقيقية باستعمال Tracking فقط: Livrée كتبقى Livrée وRetournée كتولي Retour. ما كتبدل حتى عمود آخر.</div>
         <label for="deliveryTracking">Tracking ديال الطلبية (اختياري)</label>
         <input id="deliveryTracking" type="text" autocomplete="off" placeholder="مثال: S8363F49B8" style="direction:ltr;text-align:left;text-transform:uppercase" />
@@ -128,16 +146,48 @@
         body: JSON.stringify(body)
       }).then(function (r) { return r.json(); });
     }
+    function storeInputs() {
+      var box = $('storeBox');
+      var out = [];
+      Array.prototype.forEach.call(box.querySelectorAll('input'), function (i) { out.push(i); });
+      return out;
+    }
     function storesValue() {
       var s = {};
-      AGENTS.forEach(function (a) { s[a] = $('st_' + a).value.trim(); });
+      storeInputs().forEach(function (i) {
+        var a = i.getAttribute('data-agent') || i.id.replace(/^st_/, '');
+        var v = i.value.trim();
+        if (a) s[a] = v;
+      });
       return s;
+    }
+    function renderStores(stores, agents) {
+      var box = $('storeBox');
+      var names = {};
+      AGENTS.forEach(function (a) { names[a] = 1; });
+      (agents || []).forEach(function (a) { if (a) names[a] = 1; });
+      Object.keys(stores || {}).forEach(function (a) { if (a) names[a] = 1; });
+      var list = Object.keys(names).sort();
+      box.innerHTML = '';
+      list.forEach(function (a) {
+        var inp = document.createElement('input');
+        inp.type = 'text';
+        inp.id = 'st_' + a;
+        inp.setAttribute('data-agent', a);
+        inp.placeholder = a;
+        inp.value = (stores && stores[a]) ? stores[a] : (DEFAULT_STORES[a] || '');
+        if (box.children.length) inp.style.marginTop = '8px';
+        box.appendChild(inp);
+      });
     }
     function fill(cfg) {
       $('network').value = cfg.network || 1;
       $('sentType').value = String(cfg.sentType || 0);
       $('enabled').checked = !!cfg.enabled;
-      AGENTS.forEach(function (a) { $('st_' + a).value = (cfg.stores && cfg.stores[a]) || DEFAULT_STORES[a]; });
+      $('autoSend').checked = cfg.autoSend === undefined ? true : !!cfg.autoSend;
+      $('defaultStore').value = cfg.defaultStore || '';
+      renderStores(cfg.stores || {}, cfg.agents || []);
+
       $('tokInfo').textContent = cfg.hasToken ? ('✅ توكن محفوظ (…' + cfg.tokenTail + ')') : '⚠️ ما كاينش توكن بعد';
       $('sellerTokInfo').textContent = cfg.hasSellerToken ? ('✅ Seller Authorization محفوظ (…' + cfg.sellerTokenTail + ') — الجلب الأوتوماتيكي خدام') : '❌ Seller Authorization مازال ما محفوظش — Tracking الأوتوماتيكي ما يقدرش يخدم';
       $('sellerTokInfo').style.color = cfg.hasSellerToken ? '#166534' : '#b91c1c';
@@ -161,6 +211,8 @@
         network: parseInt($('network').value, 10) || 1,
         sentType: parseInt($('sentType').value, 10),
         stores: storesValue(),
+        defaultStore: $('defaultStore').value.trim(),
+        autoSend: $('autoSend').checked ? 1 : 0,
         enabled: $('enabled').checked ? 1 : 0
       };
       var t = $('token').value.trim();
@@ -180,6 +232,27 @@
         show(j.ok ? '👀 هادي الطلبيات لي غاديين يمشيو (ما تصيفطاتش)' : '❌ ' + (j.err || 'error'), !!j.ok);
       });
     };
+    $('diag').onclick = function () {
+      var btn=$('diag'); btn.disabled=true; $('diagOut').textContent='...';
+      call({ action: 'digylog_admin', op: 'status' }).then(function (j) {
+        btn.disabled=false;
+        if (!j || !j.ok) { $('diagOut').textContent='خطأ: '+((j&&j.err)||'error'); return; }
+        var st=j.status, last=st.lastRun||{};
+        var lines=[];
+        lines.push('token: '+(st.hasToken?'✅ موجود':'❌ ما كاينش — بلا توكن ما يمكنرش نرسلو'));
+        lines.push('autoSend: '+(st.autoSend?'✅ مفعّل':'❌ موقوف'));
+        lines.push('طلبيات مستعدة (Confirmé + Suivie خاوية): '+st.eligible);
+        lines.push('منهم تبعتو مزيان: '+st.alreadySent);
+        lines.push('بلا متجر (Boutique): '+st.noStore);
+        lines.push('رقم هاتف ماشي صحيح: '+st.badPhone);
+        lines.push('المتاجر Discovery: '+(st.boutiques&&st.boutiques.length?st.boutiques.join(', '):'(ماكاينش)'));
+        lines.push('متجر افتراضي: '+(st.defaultStore||'(ماكAINش)'));
+        lines.push('آخر تشغيل: '+(last.when?new Date(last.when).toLocaleString():'(مازال عمرو)')+' | بعت: '+(last.sent||0)+' | فشل: '+(last.failed||0));
+        if (last.errors && Object.keys(last.errors).length) lines.push('أخطاء: '+JSON.stringify(last.errors).slice(0,600));
+        $('diagOut').textContent=lines.join('\n');
+      }).catch(function () { btn.disabled=false; $('diagOut').textContent='مشكل فالاتصال'; });
+    };
+
     $('syncDelivery').onclick = function () {
       var tracking=$('deliveryTracking').value.trim().toUpperCase();
       show('⏳ كنقرا الحالة الحقيقية من Digylog…',true);
