@@ -209,6 +209,35 @@ section.dark .muted{color:#b9cfc2}
 .pricebox .pay{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:16px 0 0;opacity:.85}
 .pricebox .pay span{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--muted);letter-spacing:.6px}
 
+/* ---------- produit (mockup du livre) ---------- */
+.product{display:grid;grid-template-columns:300px 1fr;gap:34px;align-items:center;margin-top:8px}
+@media(max-width:680px){.product{grid-template-columns:1fr;gap:18px;justify-items:center}}
+.product .shot{position:relative;display:grid;place-items:center}
+.product .shot img{width:100%;max-width:300px;height:auto;filter:drop-shadow(0 22px 34px rgba(20,15,8,.22))}
+.product .shot .rote{position:absolute;top:6px;right:-6px;transform:rotate(-8deg)}
+@media(max-width:680px){.product .shot .rote{right:0}}
+.product .shot .rote b{display:block;background:var(--orange);color:#fff;font-family:'Oswald',sans-serif;
+  font-size:14px;letter-spacing:1px;padding:8px 12px;border-radius:10px;box-shadow:0 6px 16px rgba(0,0,0,.22)}
+.product .txt h3{font-size:clamp(22px,5vw,28px);margin:0 0 6px}
+.product .txt .sub{color:var(--muted);font-size:15px;margin:0 0 14px}
+.product .txt ul{list-style:none;padding:0;margin:0;display:grid;gap:9px}
+.product .txt li{display:flex;gap:10px;font-size:15px;align-items:flex-start}
+.product .txt li .ck{flex:0 0 20px;height:20px;border-radius:50%;background:#e7f3ec;color:var(--green);
+  display:grid;place-items:center;font-size:12px;font-weight:700;margin-top:1px}
+.product .txt .files{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
+.product .txt .files span{font-size:11.5px;border:1px solid var(--line);border-radius:7px;padding:5px 9px;
+  color:var(--muted);letter-spacing:.4px;background:var(--paper)}
+
+/* ---------- aperçus du livre ---------- */
+.peeks{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
+@media(max-width:700px){.peeks{grid-template-columns:repeat(2,1fr)}}
+.peek{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper);box-shadow:0 8px 18px rgba(20,15,8,.07)}
+.peek img{width:100%;height:auto;display:block}
+.peek .cap{padding:9px 11px 11px;font-size:11.5px;line-height:1.35;color:var(--muted)}
+.peek .cap b{display:block;font-family:'Oswald',sans-serif;font-size:12.5px;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--ink);margin-bottom:2px}
+.peeks-note{text-align:center;font-size:12.5px;color:var(--muted);margin-top:14px}
+
 /* ---------- garantie ---------- */
 .guarantee{display:flex;gap:18px;align-items:center;background:#eef6f1;border:1px solid #cfe6d8;border-radius:18px;padding:20px 22px;margin-top:26px}
 .guarantee .seal{
@@ -450,6 +479,30 @@ footer.site p{margin:0 0 8px}
     <h2 class="center">Ce que vous recevez aujourd'hui</h2>
     <div class="divider"></div>
 
+    <div class="product">
+      <div class="shot">
+        <img src="assets/img/book/mockup-livre@520.png"
+             srcset="assets/img/book/mockup-livre@520.png 718w, assets/img/book/mockup-livre.png 1252w"
+             sizes="300px"
+             width="718" height="856" fetchpriority="high" decoding="async"
+             alt="Le guide 365 Recettes pour Friteuse à Air — PDF de 146 pages, couverture réelle du livre">
+        <div class="rote"><b>PDF IMMÉDIAT</b></div>
+      </div>
+      <div class="txt">
+        <h3>365 Recettes pour Friteuse à Air</h3>
+        <p class="sub">146 pages mises en page · édition 2026</p>
+        <ul>
+          <li><span class="ck">✓</span><div><b>365 recettes testées</b>, une pour chaque jour de l'année</div></li>
+          <li><span class="ck">✓</span><div><b>Temps et température exacts</b> sur chaque fiche — plus de ratés</div></li>
+          <li><span class="ck">✓</span><div><b>Index par ingrédient</b> : cuisinez avec ce que vous avez déjà</div></li>
+          <li><span class="ck">✓</span><div><b>9 chapitres</b> : viandes, poissons, légumes, entrées, plats, petit-déj, desserts, monde, surgelés</div></li>
+        </ul>
+        <div class="files">
+          <span>📘 Guide 146 pages</span><span>📊 Tableau T°</span><span>🗓 4 semaines de menus</span><span>🍫 50 desserts</span>
+        </div>
+      </div>
+    </div>
+
     <div class="pricebox" style="margin-top:26px">
       <ul class="stack">
         <li><span>Guide 365 recettes pour friteuse à air — 146 pages (PDF)</span><span>38 €</span></li>
@@ -482,6 +535,42 @@ footer.site p{margin:0 0 8px}
       <b>À savoir :</b> ce produit est un <b>fichier PDF téléchargeable</b> — pas un livre papier.
       Vous le recevez par email, immédiatement après le paiement.
     </div>
+  </div>
+</section>
+
+<!-- ============================= APERÇUS ============================= -->
+<section id="apercu">
+  <div class="wrap">
+    <p class="eyebrow center">À l'intérieur</p>
+    <h2 class="center">Regardez avant d'acheter</h2>
+    <div class="divider"></div>
+    <p class="muted center" style="margin-top:14px">
+      Pas de promesse floue : voilà les vraies pages du livre, telles que vous les recevrez.
+    </p>
+
+    <div class="peeks">
+      <div class="peek">
+        <img src="assets/img/book/apercu-1.jpg" loading="lazy" decoding="async" width="1400" height="2089"
+             alt="Sommaire du guide 365 recettes avec les numéros de page">
+        <div class="cap"><b>Sommaire</b>9 chapitres, chaque recette numérotée.</div>
+      </div>
+      <div class="peek">
+        <img src="assets/img/book/apercu-2.jpg" loading="lazy" decoding="async" width="1400" height="2089"
+             alt="Une fiche recette avec portions, temps, température, ingrédients et astuce">
+        <div class="cap"><b>Une fiche recette</b>Portions, temps, °C, étapes, astuce.</div>
+      </div>
+      <div class="peek">
+        <img src="assets/img/book/apercu-3.jpg" loading="lazy" decoding="async" width="1400" height="2089"
+             alt="Tableau des temps et températures de cuisson pour 42 aliments">
+        <div class="cap"><b>Tableau T° &amp; temps</b>42 aliments, à imprimer.</div>
+      </div>
+      <div class="peek">
+        <img src="assets/img/book/apercu-4.jpg" loading="lazy" decoding="async" width="1400" height="2089"
+             alt="Les 4 semaines de menus avec la liste de courses">
+        <div class="cap"><b>4 semaines de menus</b>28 dîners + la liste de courses.</div>
+      </div>
+    </div>
+    <p class="peeks-note">146 pages au total · index par ingrédient inclus · PDF lisible sur téléphone, tablette et ordinateur</p>
   </div>
 </section>
 
