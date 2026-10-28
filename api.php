@@ -1736,6 +1736,31 @@ function crm_returns_restock($b) {
   if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>(bool)$ok,'quantity'=>$q,'newStock'=>(int)$cat[$pi]['stock']));
 }
 
+/* One-time 2026-10 city delivery-price adjustment requested by admin.
+ * Exact mapping from the pre-change value: 40->35, 45->40, 50->45.
+ * The marker prevents a transformed 45->40 price from being discounted twice. */
+function crm_city_delivery_price_cut_once() {
+  global $LOCK_FILE,$DATA_DIR;
+  $marker='paraveda_city_price_cut_20261028_v1';$stamp=rtrim((string)$DATA_DIR,'/').'/.city-price-cut-20261028.done';
+  if(is_file($stamp))return;
+  $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);
+  $data=crm_read_raw(true);
+  if(isset($data[$marker]['d']['done'])&&!empty($data[$marker]['d']['done'])){@touch($stamp);if($fh){@flock($fh,LOCK_UN);@fclose($fh);}return;}
+  $rows=isset($data['paraveda_villes_v2']['d'])?crm_unwrap($data['paraveda_villes_v2']['d']):array();
+  if(!is_array($rows)||count($rows)===0){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}return;}
+  $map=array('40'=>35,'45'=>40,'50'=>45);$counts=array('40_to_35'=>0,'45_to_40'=>0,'50_to_45'=>0);$changed=0;
+  foreach($rows as $i=>$row){
+    if(!is_array($row)||!isset($row['prix'])||!is_numeric($row['prix']))continue;$old=(float)$row['prix'];$key=(string)(int)$old;
+    if($old!=(float)(int)$old||!isset($map[$key]))continue;$rows[$i]['prix']=$map[$key];$counts[$key.'_to_'.$map[$key]]++;$changed++;
+  }
+  $now=(int)(microtime(true)*1000);$prevT=isset($data['paraveda_villes_v2']['t'])?(int)$data['paraveda_villes_v2']['t']:0;
+  $data['paraveda_villes_v2']=array('t'=>max($prevT+1,$now),'d'=>array_values($rows));
+  $data[$marker]=array('t'=>$now,'d'=>array('done'=>1,'at'=>$now,'changed'=>$changed,'counts'=>$counts));
+  crm_backup();$ok=crm_write_all($data);if($ok){crm_journal_append('paraveda_villes_v2',$data['paraveda_villes_v2']['t'],array_values($rows));@touch($stamp);}
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_audit('city-price-cut | changed='.$changed.' | 40to35='.$counts['40_to_35'].' | 45to40='.$counts['45_to_40'].' | 50to45='.$counts['50_to_45'].' | ok='.($ok?1:0));
+}
+crm_city_delivery_price_cut_once();
+
 $m = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 /* ---------- GET: full snapshot ---------- */

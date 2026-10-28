@@ -3,6 +3,7 @@
 Does not read or mutate production CRM data.
 """
 from pathlib import Path
+import json
 import re
 import zipfile
 
@@ -11,6 +12,9 @@ api = (ROOT / "api.php").read_text(encoding="utf-8")
 ui = (ROOT / "retours.html").read_text(encoding="utf-8")
 index = (ROOT / "index.html").read_text(encoding="utf-8")
 digylog_admin = (ROOT / "digylog-admin.html").read_text(encoding="utf-8")
+city_prefix = 'const Qi="paraveda_villes_v2",Ld='
+city_rows, _ = json.JSONDecoder().raw_decode(index[index.index(city_prefix) + len(city_prefix):])
+city_prices = [row.get("prix") for row in city_rows if isinstance(row, dict)]
 start = api.index("* Suivi des Retours")
 end = api.index("$m = $_SERVER['REQUEST_METHOD']", start)
 returns = api[start:end]
@@ -83,11 +87,14 @@ checks = {
     "Menu buttons cannot trigger rename prompt": all(x not in index for x in ('onDoubleClick:()=>{C!=="Waiting CMD"&&X(C)}', "نقرة مزدوجة لإعادة التسمية", "الاسم الجديد:")),
     "Digylog config survives primary/mirror directory switches": all(x in api for x in ("function crm_dl_cfg_paths", "$DATA_DIR, $DIR_LOC, $DIR_EXT", "function crm_dl_cfg_merge_missing", "crm_dl_cfg_set($merged)", "LOCK_EX")),
     "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
+    "City delivery prices use the exact one-time mapping": all(x in api for x in ("function crm_city_delivery_price_cut_once", "array('40'=>35,'45'=>40,'50'=>45)", "paraveda_city_price_cut_20261028_v1", ".city-price-cut-20261028.done", "crm_city_delivery_price_cut_once();")),
+    "City price migration cannot apply twice": all(x in api for x in ("if(is_file($stamp))return", "isset($data[$marker]['d']['done'])", "'done'=>1", "@touch($stamp)")),
+    "Built-in city prices match the requested reduction": len(city_rows) == 612 and city_prices.count(35) == 116 and city_prices.count(40) == 469 and city_prices.count(45) == 0 and city_prices.count(50) == 0,
 }
 
-package = ROOT / "paraveda-digylog-automatic-status.zip"
+package = ROOT / "paraveda-city-delivery-prices.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Automatic Digylog status package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php", "index.html", "digylog-admin.html"] and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
+    checks["City delivery-price package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php", "index.html"] and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
