@@ -1761,6 +1761,29 @@ function crm_city_delivery_price_cut_once() {
 }
 crm_city_delivery_price_cut_once();
 
+/* One-time matching reduction for the existing CRM commission column.
+ * Exact original values only: 40->35, 45->40, 50->45. */
+function crm_order_commission_cut_once() {
+  global $LOCK_FILE,$DATA_DIR;
+  $marker='paraveda_commission_cut_20261028_v1';$stamp=rtrim((string)$DATA_DIR,'/').'/.commission-cut-20261028.done';
+  if(is_file($stamp))return;
+  $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);
+  if(isset($data[$marker]['d']['done'])&&!empty($data[$marker]['d']['done'])){@touch($stamp);if($fh){@flock($fh,LOCK_UN);@fclose($fh);}return;}
+  $rows=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();
+  if(!is_array($rows)||count($rows)===0){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}return;}
+  $map=array('40'=>35,'45'=>40,'50'=>45);$counts=array('40_to_35'=>0,'45_to_40'=>0,'50_to_45'=>0);$changed=0;$now=(int)(microtime(true)*1000);
+  foreach($rows as $i=>$row){
+    if(!is_array($row)||!empty($row['_del'])||!isset($row['commission'])||!is_numeric($row['commission']))continue;$old=(float)$row['commission'];$key=(string)(int)$old;
+    if($old!=(float)(int)$old||!isset($map[$key]))continue;
+    $row['commission']=$map[$key];if(!isset($row['_f'])||!is_array($row['_f']))$row['_f']=array();$row['_f']['commission']=$now;$row['_u']=$now;$rows[$i]=$row;$counts[$key.'_to_'.$map[$key]]++;$changed++;
+  }
+  $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$data['paraveda_orders_v5']=array('t'=>max($prevT+1,$now),'d'=>array_values($rows));
+  $data[$marker]=array('t'=>$now,'d'=>array('done'=>1,'at'=>$now,'changed'=>$changed,'counts'=>$counts));
+  crm_backup();$ok=crm_write_all($data);if($ok){crm_journal_append('paraveda_orders_v5',$data['paraveda_orders_v5']['t'],array_values($rows));@touch($stamp);}
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_audit('commission-cut | changed='.$changed.' | 40to35='.$counts['40_to_35'].' | 45to40='.$counts['45_to_40'].' | 50to45='.$counts['50_to_45'].' | ok='.($ok?1:0));
+}
+crm_order_commission_cut_once();
+
 $m = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 /* ---------- GET: full snapshot ---------- */

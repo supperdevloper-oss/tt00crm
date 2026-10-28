@@ -90,11 +90,14 @@ checks = {
     "City delivery prices use the exact one-time mapping": all(x in api for x in ("function crm_city_delivery_price_cut_once", "array('40'=>35,'45'=>40,'50'=>45)", "paraveda_city_price_cut_20261028_v1", ".city-price-cut-20261028.done", "crm_city_delivery_price_cut_once();")),
     "City price migration cannot apply twice": all(x in api for x in ("if(is_file($stamp))return", "isset($data[$marker]['d']['done'])", "'done'=>1", "@touch($stamp)")),
     "Built-in city prices match the requested reduction": len(city_rows) == 612 and city_prices.count(35) == 116 and city_prices.count(40) == 469 and city_prices.count(45) == 0 and city_prices.count(50) == 0,
+    "Existing CRM commissions use the exact requested mapping": all(x in api for x in ("function crm_order_commission_cut_once", "array('40'=>35,'45'=>40,'50'=>45)", "paraveda_commission_cut_20261028_v1", "$row['commission']=$map[$key]", "$row['_f']['commission']=$now", "crm_order_commission_cut_once();")),
+    "Commission reduction cannot apply twice": all(x in api for x in (".commission-cut-20261028.done", "if(is_file($stamp))return", "isset($data[$marker]['d']['done'])", "'done'=>1", "commission-cut | changed=")),
+    "Commission migration leaves deleted orders untouched": "!empty($row['_del'])" in api[api.index("function crm_order_commission_cut_once"):api.index("crm_order_commission_cut_once();")],
 }
 
-package = ROOT / "paraveda-city-delivery-prices.zip"
+package = ROOT / "paraveda-commission-prices.zip"
 with zipfile.ZipFile(package) as z:
-    checks["City delivery-price package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php", "index.html"] and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
+    checks["Commission-price package is valid and contains only api.php"] = z.testzip() is None and z.namelist() == ["api.php"] and z.read("api.php") == (ROOT / "api.php").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
