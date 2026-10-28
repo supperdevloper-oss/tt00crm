@@ -3,156 +3,73 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Téléchargements — 365 Recettes pour Friteuse à Air</title>
+<title>Téléchargement — 365 Recettes pour Friteuse à Air</title>
 <style>
   @font-face{font-family:'Oswald';src:url('../assets/fonts/web/oswald-700.woff2') format('woff2');font-weight:700;font-display:swap}
-  @font-face{font-family:'Oswald';src:url('../assets/fonts/web/oswald-500.woff2') format('woff2');font-weight:500;font-display:swap}
   @font-face{font-family:'Playfair';src:url('../assets/fonts/web/playfair-700i.woff2') format('woff2');font-weight:700;font-style:italic;font-display:swap}
   :root{--green:#0f3d2a;--green-l:#1f7a52;--cream:#f6f2e9;--paper:#fffdf7;--orange:#d95a1e;
         --ink:#1b1a17;--muted:#6f685c;--line:#e3dccd;--tint:#fcf6eb}
   *{box-sizing:border-box}
   body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
-  .wrap{max-width:860px;margin:0 auto;padding:0 20px}
-  h1,h2,h3{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.5px;line-height:1.15;margin:0}
-  h1{font-size:clamp(26px,6vw,40px)}
-  h2{font-size:clamp(19px,4vw,25px);margin-top:0}
-  .em{font-family:'Playfair',serif;font-style:italic;text-transform:none;letter-spacing:0;color:var(--orange)}
-  header{background:var(--green);color:#fff;padding:34px 0 30px;text-align:center}
-  header p{color:#b9cfc3;margin:10px auto 0;max-width:560px;font-size:15px}
+  .wrap{max-width:720px;margin:0 auto;padding:0 20px}
+  h1,h2{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.5px;line-height:1.15;margin:0}
+  h1{font-size:clamp(24px,6vw,36px)}
+  h2{font-size:18px;margin-bottom:10px}
+  .em{font-family:'Playfair',serif;font-style:italic;text-transform:none;color:var(--orange)}
+  header{background:var(--green);color:#fff;padding:34px 0 32px;text-align:center}
+  header p{color:#b9cfc3;margin:10px auto 0;max-width:480px;font-size:14.5px}
   .kicker{font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:4px;color:#e8a273;margin:0 0 10px;text-transform:uppercase}
-  main{padding:34px 0 60px}
-  .pack{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:16px;
-        box-shadow:0 10px 26px rgba(20,15,8,.06);display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
-  @media(max-width:640px){.pack{grid-template-columns:1fr}}
-  .pack .n{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--green);
-           color:#fff;font-family:'Oswald',sans-serif;font-size:14px;margin-bottom:8px}
-  .pack h3{font-size:17px;margin-bottom:4px}
-  .pack p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
-  .pack .meta{font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:.3px}
+  main{padding:32px 0 56px}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:24px;
+        box-shadow:0 10px 26px rgba(20,15,8,.07);text-align:center}
   .btn{display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-family:'Oswald',sans-serif;
-       font-size:15px;letter-spacing:1px;text-transform:uppercase;padding:14px 26px;border-radius:10px;
-       white-space:nowrap;box-shadow:0 8px 20px rgba(217,90,30,.28);transition:transform .15s}
+       font-size:17px;letter-spacing:1px;text-transform:uppercase;padding:17px 40px;border-radius:12px;
+       box-shadow:0 10px 24px rgba(217,90,30,.3);transition:transform .15s}
   .btn:hover{transform:translateY(-2px)}
-  .btn.sm{padding:11px 18px;font-size:13px}
-  .steps{counter-reset:s;list-style:none;padding:0;margin:14px 0 0;display:grid;gap:12px}
-  .steps li{counter-increment:s;position:relative;padding-left:44px;font-size:14.5px;line-height:1.55}
-  .steps li:before{content:counter(s);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;
-    background:var(--green);color:#fff;font-family:'Oswald',sans-serif;font-size:13px;display:grid;place-items:center}
-  .steps b{color:var(--green)}
-  code{background:var(--tint);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13px}
-  .card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:24px;margin-bottom:16px}
-  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
-  th,td{text-align:left;padding:9px 0;border-bottom:1px solid var(--line);vertical-align:top}
-  th{font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
-  td:last-child{text-align:right;white-space:nowrap;font-family:'Oswald',sans-serif}
-  .warn{background:#fff4ec;border-left:4px solid var(--orange);border-radius:8px;padding:14px 16px;font-size:14px;margin-top:14px}
-  .warn b{color:var(--orange)}
-  .ok{color:var(--green-l);font-weight:700}
-  ul.ck{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px;font-size:14.5px}
-  ul.ck li:before{content:"☐";margin-right:9px;color:var(--green-l);font-size:16px}
-  footer{text-align:center;color:var(--muted);font-size:12.5px;padding:0 0 40px}
-  a{color:var(--green-l)}
+  .meta{color:var(--muted);font-size:13px;margin:12px 0 0;letter-spacing:.3px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px;text-align:left}
+  td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{font-family:'Oswald',sans-serif;font-size:13px;color:var(--green);white-space:nowrap;padding-right:14px}
+  td:last-child{color:var(--muted)}
+  .note{background:var(--tint);border-left:4px solid var(--orange);border-radius:8px;padding:13px 15px;
+        font-size:13.5px;margin-top:16px;text-align:left}
+  code{background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12.5px}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:0 0 40px}
 </style>
 </head>
 <body>
 
 <header>
   <div class="wrap">
-    <p class="kicker">Prêt à publier</p>
-    <h1>Vos fichiers <span class="em">à télécharger</span></h1>
-    <p>Tout ce qu'il faut pour mettre le produit en ligne sur Gumroad. Clic droit → Enregistrer, ou cliquez sur un bouton.</p>
+    <p class="kicker">Un seul fichier</p>
+    <h1>Tout <span class="em">en un</span></h1>
+    <p>Aucun doublon : chaque fichier apparaît une seule fois dans l'archive.</p>
   </div>
 </header>
 
 <main class="wrap">
-
-  <!-- ===== PACK 1 ===== -->
-  <div class="pack">
-    <div>
-      <span class="n">1</span>
-      <h3>Ce que vous téléversez dans Gumroad</h3>
-      <p>Les <b>4 PDF</b> du produit + les <b>7 images</b> de la fiche, déjà renommées aux bonnes dimensions, avec un LISEZ-MOI qui donne les champs à remplir.</p>
-      <p class="meta">7,4 Mo · 13 fichiers · PDF 146 pages + 3 bonus + cover/thumb/galerie</p>
-    </div>
-    <a class="btn" href="1-A-UPLOADER-GUMROAD.zip" download>Télécharger</a>
-  </div>
-
-  <!-- ===== PACK 2 ===== -->
-  <div class="pack">
-    <div>
-      <span class="n">2</span>
-      <h3>La page de vente, prête à héberger</h3>
-      <p><code>index.html</code> + <code>merci.html</code> + toutes les images et polices, dans l'arborescence exacte. Dézippez et envoyez tel quel chez votre hébergeur.</p>
-      <p class="meta">9,5 Mo · 43 fichiers · fonctionne sans base de données, sans serveur</p>
-    </div>
-    <a class="btn" href="2-LANDING-A-HEBERGER.zip" download>Télécharger</a>
-  </div>
-
-  <!-- ===== PACK 3 ===== -->
-  <div class="pack">
-    <div>
-      <span class="n">3</span>
-      <h3>Le kit complet</h3>
-      <p>Tout : produit, landing, 15 créatifs publicitaires, textes d'annonces, plan 14 jours, emails, tracking, et l'analyse des concurrents.</p>
-      <p class="meta">18,2 Mo · 117 fichiers · archive de sauvegarde complète</p>
-    </div>
-    <a class="btn" href="3-KIT-COMPLET.zip" download>Télécharger</a>
-  </div>
-
-  <!-- ===== GUMROAD ===== -->
   <div class="card">
-    <h2>Mettre le produit sur Gumroad — 8 étapes</h2>
-    <ol class="steps">
-      <li><b>Créer le compte</b> sur <a href="https://gumroad.com" target="_blank" rel="noopener">gumroad.com</a> — email + mot de passe, pas de carte bancaire demandée.</li>
-      <li><b>Settings → Payments</b> : pays <b>Maroc</b>, compte bancaire en <b>MAD</b>. Gumroad verse chaque vendredi, minimum <b>100 $</b>. (PayPal Connect n'existe pas pour le Maroc.)</li>
-      <li><b>Settings → Advanced → Third-party analytics</b> : collez votre <b>Meta Pixel ID</b>. Gumroad enverra <code>ViewContent</code>, <code>InitiateCheckout</code> et <code>Purchase</code> tout seul.</li>
-      <li><b>Products → New product → Digital product</b>. Nom : <code>365 Recettes pour Friteuse à Air — Le guide pratique</code>.</li>
-      <li><b>Devise = EUR</b>, puis <b>prix = 2.97</b> (avec un point, pas une virgule). ⚠️ La devise se choisit <b>à la création</b> et ne se change plus ensuite.</li>
-      <li><b>Content</b> : glissez les 4 PDF du pack 1 (ne pas zipper). <b>Cover</b> + <b>Thumbnail</b> + les 4 images de galerie depuis <code>images/</code>.</li>
-      <li><b>Description</b> : copiez le bloc de <code>GUMROAD-PUBLICATION.md</code> §3. <b>Receipt</b> : §6. Puis <b>Discover = OFF</b>.</li>
-      <li><b>Publish</b> → copiez votre lien <code>https://VOTRE-NOM.gumroad.com/l/365-recettes-friteuse-air</code> et collez-le dans <code>index.html</code> → <code>CONFIG.checkout</code> avec <code>?wanted=true</code>.</li>
-    </ol>
-    <div class="warn">
-      <b>Le point qui décide de tout :</b> à 2,97 €, Gumroad garde <b>1,07 €</b> (36 %). Il vous reste 1,90 €.
-      Impossible d'être rentable en trafic froid avec ça. <b>L'upsell à 19 €</b> (15,86 € net) doit être
-      <b>dans le checkout Gumroad</b>, pas seulement sur la page de remerciement. Avec 20 % d'acceptation,
-      votre panier moyen net monte à 5,07 € — c'est là que ça devient rentable.
-    </div>
-  </div>
+    <h2>365-RECETTES-TOUT-EN-UN.zip</h2>
+    <a class="btn" href="365-RECETTES-TOUT-EN-UN.zip" download>Télécharger 11,7 Mo</a>
+    <p class="meta">67 fichiers · PDF · images · page de vente · visuels · guides</p>
 
-  <!-- ===== CHAMPS ===== -->
-  <div class="card">
-    <h2>Les champs, en un coup d'œil</h2>
     <table>
-      <tr><th>Champ</th><th>Valeur</th></tr>
-      <tr><td>Nom du produit</td><td>365 Recettes pour Friteuse à Air — Le guide pratique</td></tr>
-      <tr><td>Prix</td><td>2.97</td></tr>
-      <tr><td>Devise</td><td>EUR</td></tr>
-      <tr><td>URL</td><td>365-recettes-friteuse-air</td></tr>
-      <tr><td>Discover</td><td>OFF</td></tr>
-      <tr><td>Pay what you want</td><td>OFF</td></tr>
-      <tr><td>License keys</td><td>OFF</td></tr>
+      <tr><td>1-PDF-A-ENVOYER/</td><td>Les 4 PDF du produit (146 + 3 + 4 + 18 pages)</td></tr>
+      <tr><td>2-IMAGES-GUMROAD/</td><td>Cover 1280×720, vignette 600×600, mockup</td></tr>
+      <tr><td>3-PUB/</td><td>Les 15 visuels publicitaires</td></tr>
+      <tr><td>4-GUIDES/</td><td>Publication Gumroad, plan 14 jours, textes, emails</td></tr>
+      <tr><td>index.html</td><td>La page de vente, autonome (avec assets/)</td></tr>
     </table>
+
+    <div class="note">
+      <b>Prix :</b> Gumroad <code>2.97</code> EUR · landing <code>CONFIG.price = 2,97</code>.
+      À 2,97 € Gumroad garde 36 % — l'upsell 19 € doit être <b>dans le checkout</b> Gumroad.
+      Les 4 images de galerie sont dans <code>assets/img/book/apercu-*.jpg</code>.
+    </div>
   </div>
-
-  <!-- ===== CHECKLIST ===== -->
-  <div class="card">
-    <h2>Avant de lancer la publicité</h2>
-    <ul class="ck">
-      <li>Produit publié et lien Gumroad copié dans <code>CONFIG.checkout</code></li>
-      <li>Prix identique des deux côtés : 2,97 € affiché = 2.97 facturé</li>
-      <li>Achat test réussi avec un code promo 100 % (les 4 PDF se téléchargent)</li>
-      <li>PDF ouvert sur téléphone : iPhone et Android, aucune police cassée</li>
-      <li>Meta Pixel : l'événement <code>Purchase</code> apparaît dans Events Manager</li>
-      <li>Upsell 19 € en place dans le checkout</li>
-      <li>Page de vente en ligne et le bouton mène bien à Gumroad</li>
-    </ul>
-  </div>
-
-  <footer>
-    Généré pour votre boutique — <span class="ok">tous les fichiers sont aussi dans le kit complet</span>.
-  </footer>
-
 </main>
+
+<footer>Archive générée automatiquement — vérifiée, sans doublon.</footer>
+
 </body>
 </html>
