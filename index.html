@@ -1364,7 +1364,12 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
   const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';let running=false;
   async function syncTracking(){
     if(running||document.hidden)return;running=true;
-    try{await fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Sync-Token':token},body:JSON.stringify({action:'digylog_tracking_auto'})})}catch(e){}finally{running=false}
+    try{
+      await Promise.all([
+        fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Sync-Token':token},body:JSON.stringify({action:'digylog_tracking_auto'})}),
+        fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Sync-Token':token},body:JSON.stringify({action:'digylog_delivery_auto'})})
+      ])
+    }catch(e){}finally{running=false}
   }
   setTimeout(syncTracking,3500);setInterval(syncTracking,60000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncTracking()});

@@ -54,7 +54,9 @@ checks = {
     "Active deliveries are checked before delivered history": all(x in api for x in ("Active deliveries are checked before already-Livrée rows", "'priority'=>$liv==='Livrée'?1:0", "usort($ranked")),
     "Admin can synchronize one exact Tracking now": all(x in api for x in ("$op === 'delivery_sync'", "crm_delivery_sync_batch($tracking !== '' ? 1 : 20, $tracking)", "'requestedTracking'=>$onlyTracking")) and all(x in digylog_admin for x in ("3) مزامنة Suivie من Digylog", "deliveryTracking", "syncDelivery", "op:'delivery_sync'")),
     "Returned synchronization changes no other business field": all(x in api for x in ("The only business-field write performed by this sync", "$o['livraison']=$next;$o['_f']['livraison']=$now;$o['_u']=$now", "It never writes statut, dateLiv, tracking, client data, prices, or other fields")),
-    "Open CRM heartbeat checks delivery states": "$result['deliverySync']=crm_delivery_sync_batch(20)" in api,
+    "Open CRM heartbeat checks delivery states": all(x in api for x in ("$result['deliverySync']=crm_delivery_auto_guarded()", "function crm_delivery_auto_guarded", ".delivery-auto.lock", ".delivery-auto.stamp", "if ($a === 'digylog_delivery_auto')")) and all(x in index for x in ("action:'digylog_tracking_auto'", "action:'digylog_delivery_auto'", "Promise.all")),
+    "Digylog webhook applies final status automatically": all(x in api for x in ("function crm_dl_hook()", "order-status-changed", "crm_delivery_status($p)", "if(isset($_GET['action'])&&$_GET['action']==='digylog_hook')crm_dl_hook()", "The webhook's only business-field write", "$o['livraison']=$newLiv")) and "'disabled'=>true" not in api,
+    "Webhook matching is exact and never uses phone": all(x in api for x in ("$rowTracking===$tracking", "(string)$o['id']===$num", "count($hits)!==1", "'ambiguous'=>count($hits)>1")) and "telephone" not in api[api.index("function crm_dl_hook()"):api.index("/* ================================================================\n * Suivi des Retours")],
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
     "Waiting CMD draft monitor": all(x in index for x in ("function __PvWaitingCmd", "Waiting CMD", "o&&o._d&&!o._del", "pv-wait-tab", "pv-wait-count", 'w==="Waiting CMD"&&s.jsx(__PvWaitingCmd')),
     "Waiting CMD is permanent": '"Suivi des Retours","Waiting CMD","CMD Annuler"]' in index and 'if(!t.includes("Waiting CMD"))t.push("Waiting CMD")' in index,
@@ -83,9 +85,9 @@ checks = {
     "Storeep intake is assigned only to Meryam": "$o['agent'] = 'Meryam';" in api and "crm_sheet_agents" not in api and "crm_rr_get" not in api and "crm_rr_set" not in api and "$agents[$rr % count($agents)]" not in api,
 }
 
-package = ROOT / "paraveda-digylog-return-auto-final.zip"
+package = ROOT / "paraveda-digylog-automatic-status.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Digylog status-sync package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php", "digylog-admin.html"] and z.read("api.php") == (ROOT / "api.php").read_bytes() and z.read("digylog-admin.html") == (ROOT / "digylog-admin.html").read_bytes()
+    checks["Automatic Digylog status package is valid and minimal"] = z.testzip() is None and z.namelist() == ["api.php", "index.html", "digylog-admin.html"] and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():

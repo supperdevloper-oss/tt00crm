@@ -1306,7 +1306,7 @@ function crm_tracking_auto_guarded() {
   $result=crm_tracking_auto_sync(30);
   /* The same guarded browser heartbeat also checks final Digylog delivery states.
      This keeps Livrée working and adds Retournée without a second client timer. */
-  $result['deliverySync']=crm_delivery_sync_batch(20);
+  $result['deliverySync']=crm_delivery_auto_guarded();
   @flock($lock,LOCK_UN);@fclose($lock);return $result;
 }
 
@@ -1383,6 +1383,16 @@ function crm_delivery_sync_batch($limit=20,$onlyTracking='') {
   }
   crm_audit('digylog-delivery-tracking-only | checked='.count($batch).' | delivered='.$delivered.' | returned='.$returned.' | updated='.$updated.' | ambiguous='.$ambiguous.' | httpErrors='.$httpErrors.' | unrecognized='.$unrecognized.' | writeOk='.($writeOk?1:0));
   return array('ok'=>(bool)$writeOk,'checked'=>count($batch),'pending'=>$total,'delivered'=>$delivered,'returned'=>$returned,'updated'=>$updated,'ambiguous'=>$ambiguous,'httpErrors'=>$httpErrors,'unrecognized'=>$unrecognized,'requestedTracking'=>$onlyTracking,'exactOnly'=>true);
+}
+/* Dedicated automatic status heartbeat, independent from Tracking import and
+ * shared by every open CRM device. At most one batch runs every 45 seconds. */
+function crm_delivery_auto_guarded() {
+  global $DATA_DIR;
+  $lock=@fopen($DATA_DIR.'/.delivery-auto.lock','c');
+  if(!$lock||!@flock($lock,LOCK_EX|LOCK_NB)){if($lock)@fclose($lock);return array('ok'=>true,'skipped'=>'busy','updated'=>0);}
+  $stamp=$DATA_DIR.'/.delivery-auto.stamp';$last=is_file($stamp)?(int)@filemtime($stamp):0;
+  if($last>0&&time()-$last<45){@flock($lock,LOCK_UN);@fclose($lock);return array('ok'=>true,'skipped'=>'throttled','retryAfter'=>45-(time()-$last),'updated'=>0);}
+  @touch($stamp);$result=crm_delivery_sync_batch(20);@flock($lock,LOCK_UN);@fclose($lock);return $result;
 }
 
 /* يشتغل: من cron (GET) أو من admin (dry) */
@@ -1521,86 +1531,55 @@ function crm_dl_run($dry = false) {
     if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
   }
   if ($runLock) { @flock($runLock, LOCK_UN); @fclose($runLock); }
-  /* كل تشغيل cron كيراجع دفعة Trackings معروفة. المطابقة exact بالـTracking
-     والنتيجة الوحيدة الممكنة هي Suivie = Livrée. */
+  /* Each cron run checks known Trackings exactly and synchronizes only the
+     final delivery field: Digylog Livrée -> Livrée, Retournée -> Retour. */
   $trackingSync=crm_tracking_auto_sync(30);
   $deliverySync=crm_delivery_sync_batch(20);
   crm_audit('digylog-sync | sent=' . count($sent) . ' | failed=' . count($failed) . ' | skipped=' . count($skipped) . ' | applied=' . $applied . ' | trackingLinked=' . (isset($trackingSync['linked'])?(int)$trackingSync['linked']:0) . ' | deliveredUpdated=' . (isset($deliverySync['updated'])?(int)$deliverySync['updated']:0));
   return array('ok'=>true, 'sent'=>count($sent), 'failed'=>count($failed), 'skipped'=>count($skipped), 'applied'=>$applied, 'errors'=>$failed, 'trackingSync'=>$trackingSync, 'deliveredSync'=>$deliverySync);
 }
 
-/* v3.102: Digylog webhook — Digylog كيصيفط تبدل حالة الطلبية (order-status-changed).
- * الرابط اللي كيتسجل فـDigylog: api.php?action=digylog_hook&token=SECRET  (بلا X-Sync-Token)
- * - handshake: {type:'subscribe', key} → كنردو {key} بحالو.
- * - idStatus 6 = Livrée → Suivie = Livrée. الحالات الأخرى كتتسجل فـ dlStatus فقط.
- * - num = رقم الطلبية فـCRM (id). */
+/* Digylog webhook: instant Livrée / Retournée synchronization.
+ * Exact Tracking is preferred; exact CRM id (Digylog num) is the fallback.
+ * No phone/name matching is allowed and livraison is the only business field written. */
 function crm_dl_hook() {
   global $SECRET, $LOCK_FILE;
-  $tk = isset($_GET['token']) ? (string)$_GET['token'] : '';
-  if (!hash_equals($SECRET, $tk)) crm_out(array('ok'=>false, 'err'=>'token'), 403);
-  $rawHook = (string)file_get_contents('php://input');
-  crm_audit('digylog-hook-raw | len=' . strlen($rawHook) . ' | ' . substr(preg_replace('/\s+/', ' ', $rawHook), 0, 600));
-  $j = json_decode($rawHook, true);
-  if (!is_array($j)) crm_out(array('ok'=>false, 'err'=>'bad-json'), 400);
-  if (isset($j['type']) && $j['type'] === 'subscribe' && isset($j['key'])) {
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(array('key' => (string)$j['key']), JSON_UNESCAPED_UNICODE);
-    exit;
-  }
-  $ev = isset($j['eventType']) ? (string)$j['eventType'] : (isset($j['type']) ? (string)$j['type'] : '');
-  if ($ev !== 'order-status-changed') crm_out(array('ok'=>true, 'ignored'=>$ev));
-  /* Digylog كيصيفط حدث مسطّح (num/status/idStatus فالمستوى الأول) — وكيصيفط كذلك payload فارغ فالتجربة */
-  $p = (isset($j['payload']) && is_array($j['payload']) && count($j['payload']) > 0) ? $j['payload'] : $j;
-  $num  = isset($p['num']) ? trim((string)$p['num']) : '';
-  $idSt = isset($p['idStatus']) ? trim((string)$p['idStatus']) : '';
-  $st   = isset($p['status']) ? trim((string)$p['status']) : '';
-  if ($num === '') crm_out(array('ok'=>true, 'ignored'=>'no-num'));   // تجربة Digylog بلا رقم: نرد 200
+  $tk=isset($_GET['token'])?(string)$_GET['token']:'';
+  if(!hash_equals($SECRET,$tk))crm_out(array('ok'=>false,'err'=>'token'),403);
+  $raw=(string)file_get_contents('php://input');$j=json_decode($raw,true);
+  if(!is_array($j))crm_out(array('ok'=>false,'err'=>'bad-json'),400);
+  if(isset($j['type'])&&$j['type']==='subscribe'&&isset($j['key'])){header('Content-Type: application/json; charset=utf-8');echo json_encode(array('key'=>(string)$j['key']),JSON_UNESCAPED_UNICODE);exit;}
+  $ev=isset($j['eventType'])?(string)$j['eventType']:(isset($j['type'])?(string)$j['type']:'');
+  if($ev!==''&&$ev!=='order-status-changed')crm_out(array('ok'=>true,'ignored'=>$ev));
+  $p=(isset($j['payload'])&&is_array($j['payload'])&&count($j['payload'])>0)?$j['payload']:$j;
+  $tracking=strtoupper(trim((string)crm_tracking_deep_pick($p,array('traking','tracking','trackingNumber','tracking_number','barcode'))));
+  $num=trim((string)crm_tracking_deep_pick($p,array('num','orderNum','order_num','externalId','external_id')));
+  $newLiv=crm_delivery_status($p);if($newLiv==='')$newLiv=crm_delivery_status($j);
+  if($newLiv==='')crm_out(array('ok'=>true,'ignored'=>'non-final-status'));
+  if($tracking===''&&$num==='')crm_out(array('ok'=>true,'ignored'=>'no-exact-key'));
 
-  $fh = @fopen($LOCK_FILE, 'c'); if ($fh) @flock($fh, LOCK_EX);
-  $data = crm_read_raw(true);
-  $cur = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
-  if (!is_array($cur)) $cur = array();
-  $prevT = isset($data['paraveda_orders_v5']['t']) ? (int)$data['paraveda_orders_v5']['t'] : 0;
-  $hit = -1;
-  foreach ($cur as $i => $o) {
-    if (is_array($o) && empty($o['_del']) && isset($o['id']) && (string)$o['id'] === $num) { $hit = $i; break; }
+  $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);
+  $data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();
+  $hits=array();
+  foreach($cur as $i=>$o){
+    if(!is_array($o)||!empty($o['_del']))continue;
+    $rowTracking=strtoupper(trim((string)(isset($o['tracking'])?$o['tracking']:'')));
+    if($tracking!==''&&$rowTracking===$tracking)$hits[]=$i;
   }
-  if ($hit < 0) {
-    if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
-    crm_out(array('ok'=>true, 'found'=>false));
+  if($tracking===''||count($hits)===0){
+    $hits=array();foreach($cur as $i=>$o)if(is_array($o)&&empty($o['_del'])&&isset($o['id'])&&$num!==''&&(string)$o['id']===$num)$hits[]=$i;
   }
-  $now = (int)(microtime(true) * 1000);
-  $o = $cur[$hit];
-  if (!isset($o['_f']) || !is_array($o['_f'])) $o['_f'] = array();
-  $o['dlStatus'] = $st; $o['dlStatusAt'] = $now; $o['_f']['dlStatus'] = $now;
-  $changed = true;
-  // Suivie من Digylog: Livrée (idStatus 6) / Retour (نص الحالة فيه "retour" ولا idStatus من لائحة الرجوع)
-  $newLiv = '';
-  $stLow = function_exists('mb_strtolower') ? mb_strtolower($st, 'UTF-8') : strtolower($st);
-  $DL_RETOUR_IDS = array(); // زيد هنا idStatus ديال Retournée إلا عرفناه
-  if ($idSt === '6') $newLiv = 'Livrée';
-  // Retour: Retournée + Refusée (الطلبية المرفوضة كتترجع للـhub)
-  if (strpos($stLow, 'retour') !== false || strpos($stLow, 'refus') !== false || strpos($stLow, 'refused') !== false || in_array($idSt, $DL_RETOUR_IDS, true)) $newLiv = 'Retour';
-  if ($newLiv !== '') {
-    $liv = isset($o['livraison']) ? trim((string)$o['livraison']) : '';
-    if ($liv !== $newLiv) { $o['livraison'] = $newLiv; $o['_f']['livraison'] = $now; }
-    else $changed = false;
-  }
-  $o['_u'] = $now;
-  $cur[$hit] = $o;
-  $ok = true;
-  if ($changed) {
-    crm_backup();
-    $t = max($prevT + 1, $now);
-    $data['paraveda_orders_v5'] = array('t' => $t, 'd' => array_values($cur));
-    $ok = crm_write_all($data);
-    if ($ok) crm_journal_append('paraveda_orders_v5', $t, array_values($cur));
-  }
-  if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
-  crm_audit('digylog-hook | num=' . $num . ' | idStatus=' . $idSt . ' | status=' . $st . ' | changed=' . ($changed ? 1 : 0));
-  crm_out(array('ok'=>(bool)$ok, 'found'=>true, 'livraison'=>(isset($o['livraison']) ? $o['livraison'] : '')));
+  if(count($hits)!==1){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_audit('digylog-hook | tracking='.$tracking.' | num='.$num.' | ignored='.(count($hits)>1?'ambiguous':'not-found'));crm_out(array('ok'=>true,'found'=>false,'ambiguous'=>count($hits)>1));}
+  $hit=$hits[0];$o=$cur[$hit];$liv=trim((string)(isset($o['livraison'])?$o['livraison']:''));
+  if($liv===$newLiv||($liv==='Retour'&&$newLiv==='Livrée')){if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_out(array('ok'=>true,'found'=>true,'changed'=>false,'livraison'=>$liv));}
+  $now=(int)(microtime(true)*1000);if(!isset($o['_f'])||!is_array($o['_f']))$o['_f']=array();
+  /* The webhook's only business-field write. */
+  $o['livraison']=$newLiv;$o['_f']['livraison']=$now;$o['_u']=$now;$cur[$hit]=$o;
+  $prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;crm_backup();$t=max($prevT+1,$now);$data['paraveda_orders_v5']=array('t'=>$t,'d'=>array_values($cur));$ok=crm_write_all($data);if($ok)crm_journal_append('paraveda_orders_v5',$t,array_values($cur));
+  if($fh){@flock($fh,LOCK_UN);@fclose($fh);}crm_audit('digylog-hook | tracking='.$tracking.' | num='.$num.' | livraison='.$newLiv.' | changed='.($ok?1:0));
+  crm_out(array('ok'=>(bool)$ok,'found'=>true,'changed'=>(bool)$ok,'livraison'=>$newLiv));
 }
-if (isset($_GET['action']) && $_GET['action'] === 'digylog_hook') crm_out(array('ok'=>true,'disabled'=>true,'changed'=>false));
+if(isset($_GET['action'])&&$_GET['action']==='digylog_hook')crm_dl_hook();
 
 
 /* ================================================================
@@ -2050,6 +2029,7 @@ if ($m === 'POST') {
     if ($a === 'quick_order') crm_quick_order($b);         // v3.100: طلبية سريعة من البنت
     if ($a === 'digylog_order_status') crm_dl_order_status($b); // read-only exact Tracking lookup
     if ($a === 'digylog_tracking_auto') crm_out(crm_tracking_auto_guarded());
+    if ($a === 'digylog_delivery_auto') crm_out(crm_delivery_auto_guarded());
     if ($a === 'digylog_admin') crm_dl_admin($b);          // v3.101: إعدادات Digylog (أدمين)
     if ($a === 'returns_list') crm_returns_list($b);
     if ($a === 'returns_scan') crm_returns_scan($b);
