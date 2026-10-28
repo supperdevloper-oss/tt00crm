@@ -1359,12 +1359,23 @@ function crm_delivery_sync_batch($limit=20,$onlyTracking='') {
     if($tr===''||$liv==='Retour'||($onlyTracking!==''&&$tr!==$onlyTracking))continue;
     if(!isset($map[$tr]))$map[$tr]=array('count'=>0,'priority'=>$liv==='Livrée'?1:0);$map[$tr]['count']++;if($liv!=='Livrée')$map[$tr]['priority']=0;
   }
-  /* A duplicated Tracking is ambiguous and is never allowed to modify rows. */
-  $ranked=array();$ambiguous=0;foreach($map as $tr=>$meta){if($meta['count']===1)$ranked[]=array('tracking'=>$tr,'priority'=>$meta['priority']);else $ambiguous++;}
-  usort($ranked,function($a,$b){return $a['priority']===$b['priority']?strcmp($a['tracking'],$b['tracking']):($a['priority']-$b['priority']);});$all=array_map(function($x){return $x['tracking'];},$ranked);
-  $total=count($all);if($total===0)return array('ok'=>true,'checked'=>0,'pending'=>0,'delivered'=>0,'returned'=>0,'updated'=>0,'ambiguous'=>$ambiguous,'requestedTracking'=>$onlyTracking,'exactOnly'=>true);
-  $cursor=$onlyTracking!==''?0:(isset($cfg['deliveryCursor'])?max(0,(int)$cfg['deliveryCursor']):0);if($cursor>=$total)$cursor=0;$take=min(max(1,(int)$limit),$total);$batch=array();for($i=0;$i<$take;$i++)$batch[]=$all[($cursor+$i)%$total];
-  if($onlyTracking===''){$cfg['deliveryCursor']=($cursor+$take)%max(1,$total);crm_dl_cfg_set($cfg);}
+  /* A duplicated Tracking is ambiguous and is never allowed to modify rows.
+     Active and already-Livrée rows have independent cursors: old delivered
+     history can never postpone current Expédier-vers returns again. */
+  $active=array();$final=array();$ambiguous=0;
+  foreach($map as $tr=>$meta){if($meta['count']!==1){$ambiguous++;continue;}if($meta['priority']===0)$active[]=$tr;else $final[]=$tr;}
+  sort($active);sort($final);$total=count($active)+count($final);
+  if($total===0)return array('ok'=>true,'checked'=>0,'pending'=>0,'activePending'=>0,'finalPending'=>0,'delivered'=>0,'returned'=>0,'updated'=>0,'ambiguous'=>$ambiguous,'requestedTracking'=>$onlyTracking,'exactOnly'=>true);
+  $limit=max(1,(int)$limit);$batch=array();
+  if($onlyTracking!=='')$batch=array_merge($active,$final);
+  else{
+    $activeN=count($active);$finalN=count($final);$activeTake=$activeN?min($activeN,max(1,(int)ceil($limit*.8))):0;$finalTake=$finalN?min($finalN,max(0,$limit-$activeTake)):0;
+    $left=$limit-$activeTake-$finalTake;if($left>0&&$activeTake<$activeN){$add=min($left,$activeN-$activeTake);$activeTake+=$add;$left-=$add;}if($left>0&&$finalTake<$finalN)$finalTake+=min($left,$finalN-$finalTake);
+    $activeCursor=isset($cfg['deliveryActiveCursor'])?max(0,(int)$cfg['deliveryActiveCursor']):0;if($activeCursor>=max(1,$activeN))$activeCursor=0;
+    $finalCursor=isset($cfg['deliveryFinalCursor'])?max(0,(int)$cfg['deliveryFinalCursor']):0;if($finalCursor>=max(1,$finalN))$finalCursor=0;
+    for($i=0;$i<$activeTake;$i++)$batch[]=$active[($activeCursor+$i)%$activeN];for($i=0;$i<$finalTake;$i++)$batch[]=$final[($finalCursor+$i)%$finalN];
+    $cfg['deliveryActiveCursor']=$activeN?(($activeCursor+$activeTake)%$activeN):0;$cfg['deliveryFinalCursor']=$finalN?(($finalCursor+$finalTake)%$finalN):0;crm_dl_cfg_set($cfg);
+  }
   $infos=crm_delivery_fetch_infos($batch,$token);$targets=array();$delivered=0;$returned=0;$httpErrors=0;$unrecognized=0;
   foreach($infos as $tr=>$r){$state=isset($r['state'])?(string)$r['state']:'';if(isset($r['code'])&&((int)$r['code']<200||(int)$r['code']>=300))$httpErrors++;elseif($state==='Livrée'){$targets[$tr]=$state;$delivered++;}elseif($state==='Retour'){$targets[$tr]=$state;$returned++;}else $unrecognized++;}
   $updated=0;$writeOk=true;if($targets){
@@ -1382,7 +1393,7 @@ function crm_delivery_sync_batch($limit=20,$onlyTracking='') {
     if($fh){@flock($fh,LOCK_UN);@fclose($fh);}
   }
   crm_audit('digylog-delivery-tracking-only | checked='.count($batch).' | delivered='.$delivered.' | returned='.$returned.' | updated='.$updated.' | ambiguous='.$ambiguous.' | httpErrors='.$httpErrors.' | unrecognized='.$unrecognized.' | writeOk='.($writeOk?1:0));
-  return array('ok'=>(bool)$writeOk,'checked'=>count($batch),'pending'=>$total,'delivered'=>$delivered,'returned'=>$returned,'updated'=>$updated,'ambiguous'=>$ambiguous,'httpErrors'=>$httpErrors,'unrecognized'=>$unrecognized,'requestedTracking'=>$onlyTracking,'exactOnly'=>true);
+  return array('ok'=>(bool)$writeOk,'checked'=>count($batch),'pending'=>$total,'activePending'=>count($active),'finalPending'=>count($final),'delivered'=>$delivered,'returned'=>$returned,'updated'=>$updated,'ambiguous'=>$ambiguous,'httpErrors'=>$httpErrors,'unrecognized'=>$unrecognized,'requestedTracking'=>$onlyTracking,'exactOnly'=>true);
 }
 /* Dedicated automatic status heartbeat, independent from Tracking import and
  * shared by every open CRM device. At most one batch runs every 45 seconds. */
@@ -1392,7 +1403,7 @@ function crm_delivery_auto_guarded() {
   if(!$lock||!@flock($lock,LOCK_EX|LOCK_NB)){if($lock)@fclose($lock);return array('ok'=>true,'skipped'=>'busy','updated'=>0);}
   $stamp=$DATA_DIR.'/.delivery-auto.stamp';$last=is_file($stamp)?(int)@filemtime($stamp):0;
   if($last>0&&time()-$last<45){@flock($lock,LOCK_UN);@fclose($lock);return array('ok'=>true,'skipped'=>'throttled','retryAfter'=>45-(time()-$last),'updated'=>0);}
-  @touch($stamp);$result=crm_delivery_sync_batch(20);@flock($lock,LOCK_UN);@fclose($lock);return $result;
+  @touch($stamp);$result=crm_delivery_sync_batch(60);@flock($lock,LOCK_UN);@fclose($lock);return $result;
 }
 
 /* يشتغل: من cron (GET) أو من admin (dry) */
@@ -1795,6 +1806,10 @@ if ($m === 'GET') {
   }
   // v3.41: la lecture exige aussi le token (avant: n'importe qui avec l'URL téléchargeait tous les clients)
   if (!hash_equals($SECRET, crm_token())) crm_out(array('ok'=>false, 'err'=>'token'), 403);
+
+  /* Guaranteed automatic fallback: every CRM snapshot can start one throttled
+     status batch, even when an old cached index lacks the heartbeat script. */
+  if (!isset($_GET['export']) && !isset($_GET['pushkey'])) crm_delivery_auto_guarded();
 
   /* PERF v3.90 — أهم إصلاح فالسيرفر.
    * قبل: كل جهاز كيدير GET كل 5 ثواني وكيحمّل 1.1MB حتى إلا ما تبدل والو.

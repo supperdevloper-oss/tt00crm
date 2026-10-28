@@ -54,11 +54,13 @@ checks = {
     "Digylog Retournée synchronizes to CRM Retour": all(x in api for x in ("function crm_delivery_is_returned", "strpos($n,'retourne')===0", "return 'Retour'", "$o['livraison']=$next", "'returned'=>$returned")),
     "Return reason suffix cannot hide Retournée": all(x in api for x in ("Digylog may append the return reason", "status','stateName','state_name','state", "if($st==='')$st=crm_tracking_deep_pick($info,array('label'))")),
     "Delivery synchronization stays exact-Tracking-only": all(x in api for x in ("crm_dl_base().'/order/'.rawurlencode($tr).'/infos'", "$targets[$tr]", "'exactOnly'=>true")) and "crm_tracking_phone" not in api[api.index("function crm_delivery_status"):api.index("/* يشتغل: من cron")],
-    "Duplicate Tracking is never auto-updated": all(x in api for x in ("A duplicated Tracking is ambiguous", "if($meta['count']===1)$ranked[]", "else $ambiguous++", "'ambiguous'=>$ambiguous")),
-    "Active deliveries are checked before delivered history": all(x in api for x in ("Active deliveries are checked before already-Livrée rows", "'priority'=>$liv==='Livrée'?1:0", "usort($ranked")),
+    "Duplicate Tracking is never auto-updated": all(x in api for x in ("A duplicated Tracking is ambiguous", "if($meta['count']!==1){$ambiguous++;continue;}", "'ambiguous'=>$ambiguous")),
+    "Active deliveries cannot be postponed by delivered history": all(x in api for x in ("independent cursors", "history can never postpone current Expédier-vers returns", "deliveryActiveCursor", "deliveryFinalCursor", "$activeTake", "$finalTake")),
+    "Automatic status batch covers active and delivered queues": all(x in api for x in ("crm_delivery_sync_batch(60)", "'activePending'=>count($active)", "'finalPending'=>count($final)", "ceil($limit*.8)")),
     "Admin can synchronize one exact Tracking now": all(x in api for x in ("$op === 'delivery_sync'", "crm_delivery_sync_batch($tracking !== '' ? 1 : 20, $tracking)", "'requestedTracking'=>$onlyTracking")) and all(x in digylog_admin for x in ("3) مزامنة Suivie من Digylog", "deliveryTracking", "syncDelivery", "op:'delivery_sync'")),
     "Returned synchronization changes no other business field": all(x in api for x in ("The only business-field write performed by this sync", "$o['livraison']=$next;$o['_f']['livraison']=$now;$o['_u']=$now", "It never writes statut, dateLiv, tracking, client data, prices, or other fields")),
     "Open CRM heartbeat checks delivery states": all(x in api for x in ("$result['deliverySync']=crm_delivery_auto_guarded()", "function crm_delivery_auto_guarded", ".delivery-auto.lock", ".delivery-auto.stamp", "if ($a === 'digylog_delivery_auto')")) and all(x in index for x in ("action:'digylog_tracking_auto'", "action:'digylog_delivery_auto'", "Promise.all")),
+    "Every authenticated CRM snapshot guarantees automatic fallback": all(x in api for x in ("Guaranteed automatic fallback", "old cached index lacks the heartbeat script", "if (!isset($_GET['export']) && !isset($_GET['pushkey'])) crm_delivery_auto_guarded();")),
     "Digylog webhook applies final status automatically": all(x in api for x in ("function crm_dl_hook()", "order-status-changed", "crm_delivery_status($p)", "if(isset($_GET['action'])&&$_GET['action']==='digylog_hook')crm_dl_hook()", "The webhook's only business-field write", "$o['livraison']=$newLiv")) and "'disabled'=>true" not in api,
     "Webhook matching is exact and never uses phone": all(x in api for x in ("$rowTracking===$tracking", "(string)$o['id']===$num", "count($hits)!==1", "'ambiguous'=>count($hits)>1")) and "telephone" not in api[api.index("function crm_dl_hook()"):api.index("/* ================================================================\n * Suivi des Retours")],
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
@@ -95,9 +97,9 @@ checks = {
     "Commission migration leaves deleted orders untouched": "!empty($row['_del'])" in api[api.index("function crm_order_commission_cut_once"):api.index("crm_order_commission_cut_once();")],
 }
 
-package = ROOT / "paraveda-commission-prices.zip"
+package = ROOT / "paraveda-digylog-auto-return-final.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Commission-price package is valid and contains only api.php"] = z.testzip() is None and z.namelist() == ["api.php"] and z.read("api.php") == (ROOT / "api.php").read_bytes()
+    checks["Automatic return package is valid and contains only api.php"] = z.testzip() is None and z.namelist() == ["api.php"] and z.read("api.php") == (ROOT / "api.php").read_bytes()
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
