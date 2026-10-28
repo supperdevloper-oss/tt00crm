@@ -1424,8 +1424,12 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
     try{
       const r=await fetch('api.php?export=version&token='+encodeURIComponent(token),{cache:'no-store'});
       const j=await r.json().catch(function(){return null});
-      if(j&&j.apiVersion&&j.apiVersion!==EXPECTED){
-        say('⚠️ ملف api.php على السيرفر قديم ('+j.apiVersion+') — لازم ترفع النسخة الجديدة');
+      if(!j||!j.apiVersion){
+        say('⚠️ ملف api.php على السيرفر قديم — لازم ترفع النسخة الجديدة ('+EXPECTED+')');
+        return;
+      }
+      if(j.apiVersion!==EXPECTED){
+        say('⚠️ ملف api.php على السيرفر قديم ('+j.apiVersion+') — لازم ترفع النسخة الجديدة ('+EXPECTED+')');
       }
     }catch(e){}
   }
