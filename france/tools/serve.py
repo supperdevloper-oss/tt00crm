@@ -33,14 +33,22 @@ class PreviewHandler(SimpleHTTPRequestHandler):
     # HTTP/1.1 = keep-alive : la page charge ses ~10 images sans rouvrir de socket.
     protocol_version = "HTTP/1.1"
 
+    def send_head(self):
+        # Un .zip cliqué depuis un lien direct doit se TÉLÉCHARGER, pas s'ouvrir.
+        path = self.translate_path(self.path)
+        if path.lower().endswith(".zip"):
+            self._force_download = os.path.basename(path)
+        else:
+            self._force_download = None
+        return super().send_head()
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store, must-revalidate")
         self.send_header("Access-Control-Allow-Origin", "*")
+        if getattr(self, "_force_download", None):
+            self.send_header("Content-Disposition",
+                             'attachment; filename="%s"' % self._force_download)
         super().end_headers()
-
-    def do_GET(self):
-        # / -> /index.html (comportement par défaut déjà géré) ; on log court.
-        return super().do_GET()
 
     def log_message(self, fmt, *args):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
