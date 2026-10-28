@@ -1120,22 +1120,45 @@ function crm_dl_store_map($c) {
   }
   return array('map'=>$map,'default'=>isset($c['defaultStore'])?trim((string)$c['defaultStore']):'');
 }
+/* Boutique سميات با اسم البنت (Meryam -> "Meryam" / "Boutique Meryam" / ...) */
+function crm_dl_store_by_name($agentKey,$discovered) {
+  if ($agentKey==='' || !is_array($discovered) || count($discovered)===0) return '';
+  $best='';$bestLen=9999;
+  foreach ($discovered as $st) {
+    $ns=crm_tracking_norm($st);
+    if ($ns==='' || strlen($ns)<3) continue;
+    if (strpos($ns,$agentKey)!==false || strpos($agentKey,$ns)!==false) {
+      if (strlen($ns)<$bestLen) { $best=(string)$st; $bestLen=strlen($ns); }
+    }
+  }
+  return $best;
+}
+/* واش المتجر موجود فعلا فـالحساب؟ (إلا ما عرفناش القائمة، كنبقيو على的配置) */
+function crm_dl_store_known($store,$discovered) {
+  if (!is_array($discovered) || count($discovered)===0) return true;
+  $n=crm_tracking_norm($store);
+  if ($n==='') return false;
+  foreach ($discovered as $d) if (crm_tracking_norm($d)===$n) return true;
+  return false;
+}
 function crm_dl_store_for_agent($agent,$smap,$discovered) {
   $k=crm_tracking_norm($agent);
-  if ($k!=='' && isset($smap['map'][$k])) return $smap['map'][$k];
-  /* Boutique سميات با اسم البنت (Meryam -> "Meryam" / "Boutique Meryam" / ...) */
-  if ($k!=='' && is_array($discovered) && count($discovered)>0) {
-    $best='';$bestLen=9999;
-    foreach ($discovered as $st) {
-      $ns=crm_tracking_norm($st);
-      if ($ns==='' || strlen($ns)<3) continue;
-      if (strpos($ns,$k)!==false || strpos($k,$ns)!==false) {
-        if (strlen($ns)<$bestLen) { $best=(string)$st; $bestLen=strlen($ns); }
-      }
-    }
-    if ($best!=='') return $best;
+  if ($k!=='' && isset($smap['map'][$k])) {
+    $st=$smap['map'][$k];
+    if (crm_dl_store_known($st,$discovered)) return $st;
+    /* المتجر المحدد ما كاينش فـالحساب => نجربو سمية Boutique ولا المتجر الوحيد. */
+    $byName=crm_dl_store_by_name($k,$discovered);
+    if ($byName!=='') return $byName;
+    if (count($discovered)===1) return (string)$discovered[0];
+    return $st;
   }
-  if ($smap['default']!=='') return $smap['default'];
+  $byName=crm_dl_store_by_name($k,$discovered);
+  if ($byName!=='') return $byName;
+  if ($smap['default']!=='') {
+    if (crm_dl_store_known($smap['default'],$discovered)) return $smap['default'];
+    if (count($discovered)===1) return (string)$discovered[0];
+    return $smap['default'];
+  }
   if (is_array($discovered) && count($discovered)===1) return (string)$discovered[0];
   return '';
 }
@@ -1967,15 +1990,10 @@ function crm_dl_run($dry = false,$forceSentType=null,$includeExisting=false,$wit
     if ($miss !== '') { $skipped[] = array('id'=>$id, 'why'=>'missing-' . $miss); continue; }
     $phone = crm_dl_phone(isset($o['telephone']) ? $o['telephone'] : '');
     if (!crm_dl_phone_ok($phone)) { $skipped[] = array('id'=>$id, 'why'=>'bad-phone'); continue; }
-    /* إلا البنت ماعندهاش متجر محدد، كنجيبو قائمة Boutiques ديال الحساب
-       (مخزنة 15 دقيقة) باش نقدرو ن-matchيوها با سميتها. */
-    $kAg = crm_tracking_norm($ag);
-    if (!($kAg!=='' && isset($smap['map'][$kAg])) && $discovered === null) $discovered = crm_dl_discover_stores($token);
+    /* كنجيبو قائمة Boutiques ديال الحساب (مخزنة 15 دقيقة) باش نقدرو نعرفو
+       واش المتجر المحدد موجود فعلا، ولا ن-matchيو سمية Boutique. */
+    if ($discovered === null && $token !== '') $discovered = crm_dl_discover_stores($token);
     $store = crm_dl_store_for_agent($ag, $smap, $discovered);
-    if ($store === '' && $discovered === null) {
-      $discovered = crm_dl_discover_stores($token);
-      $store = crm_dl_store_for_agent($ag, $smap, $discovered);
-    }
     if ($store === '') { $skipped[] = array('id'=>$id, 'why'=>'no-store-for-agent', 'agent'=>$ag); continue; }
     $groups[$store][] = array('id'=>$id, 'row'=>crm_dl_order_row($o));
     $candidates++;

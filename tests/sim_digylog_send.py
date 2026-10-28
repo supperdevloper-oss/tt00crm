@@ -114,19 +114,38 @@ def orders_body(store, network, rows, status):
     return {'network': int(network), 'store': str(store), 'mode': 1, 'status': int(status),
             'checkDuplicate': 1, 'orders': orders}
 
+def store_by_name(agent_key, boutiques):
+    if not agent_key or not boutiques: return ''
+    best, best_len = '', 9999
+    for st in boutiques:
+        ns = norm(st)
+        if len(ns) < 3: continue
+        if agent_key in ns or ns in agent_key:
+            if len(ns) < best_len: best, best_len = st, len(ns)
+    return best
+
+def store_known(store, boutiques):
+    if not boutiques: return True          # the list is unknown: keep the configured store
+    n = norm(store)
+    if not n: return False
+    return any(norm(d) == n for d in boutiques)
+
 def store_for_agent(agent, stores_map, default_store, boutiques):
     """Mirror of crm_dl_store_for_agent."""
     k = norm(agent)
-    if k and k in stores_map: return stores_map[k]
-    if k and len(boutiques) > 0:
-        best, best_len = '', 9999
-        for st in boutiques:
-            ns = norm(st)
-            if len(ns) < 3: continue
-            if k in ns or ns in k:
-                if len(ns) < best_len: best, best_len = st, len(ns)
-        if best: return best
-    if default_store: return default_store
+    if k and k in stores_map:
+        st = stores_map[k]
+        if store_known(st, boutiques): return st
+        by = store_by_name(k, boutiques)
+        if by: return by
+        if len(boutiques) == 1: return boutiques[0]
+        return st
+    by = store_by_name(k, boutiques)
+    if by: return by
+    if default_store:
+        if store_known(default_store, boutiques): return default_store
+        if len(boutiques) == 1: return boutiques[0]
+        return default_store
     if len(boutiques) == 1: return boutiques[0]
     return ''
 
@@ -176,7 +195,7 @@ ORD = [
     {'id': 1005, 'statut': 'Confirmé', 'livraison': '', 'agent': 'Meryam', 'nom': 'BadPhone',
      'telephone': '12345', 'adresse': 'X', 'ville': 'Y', 'prix': 190, 'produit': 'P', 'qte': 1},
 ]
-STORES = {'meryam': 'Slim-Bio-MR', 'hajr': 'Slim-Bio-HJ'}
+STORES = {'meryam': 'Slim-Bio-MR', 'hajar': 'Slim-Bio-HJ'}
 
 # 1. eligibility
 g, sk = eligible(ORD, STORES, '', ['Slim-Bio-MR'])
@@ -295,6 +314,18 @@ check('Many failures never kill the order', any(r['id'] == 1001 for rs in g9.val
 # 21. the boutique named after the agent wins over the generic default store
 g10, _ = eligible([ORD[1]], {'meryam': 'Slim-Bio-MR'}, 'DefStore', ['Boutique HAJAR', 'Slim-Bio-MR'])
 check('Boutique named after the agent beats the default store', 'Boutique HAJAR' in g10 and 'DefStore' not in g10, str(g10))
+
+# 22. a configured boutique that does not exist falls back to the only boutique
+g11, _ = eligible([ORD[1]], {'hajar': 'Slim-Bio-HJ'}, '', ['TheOnlyOne'])
+check('Unknown boutique falls back to the only boutique', 'TheOnlyOne' in g11, str(g11))
+
+# 23. a configured boutique that does not exist is replaced by the matching name
+g12, _ = eligible([ORD[1]], {'hajar': 'Slim-Bio-HJ'}, '', ['Boutique HAJAR', 'Other'])
+check('Unknown boutique is replaced by the matching boutique', 'Boutique HAJAR' in g12, str(g12))
+
+# 24. a configured boutique that exists is never replaced
+g13, _ = eligible([ORD[1]], {'hajar': 'Slim-Bio-HJ'}, '', ['Slim-Bio-HJ', 'Boutique HAJAR'])
+check('Existing boutique keeps priority', 'Slim-Bio-HJ' in g13 and 'Boutique HAJAR' not in g13, str(g13))
 
 failed = [r for r in results if not r[1]]
 for n, ok, d in results:
