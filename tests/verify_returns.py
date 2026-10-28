@@ -111,12 +111,14 @@ checks = {
     "Orders are sent exactly once": all(x in api for x in ("!empty($o['dlSent'])) continue;", "$o['_f']['dlSent'] = $now;", "$o['dlSent'] = 1; $o['dlAt'] = $now;")),
     "Failed Digylog sends stay pending with backoff": all(x in api for x in ("elseif (isset($failed[$id]))", "$o['dlNextTry']=$now+$delay", "$nextTry >", "min(60000,10000*")) and "$tries >= 20" not in api,
     "A failed order is never blocked forever": all(x in api for x in ("$gen !== CRM_DL_SENDER_GEN", "$tries = 0; $nextTry = 0;", "$o['dlGen']=CRM_DL_SENDER_GEN")),
-    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '3.84')", "define('CRM_DL_SENDER_GEN', 3)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
+    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '3.85')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
     "Public diagnosis file explains a silent failure": all(x in api for x in ("function crm_dl_diag_save", "function crm_dl_diag_build", "dl-diag.json", "'pendingCount'", "crm_dl_diag_save(crm_dl_diag_build(")),
-    "Digylog boutique is resolved automatically": all(x in api for x in ("function crm_dl_store_by_name", "function crm_dl_store_known", "strpos($ns,$agentKey)!==false", "function crm_dl_networks", "!in_array((string)$network, $ids, true)")),
+    "Digylog boutique is resolved automatically": all(x in api for x in ("function crm_dl_store_by_name", "function crm_dl_store_known", "function crm_dl_initials_match", "strpos($ns,$agentKey)!==false", "function crm_dl_networks", "!in_array((string)$network, $ids, true)")),
     "Digylog auth falls back to the seller token": all(x in api for x in ("$code===401 || $code===403", "sellerToken", "crm_tracking_bearer($cfg['sellerToken'])")),
     "CRM shows the sender result instead of failing silently": all(x in index for x in ("pv-digylog-send-auto", "pv-dl-alert", "Digylog: '+f+' طلبية ما تصيفطاتش", "export=version")) and all(x in digylog_admin for x in ("apiVersion", "الطلبيات لي مازال ما تصيفطاتش", "نسخة السيرفر")),
     "Normal authenticated CRM reads also trigger automatic sending": "{ crm_dl_send_guarded(); crm_delivery_auto_guarded(); }" in api,
+    "Tracking import falls back to the API token": all(x in api for x in ("function crm_dl_token_candidates", "'sellerToken','token'", "crm_tracking_internal_many($phones,$tokens[0])", "$alt=crm_tracking_internal_many($phones,$tokens[$ti])")),
+    "The resolved boutique of every agent is visible": all(x in api for x in ("function crm_dl_agent_stores", "'agentStores'  => crm_dl_agent_stores")) and all(x in digylog_admin for x in ("agentStores", "المتجر ديال كل بنت (محسوب)")),
 }
 
 # Isolated behavioural simulation of the automatic sender (never touches real data).

@@ -248,6 +248,9 @@
         lines.push('بلا متجر (Boutique): '+st.noStore);
         lines.push('رقم هاتف ماشي صحيح: '+st.badPhone);
         lines.push('المتاجر Discovery: '+(st.boutiques&&st.boutiques.length?st.boutiques.join(', '):'(ماكاينش)'));
+        var as=st.agentStores||{};
+        var ak=Object.keys(as);
+        if(ak.length) lines.push('المتجر ديال كل بنت (محسوب): '+ak.map(function(a){return a+' → '+as[a];}).join(' | '));
         lines.push('الشبكات Discovery: '+((st.networks&&st.networks.length)?st.networks.map(function(n){return n.id+' '+(n.name||'');}).join(', '):'(ماكاينش)'));
         lines.push('متجر افتراضي: '+(st.defaultStore||'(ماكاينش)'));
         lines.push('آخر تشغيل: '+(last.when?new Date(last.when).toLocaleString():'(مازال عمرو)')+' | بعت: '+(last.sent||0)+' | فشل: '+(last.failed||0));

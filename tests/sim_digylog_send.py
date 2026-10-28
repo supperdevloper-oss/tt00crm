@@ -114,14 +114,33 @@ def orders_body(store, network, rows, status):
     return {'network': int(network), 'store': str(store), 'mode': 1, 'status': int(status),
             'checkDuplicate': 1, 'orders': orders}
 
+def initials_match(agent_key, token):
+    """Mirror of crm_dl_initials_match: "hj" ⊆ "hajar" (subsequence)."""
+    t = norm(token)
+    if not t or len(t) < 2 or len(t) > 5: return False
+    if not agent_key or len(agent_key) < 3: return False
+    i = 0
+    for ch in agent_key:
+        if i < len(t) and ch == t[i]: i += 1
+    return i == len(t)
+
 def store_by_name(agent_key, boutiques):
     if not agent_key or not boutiques: return ''
-    best, best_len = '', 9999
+    best, best_score, best_len = '', 0, 9999
     for st in boutiques:
         ns = norm(st)
-        if len(ns) < 3: continue
-        if agent_key in ns or ns in agent_key:
-            if len(ns) < best_len: best, best_len = st, len(ns)
+        if not ns: continue
+        score = 0
+        if len(ns) >= 3 and (agent_key in ns or ns in agent_key):
+            score = 100 + len(agent_key)
+        else:
+            parts = [p for p in re.split(r'[-_\s]+', str(st).strip()) if p]
+            last = parts[-1] if parts else ''
+            if last and initials_match(agent_key, last):
+                score = 50 + len(norm(last))
+        if score == 0: continue
+        if score > best_score or (score == best_score and len(ns) < best_len):
+            best, best_score, best_len = st, score, len(ns)
     return best
 
 def store_known(store, boutiques):
@@ -326,6 +345,28 @@ check('Unknown boutique is replaced by the matching boutique', 'Boutique HAJAR' 
 # 24. a configured boutique that exists is never replaced
 g13, _ = eligible([ORD[1]], {'hajar': 'Slim-Bio-HJ'}, '', ['Slim-Bio-HJ', 'Boutique HAJAR'])
 check('Existing boutique keeps priority', 'Slim-Bio-HJ' in g13 and 'Boutique HAJAR' not in g13, str(g13))
+
+# 25. the real boutique list of the production Digylog account
+REAL = ['ParaVida', 'Slimminge Patch', 'Good-Fair', 'Anfa-Store', 'Tnager-Shop',
+        'Kinoci-Store', 'Marakech-Jumla', 'soukcheap', 'Slim Bio', 'Slim-Bio-As',
+        'Slim-Bio-IM', 'Slim-Bio-MR', 'Slim-Bio-Ay', 'Slim-Bio-Sf', 'Slim-Bio-Chma',
+        'Slim-Bio-HJ', 'Slim-Bio-LB', 'Slim-Bio-IL']
+check('Real list: HAJAR resolves to Slim-Bio-HJ',
+      store_for_agent('HAJAR', {'meryam': 'Slim-Bio-MR'}, '', REAL) == 'Slim-Bio-HJ',
+      store_for_agent('HAJAR', {'meryam': 'Slim-Bio-MR'}, '', REAL))
+check('Real list: Meryam keeps her configured boutique',
+      store_for_agent('Meryam', {'meryam': 'Slim-Bio-MR'}, '', REAL) == 'Slim-Bio-MR')
+check('Real list: AYA keeps her configured boutique',
+      store_for_agent('AYA', {'aya': 'Slim-Bio-Ay'}, '', REAL) == 'Slim-Bio-Ay')
+check('Real list: imane keeps her configured boutique',
+      store_for_agent('imane', {'imane': 'Slim-Bio-IM'}, '', REAL) == 'Slim-Bio-IM')
+check('Real list: safa keeps her configured boutique',
+      store_for_agent('safa', {'safa': 'Slim-Bio-Sf'}, '', REAL) == 'Slim-Bio-Sf')
+check('Real list: a girl without boutique is skipped, never mis-routed',
+      store_for_agent('ZOUHIR', {'meryam': 'Slim-Bio-MR'}, '', REAL) == '',
+      store_for_agent('ZOUHIR', {'meryam': 'Slim-Bio-MR'}, '', REAL))
+g14, sk14 = eligible([ORD[1]], {'meryam': 'Slim-Bio-MR'}, '', REAL)
+check('Real list: HAJAR order is really sent', 'Slim-Bio-HJ' in g14, str(g14))
 
 failed = [r for r in results if not r[1]]
 for n, ok, d in results:

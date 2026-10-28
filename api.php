@@ -52,10 +52,10 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.84');
+define('CRM_API_VERSION', '3.85');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
-define('CRM_DL_SENDER_GEN', 3);
+define('CRM_DL_SENDER_GEN', 4);
 
 /* v3.67: deterministic data dir + mirror.
  * قبل: كان كيبدل المجلد بصمت إلا كان !is_writable → جوج ملفات بيانات مفروشين =
@@ -1121,15 +1121,32 @@ function crm_dl_store_map($c) {
   return array('map'=>$map,'default'=>isset($c['defaultStore'])?trim((string)$c['defaultStore']):'');
 }
 /* Boutique سميات با اسم البنت (Meryam -> "Meryam" / "Boutique Meryam" / ...) */
+/* Boutique "Slim-Bio-HJ" = initiale ديال "Hajar" (H…J).
+ * كنطابقو: كل حرف فـالاختصار خاصو يلقا سميته بالترتيب فـاسم البنت.
+ * ("hj" ⊆ "hajar" ✓ ، "mr" ⊆ "meryam" ✓ ، "sf" ⊆ "safa" ✓) */
+function crm_dl_initials_match($agentKey,$token) {
+  $t=crm_tracking_norm($token);
+  if ($t==='' || strlen($t)<2 || strlen($t)>5) return false;
+  if ($agentKey==='' || strlen($agentKey)<3) return false;
+  $i=0;$n=strlen($agentKey);
+  for ($j=0;$j<$n && $i<strlen($t);$j++) if ($agentKey[$j]===$t[$i]) $i++;
+  return $i===strlen($t);
+}
 function crm_dl_store_by_name($agentKey,$discovered) {
   if ($agentKey==='' || !is_array($discovered) || count($discovered)===0) return '';
-  $best='';$bestLen=9999;
+  $best='';$bestScore=0;$bestLen=9999;
   foreach ($discovered as $st) {
     $ns=crm_tracking_norm($st);
-    if ($ns==='' || strlen($ns)<3) continue;
-    if (strpos($ns,$agentKey)!==false || strpos($agentKey,$ns)!==false) {
-      if (strlen($ns)<$bestLen) { $best=(string)$st; $bestLen=strlen($ns); }
+    if ($ns==='') continue;
+    $score=0;
+    if (strlen($ns)>=3 && (strpos($ns,$agentKey)!==false || strpos($agentKey,$ns)!==false)) $score=100+strlen($agentKey);
+    else {
+      $parts=preg_split('/[-_\s]+/', trim((string)$st));
+      $last=(count($parts)>0)?$parts[count($parts)-1]:'';
+      if ($last!=='' && crm_dl_initials_match($agentKey,$last)) $score=50+strlen(crm_tracking_norm($last));
     }
+    if ($score===0) continue;
+    if ($score>$bestScore || ($score===$bestScore && strlen($ns)<$bestLen)) { $best=(string)$st; $bestScore=$score; $bestLen=strlen($ns); }
   }
   return $best;
 }
@@ -1453,6 +1470,7 @@ function crm_dl_admin($b) {
       'pending'         => $diag['pending'],
       'pendingCount'    => $diag['pendingCount'],
       'networks'        => $diag['networks'],
+      'agentStores'     => $diag['agentStores'],
       'hasToken'        => $token !== '',
       'autoSend'        => array_key_exists('autoSend',$c) ? (int)$c['autoSend'] : 1,
       'enabled'         => !empty($c['enabled']) ? 1 : 0,
@@ -1530,13 +1548,33 @@ function crm_tracking_records($v, &$out, $depth=0) {
   }
   foreach($v as $child)if(is_array($child))crm_tracking_records($child,$out,$depth+1);
 }
+/* التوكنات المرشحة: Seller Authorization أولاً، ثم التوكن ديال الـAPI.
+ * (الـSeller Authorization كتموت بزاف فالحسابات، والتوكن الرئيسي كيدوز.) */
+function crm_dl_token_candidates($extra='') {
+  $cfg=crm_dl_cfg_get();$list=array();
+  $e=trim((string)$extra);
+  if ($e!=='') { $e=crm_tracking_bearer($e); if ($e!=='' && !in_array($e,$list,true)) $list[]=$e; }
+  foreach (array('sellerToken','token') as $k) {
+    if (!isset($cfg[$k])) continue;
+    $t = ($k==='token') ? trim((string)$cfg[$k]) : crm_tracking_bearer($cfg[$k]);
+    if ($t!=='' && !in_array($t,$list,true)) $list[]=$t;
+  }
+  return $list;
+}
 function crm_tracking_internal_get($phone, $token) {
   if(!function_exists('curl_init'))return array(0,'','no-curl');
-  $url='https://api.digylog.com/api/seller/v48/historic/orders?phone='.rawurlencode($phone).'&datatype=1&countPerPage=100&currentPage=1&sort=0';
-  $ch=curl_init($url);
-  curl_setopt_array($ch,array(CURLOPT_HTTPHEADER=>array('Accept: application/json, text/plain, */*','Referer: https://seller.digylog.com/','Origin: https://seller.digylog.com','Authorization: Bearer '.$token),CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>25));
-  $body=curl_exec($ch);$err=(string)curl_error($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
-  return array($code,$body===false?'':(string)$body,$err);
+  $tokens=is_array($token)?$token:array($token);
+  $last=array(0,'','no-token');
+  foreach ($tokens as $tk) {
+    if (trim((string)$tk)==='') continue;
+    $url='https://api.digylog.com/api/seller/v48/historic/orders?phone='.rawurlencode($phone).'&datatype=1&countPerPage=100&currentPage=1&sort=0';
+    $ch=curl_init($url);
+    curl_setopt_array($ch,array(CURLOPT_HTTPHEADER=>array('Accept: application/json, text/plain, */*','Referer: https://seller.digylog.com/','Origin: https://seller.digylog.com','Authorization: Bearer '.$tk),CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>25));
+    $body=curl_exec($ch);$err=(string)curl_error($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+    $last=array($code,$body===false?'':(string)$body,$err);
+    if ($code>=200&&$code<300) return $last;
+  }
+  return $last;
 }
 function crm_tracking_candidates() {
   $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
@@ -1561,13 +1599,15 @@ function crm_tracking_score($record,$order) {
 }
 function crm_tracking_sync($requestedIds,$rawToken) {
   global $LOCK_FILE;
-  $token=crm_tracking_bearer($rawToken);if($token==='')return array('ok'=>false,'err'=>'no-seller-token');
+  $tokens=is_array($rawToken)?$rawToken:crm_dl_token_candidates($rawToken);
+  if(!$tokens)return array('ok'=>false,'err'=>'no-seller-token');
+  $token=$tokens[0];
   $want=array();foreach($requestedIds as $id){$id=(string)$id;if($id!=='')$want[$id]=true;if(count($want)>=20)break;}if(!$want)return array('ok'=>false,'err'=>'no-ids');
   $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();$todo=array();
   foreach($orders as $o){$id=is_array($o)&&isset($o['id'])?(string)$o['id']:'';if($id!==''&&isset($want[$id])&&empty($o['_del'])&&trim((string)(isset($o['tracking'])?$o['tracking']:''))==='')$todo[]=$o;}
   $found=array();$cache=array();$checked=0;$notFound=0;$ambiguous=0;$httpCode=0;
   foreach($todo as $o){$phone=crm_tracking_phone(isset($o['telephone'])?$o['telephone']:'');if($phone===''){continue;}$checked++;
-    if(!isset($cache[$phone])){list($code,$body,$err)=crm_tracking_internal_get($phone,$token);$httpCode=$code;$records=array();if($code>=200&&$code<300){$j=json_decode($body,true);if(is_array($j))crm_tracking_records($j,$records);}$cache[$phone]=array('code'=>$code,'records'=>$records);}
+    if(!isset($cache[$phone])){list($code,$body,$err)=crm_tracking_internal_get($phone,$tokens);$httpCode=$code;$records=array();if($code>=200&&$code<300){$j=json_decode($body,true);if(is_array($j))crm_tracking_records($j,$records);}$cache[$phone]=array('code'=>$code,'records'=>$records);}
     $pack=$cache[$phone];if($pack['code']<200||$pack['code']>=300)return array('ok'=>false,'err'=>'digylog-http-'.$pack['code'],'code'=>$pack['code'],'checked'=>$checked-1);
     $best='';$bestScore=-1;$ties=0;$bestSafe=false;
     foreach($pack['records'] as $tr=>$record){$m=crm_tracking_score($record,$o);if($m['score']>$bestScore){$best=$tr;$bestScore=$m['score'];$bestSafe=$m['safe'];$ties=1;}elseif($m['score']===$bestScore)$ties++;}
@@ -1614,8 +1654,8 @@ function crm_tracking_internal_many($phones,$token) {
 }
 function crm_tracking_auto_sync($limit=30) {
   global $LOCK_FILE;
-  $cfg=crm_dl_cfg_get();$token=isset($cfg['sellerToken'])?crm_tracking_bearer($cfg['sellerToken']):'';
-  if($token==='')return array('ok'=>false,'err'=>'no-seller-token','checked'=>0,'linked'=>0);
+  $cfg=crm_dl_cfg_get();$tokens=crm_dl_token_candidates();
+  if(!$tokens)return array('ok'=>false,'err'=>'no-seller-token','checked'=>0,'linked'=>0);
   $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
   $candidates=array();
   foreach($orders as $o){
@@ -1628,7 +1668,14 @@ function crm_tracking_auto_sync($limit=30) {
   $take=min(max(1,(int)$limit),$total);$cursor=isset($cfg['trackingCursor'])?max(0,(int)$cfg['trackingCursor']):0;if($cursor>=$total)$cursor=0;$batch=array();
   for($i=0;$i<$take;$i++)$batch[]=$candidates[($cursor+$i)%$total];
   $cfg['trackingCursor']=($cursor+$take)%max(1,$total);crm_dl_cfg_set($cfg);
-  $phones=array_map(function($x){return $x['phone'];},$batch);$responses=crm_tracking_internal_many($phones,$token);$found=array();$httpErrors=0;$ambiguous=0;
+  $phones=array_map(function($x){return $x['phone'];},$batch);
+  $responses=crm_tracking_internal_many($phones,$tokens[0]);
+  /* إلا التوكن الأول ما دخلش (Seller Authorization)، نجربو التوكن ديال الـAPI. */
+  if (count($tokens)>1) {
+    $allBad=true;foreach($responses as $r){if((int)$r['code']>=200&&(int)$r['code']<300){$allBad=false;break;}}
+    if ($allBad) { for($ti=1;$ti<count($tokens);$ti++) { $alt=crm_tracking_internal_many($phones,$tokens[$ti]); $okAlt=false; foreach($alt as $r){if((int)$r['code']>=200&&(int)$r['code']<300){$okAlt=true;break;}} $responses=$alt; if($okAlt) break; } }
+  }
+  $found=array();$httpErrors=0;$ambiguous=0;
   foreach($batch as $item){$pack=isset($responses[$item['phone']])?$responses[$item['phone']]:array('code'=>0,'body'=>'');if($pack['code']<200||$pack['code']>=300){$httpErrors++;continue;}$payload=json_decode($pack['body'],true);if(!is_array($payload))continue;$tracking=crm_tracking_exact_from_payload($payload,$item['id']);if($tracking!=='')$found[$item['id']]=$tracking;else$ambiguous++;}
   $linked=0;if($found){
     $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();$prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);
@@ -1839,11 +1886,21 @@ function crm_dl_diag_build($extra) {
     'defaultStore' => $smap['default'],
     'boutiques'    => $boutiques,
     'networks'     => $networks,
+    'agentStores'  => crm_dl_agent_stores($smap,$boutiques),
     'pending'      => $pending,
     'pendingCount' => count($pending),
     'lastRun'      => crm_dl_auto_state()
   );
   if (is_array($extra)) foreach ($extra as $k=>$v) $out[$k] = $v;
+  return $out;
+}
+/* المتجر (Boutique) ديال كل بنت — كيتحسب بحال ما كيتحسب وقت الإرسال. */
+function crm_dl_agent_stores($smap,$boutiques) {
+  $out=array();
+  foreach (crm_dl_admin_agents() as $ag) {
+    $s=crm_dl_store_for_agent($ag,$smap,$boutiques);
+    if ($s!=='') $out[$ag]=$s;
+  }
   return $out;
 }
 
