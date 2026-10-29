@@ -251,6 +251,11 @@
         var as=st.agentStores||{};
         var ak=Object.keys(as);
         if(ak.length) lines.push('المتجر ديال كل بنت (محسوب): '+ak.map(function(a){return a+' → '+as[a];}).join(' | '));
+        /* المتاجر المحسوبة كتملأ الخانات الخاوية (باش تبان التوجيه ديال كل بنت) */
+        ak.forEach(function(a){
+          var el=document.getElementById('st_'+a);
+          if(el && !String(el.value||'').trim() && as[a]) el.value=as[a];
+        });
         lines.push('الشبكات Discovery: '+((st.networks&&st.networks.length)?st.networks.map(function(n){return n.id+' '+(n.name||'');}).join(', '):'(ماكاينش)'));
         lines.push('متجر افتراضي: '+(st.defaultStore||'(ماكاينش)'));
         lines.push('آخر تشغيل: '+(last.when?new Date(last.when).toLocaleString():'(مازال عمرو)')+' | بعت: '+(last.sent||0)+' | فشل: '+(last.failed||0));
