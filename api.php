@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.85');
+define('CRM_API_VERSION', '3.86');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
@@ -977,6 +977,257 @@ function crm_dl_http($method, $path, $token, $body = null) {
   curl_close($ch);
   return array($code, $resp === false ? '' : (string)$resp, $err);
 }
+/* ================= Digylog live dashboard (v3.86) =================
+ * «Tableau de bord» ديال الـCRM مربوط لايف بصفحة ديجيلوج.
+ * السيرفر كيتقرا من ديجيلوج (قراءة فقط، بلا أي كتابة) وكيحيد نفس الأرقام
+ * للواجهة: أي تعديل فـ ديجيلوج (livrée, retournée, expédiée...) كيبان فـ CRM
+ * فأقل من دقيقة، بلا ما الفريق يحتاج يفتح ديجيلوج.
+ *   GET api.php?action=digylog_dash           → البيانات لايف
+ *   GET api.php?action=digylog_dash&probe=1   → تشخيص المسارات (نتائج خام)
+ * ================================================================ */
+function crm_dl_dash_cache_path() {
+  global $DATA_DIR;
+  return rtrim((string)$DATA_DIR, '/') . '/.dl-dash-cache.json';
+}
+function crm_dl_dash_cache_read() {
+  $p = crm_dl_dash_cache_path();
+  if (!is_file($p)) return array();
+  $j = json_decode((string)@file_get_contents($p), true);
+  return is_array($j) ? $j : array();
+}
+function crm_dl_dash_cache_write($j) {
+  $p = crm_dl_dash_cache_path();
+  $tmp = $p . '.tmp' . (int)getmypid();
+  if (@file_put_contents($tmp, json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX) !== false) @rename($tmp, $p);
+}
+/* Generic read-only HTTP call to any Digylog URL (Bearer token). */
+function crm_dl_http_url($method, $url, $token, $ref) {
+  if (!function_exists('curl_init')) return array(0, '', 'no-curl');
+  $ch = curl_init($url);
+  $h = array('Accept: application/json, text/plain, */*', 'Content-Type: application/json', 'Referer: ' . $ref, 'Origin: ' . rtrim($ref, '/'), 'Authorization: Bearer ' . $token);
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $h);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 18);
+  $resp = curl_exec($ch);
+  $err = (string)curl_error($ch);
+  $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  return array($code, $resp === false ? '' : (string)$resp, $err);
+}
+/* Read-only endpoints of the Digylog seller dashboard (order matters). */
+function crm_dl_dash_candidates() {
+  $v2  = 'https://api.digylog.com/api/v2/seller';
+  $v48 = 'https://api.digylog.com/api/seller/v48';
+  $paths = array(
+    '/orders/grid?countPerPage=100&currentPage=1&sort=0',
+    '/orders?countPerPage=100&currentPage=1&sort=0',
+    '/historic/orders?countPerPage=100&currentPage=1&sort=0',
+    '/orders/statistics',
+    '/orders/chart',
+    '/orders/products',
+    '/orders/statuses',
+    '/dashboard',
+    '/dashboard/statistics',
+    '/statistics'
+  );
+  $out = array();
+  foreach ($paths as $p) {
+    $out[] = array('key' => 'v2 ' . $p, 'url' => $v2 . $p, 'ref' => 'https://apiseller.digylog.com');
+    $out[] = array('key' => 'v48 ' . $p, 'url' => $v48 . $p, 'ref' => 'https://seller.digylog.com/');
+  }
+  return $out;
+}
+/* Try every candidate in parallel and keep the first one that answers. */
+function crm_dl_dash_probe($cands, $token) {
+  $res = array('ok' => false, 'codes' => array());
+  if (!function_exists('curl_multi_init')) {
+    foreach ($cands as $c) {
+      list($code, $body, $err) = crm_dl_http_url('GET', $c['url'], $token, $c['ref']);
+      $res['codes'][$c['key']] = $code;
+      if ($code >= 200 && $code < 300 && trim($body) !== '') { $res['ok'] = true; $res['cand'] = $c; $res['body'] = $body; break; }
+    }
+    return $res;
+  }
+  $mh = curl_multi_init(); $chs = array();
+  foreach ($cands as $i => $c) {
+    $ch = curl_init($c['url']);
+    curl_setopt_array($ch, array(
+      CURLOPT_HTTPHEADER => array('Accept: application/json, text/plain, */*', 'Content-Type: application/json', 'Referer: ' . $c['ref'], 'Origin: ' . rtrim($c['ref'], '/'), 'Authorization: Bearer ' . $token),
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_CONNECTTIMEOUT => 6,
+      CURLOPT_TIMEOUT => 18
+    ));
+    curl_multi_add_handle($mh, $ch);
+    $chs[$i] = $ch;
+  }
+  $running = null;
+  do { $mrc = curl_multi_exec($mh, $running); if ($running) curl_multi_select($mh, 0.2); } while ($running && $mrc === CURLM_OK);
+  foreach ($chs as $i => $ch) {
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $body = (string)curl_multi_getcontent($ch);
+    $res['codes'][$cands[$i]['key']] = $code;
+    if (!$res['ok'] && $code >= 200 && $code < 300 && trim($body) !== '') { $res['ok'] = true; $res['cand'] = $cands[$i]; $res['body'] = $body; }
+    curl_multi_remove_handle($mh, $ch);
+    curl_close($ch);
+  }
+  curl_multi_close($mh);
+  return $res;
+}
+function crm_dl_dash_pick($arr, $keys) {
+  if (!is_array($arr)) return '';
+  foreach ($keys as $k) if (isset($arr[$k]) && $arr[$k] !== '' && $arr[$k] !== null) return $arr[$k];
+  return '';
+}
+function crm_dl_dash_num($arr, $keys) {
+  $v = crm_dl_dash_pick($arr, $keys);
+  if ($v === '' || !is_numeric($v)) return 0;
+  return (float)$v;
+}
+function crm_dl_dash_date($v) {
+  $s = trim((string)$v);
+  if ($s === '') return '';
+  if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})/', $s, $m)) return $m[1] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($m[3], 2, '0', STR_PAD_LEFT);
+  if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})#', $s, $m)) return $m[3] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT);
+  $ts = strtotime($s);
+  if ($ts) return date('Y-m-d', $ts);
+  return '';
+}
+function crm_dl_dash_looks_row($r) {
+  if (!is_array($r)) return false;
+  $keys = array('status', 'statusName', 'status_name', 'orderStatus', 'statut', 'state', 'stateName', 'traking', 'tracking', 'trackingNumber', 'barcode', 'designation', 'product', 'productName', 'total', 'price', 'amount', 'createdAt', 'dateCreation', 'creationDate', 'date');
+  $hit = 0;
+  foreach ($keys as $k) if (array_key_exists($k, $r)) $hit++;
+  return $hit >= 2;
+}
+/* True when the array itself is a list of order-like rows. */
+function crm_dl_dash_is_row_list($v) {
+  if (!is_array($v) || !count($v)) return false;
+  $first = null; $n = 0;
+  foreach ($v as $item) { $first = $item; $n++; if ($n >= 3) break; }
+  return $n > 0 && is_array($first) && crm_dl_dash_looks_row($first);
+}
+/* Find the first list of order-like rows inside any payload shape. */
+function crm_dl_dash_find_rows($json, $depth = 0) {
+  if ($depth > 5 || !is_array($json)) return array();
+  if (crm_dl_dash_is_row_list($json)) return $json;
+  foreach ($json as $v) if (crm_dl_dash_is_row_list($v)) return $v;
+  foreach ($json as $v) if (is_array($v)) { $r = crm_dl_dash_find_rows($v, $depth + 1); if ($r) return $r; }
+  return array();
+}
+function crm_dl_dash_row($r) {
+  if (!is_array($r)) return null;
+  $status = (string)crm_dl_dash_pick($r, array('statusName', 'status_name', 'orderStatus', 'order_status', 'statut', 'stateName', 'state_name', 'shippingStatus', 'deliveryStatus', 'status', 'state'));
+  $track  = (string)crm_dl_dash_pick($r, array('traking', 'tracking', 'trackingNumber', 'tracking_number', 'barcode'));
+  $price  = crm_dl_dash_num($r, array('totalPrice', 'total_price', 'orderPrice', 'order_price', 'totalAmount', 'total_amount', 'amountTTC', 'amount', 'price', 'total', 'montant', 'totalTTC'));
+  $qty    = (int)crm_dl_dash_num($r, array('totalQuantity', 'total_quantity', 'quantity', 'qty', 'qte', 'quantityTotal', 'nbProducts'));
+  $prod   = (string)crm_dl_dash_pick($r, array('productName', 'product_name', 'designation', 'libelle', 'title', 'product', 'article', 'name'));
+  $date   = crm_dl_dash_date(crm_dl_dash_pick($r, array('createdAt', 'created_at', 'creationDate', 'creation_date', 'dateCreation', 'date_creation', 'createdDate', 'orderDate', 'date')));
+  if ($prod === '' && isset($r['articles']) && is_array($r['articles']) && count($r['articles'])) {
+    $a = $r['articles'][0];
+    if (is_array($a)) {
+      $p2 = (string)crm_dl_dash_pick($a, array('designation', 'libelle', 'name', 'title', 'product'));
+      if ($p2 !== '') $prod = $p2;
+      if ($qty <= 0) $qty = (int)crm_dl_dash_num($a, array('quantity', 'qty', 'qte'));
+    }
+  }
+  if ($status === '' && $track === '' && $price <= 0 && $prod === '') return null;
+  return array('s' => $status, 't' => $track, 'p' => $price, 'q' => $qty > 0 ? $qty : 1, 'n' => $prod, 'd' => $date);
+}
+function crm_dl_dash_normalize_rows($rows) {
+  $out = array(); $i = 0;
+  foreach ($rows as $r) {
+    $n = crm_dl_dash_row($r);
+    if ($n === null) continue;
+    $out[] = $n;
+    if (++$i >= 2000) break;
+  }
+  return $out;
+}
+/* Aggregated KPI payload (when Digylog answers with totals instead of rows). */
+function crm_dl_dash_flatten($json, &$out, $depth = 0) {
+  if ($depth > 4 || !is_array($json)) return;
+  foreach ($json as $k => $v) {
+    if (is_array($v)) { crm_dl_dash_flatten($v, $out, $depth + 1); continue; }
+    if (is_numeric($v)) $out[strtolower((string)$k)] = (float)$v;
+  }
+}
+function crm_dl_dash_kpis($json) {
+  $flat = array();
+  crm_dl_dash_flatten($json, $flat);
+  $defs = array(
+    'ca' => array('ca', 'chiffreaffaire', 'chiffreaffaires', 'chiffre_affaire', 'turnover', 'totalrevenue', 'revenue', 'totalca', 'montanttotal', 'totalamount', 'sales'),
+    'livre' => array('livrees', 'livre', 'delivered', 'totaldelivered', 'nblivrees', 'countdelivered', 'deliveredcount', 'totaldeliveredcount'),
+    'exp' => array('expeditions', 'expedition', 'shipped', 'totalshipped', 'nbexpeditions', 'countexpeditions', 'totalexpeditions', 'shipments'),
+    'paye' => array('paye', 'paid', 'totalpaid', 'montantpaye', 'totalpaye'),
+    'encours' => array('encours', 'encoursdepaiement', 'inprogress', 'totalencours', 'pendingamount'),
+    'nonpaye' => array('nonpaye', 'unpaid', 'notpaid', 'totalunpaid'),
+    'rate' => array('rate', 'taux', 'deliveryrate', 'tauxlivraison', 'successrate', 'pourcentage', 'tauxdelivraison')
+  );
+  $k = array();
+  foreach ($defs as $name => $keys) {
+    foreach ($keys as $key) {
+      $lk = strtolower((string)$key);
+      if (isset($flat[$lk])) { $k[$name] = $flat[$lk]; break; }
+    }
+  }
+  return $k;
+}
+/* Live entry point used by the CRM «Tableau de bord». */
+function crm_dl_dash_live($q) {
+  $probe = isset($q['probe']) && (string)$q['probe'] !== '' && (string)$q['probe'] !== '0';
+  $tokens = crm_dl_token_candidates();
+  if (!$tokens) crm_out(array('ok' => false, 'err' => 'no-digylog-token', 'rows' => array(), 'kpis' => array()));
+  $cache = crm_dl_dash_cache_read();
+  $now = time();
+  $ttl = $probe ? 0 : 90;
+  if (!$probe && isset($cache['payload']['at']) && ($now - (int)$cache['payload']['at']) < $ttl) {
+    $p = $cache['payload'];
+    $p['cached'] = true;
+    $p['age'] = $now - (int)$p['at'];
+    crm_out($p);
+    return;
+  }
+  $cands = crm_dl_dash_candidates();
+  $body = ''; $used = ''; $codes = array();
+  $cachedUrl = isset($cache['endpoint']) ? trim((string)$cache['endpoint']) : '';
+  if ($cachedUrl !== '') {
+    foreach ($cands as $c) {
+      if ($c['url'] !== $cachedUrl) continue;
+      foreach ($tokens as $tk) {
+        list($code, $b, $err) = crm_dl_http_url('GET', $c['url'], $tk, $c['ref']);
+        $codes[$c['key']] = $code;
+        if ($code >= 200 && $code < 300 && trim($b) !== '') { $body = $b; $used = $c['url']; break 2; }
+      }
+      break;
+    }
+  }
+  if ($body === '') {
+    foreach ($tokens as $tk) {
+      $res = crm_dl_dash_probe($cands, $tk);
+      if (isset($res['codes']) && is_array($res['codes'])) $codes = array_merge($codes, $res['codes']);
+      if (!empty($res['ok'])) { $body = $res['body']; $used = $res['cand']['url']; break; }
+    }
+  }
+  $rows = array(); $kpis = array(); $mode = 'none';
+  if ($body !== '') {
+    $json = json_decode($body, true);
+    if (is_array($json)) {
+      $raw = crm_dl_dash_find_rows($json);
+      if ($raw) { $rows = crm_dl_dash_normalize_rows($raw); $mode = 'orders'; }
+      $kpis = crm_dl_dash_kpis($json);
+      if ($mode === 'none' && count($kpis)) $mode = 'kpis';
+      if ($mode === 'none') $mode = 'raw';
+    }
+  }
+  $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'kpis' => $kpis);
+  if ($probe) { $payload['probes'] = $codes; $payload['raw'] = substr($body, 0, 3000); }
+  crm_dl_dash_cache_write(array('endpoint' => $used, 'payload' => $payload));
+  crm_audit('digylog-dash | mode=' . $mode . ' | endpoint=' . $used . ' | rows=' . count($rows));
+  crm_out($payload);
+}
+
 /* Read-only Digylog order lookup used by the clickable Tracking cell.
  * The configured bearer token never leaves the server and no CRM/Digylog data
  * is modified. Only Tracking numbers already present in this CRM are accepted. */
@@ -2410,6 +2661,11 @@ if ($m === 'GET') {
   if (isset($_GET['action']) && $_GET['action'] === 'digylog_sync') {
     if (!hash_equals($SECRET, crm_token())) crm_out(array('ok'=>false, 'err'=>'token'), 403);
     crm_out(crm_dl_run(false));
+  }
+  // v3.86: Tableau de bord لايف مربوط بديجيلوج (قراءة فقط)
+  if (isset($_GET['action']) && $_GET['action'] === 'digylog_dash') {
+    if (!hash_equals($SECRET, crm_token())) crm_out(array('ok'=>false, 'err'=>'token'), 403);
+    crm_out(crm_dl_dash_live($_GET));
   }
   // v3.41: la lecture exige aussi le token (avant: n'importe qui avec l'URL téléchargeait tous les clients)
   if (!hash_equals($SECRET, crm_token())) crm_out(array('ok'=>false, 'err'=>'token'), 403);

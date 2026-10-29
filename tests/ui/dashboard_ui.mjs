@@ -78,6 +78,7 @@ const lg = new Map();
 const __pvEtag = null;
 const __pvFetchSnap = async () => ({});
 const __pvAdminMobile = () => false;
+const Rd = "ui-test-token";
 `;
 
 const modFile = path.join(HERE, "_dashboard_component.mjs");
@@ -104,6 +105,23 @@ const {__PvDigylogDash} = await import(pathToFileURL(modFile).href + "?v=" + Dat
 const results = [];
 const check = (name, ok, detail = "") => results.push([name, !!ok, ok ? "" : String(detail)]);
 
+const fetchCalls = [];
+const LIVE_ROWS = [
+  {s: "Livrée", t: "SAAA11111", p: 1234, q: 2, n: "Produit Digylog", d: "2026-10-28"},
+  {s: "Expédié", t: "SAAA22222", p: 500, q: 1, n: "Autre produit", d: "2026-10-28"},
+  {s: "Retournée", t: "SAAA33333", p: 300, q: 1, n: "Produit Digylog", d: "2026-10-27"},
+];
+let liveMode = "offline";
+global.fetch = async (url) => {
+  fetchCalls.push(String(url));
+  if (liveMode === "offline") throw new Error("offline");
+  return {ok: true, status: 200, json: async () => ({
+    ok: true, source: "digylog", mode: "orders",
+    endpoint: "https://api.digylog.com/api/v2/seller/orders/grid",
+    at: Math.floor(Date.now() / 1000), rows: LIVE_ROWS, kpis: {},
+  })};
+};
+
 const root = createRoot(dom.window.document.getElementById("root"));
 await act(async () => { root.render(jsxRuntime.jsx(__PvDigylogDash, {})); });
 
@@ -112,6 +130,10 @@ const buttons = () => [...dom.window.document.querySelectorAll("button")];
 const byText = t => buttons().find(b => b.textContent.includes(t));
 const click = async el => { await act(async () => { el.dispatchEvent(new dom.window.MouseEvent("click", {bubbles: true})); }); };
 
+await act(async () => { await new Promise(r => setTimeout(r, 30)); });
+check("the dashboard asks the server for the live Digylog dashboard",
+  fetchCalls.some(u => u.includes("api.php?action=digylog_dash")),
+  fetchCalls.join(" | "));
 check("the six Digylog scope tabs are rendered",
   ["Global", "En ce moment", "Hub d'expédition", "Hub de livraison", "Hub des retours", "Retournée"].every(t => !!byText(t)),
   buttons().map(b => b.textContent).join(" | "));
@@ -147,6 +169,16 @@ await click(byText("30 Jours"));
 check("the chart period toggles work", text().includes("Évolution des expéditions"));
 await click(byText("refresh"));
 check("the refresh button works", text().includes("refresh"));
+
+// Live Digylog data must take over the page as soon as the server answers.
+liveMode = "live";
+await click(byText("refresh"));
+await act(async () => { await new Promise(r => setTimeout(r, 30)); });
+check("the live Digylog numbers replace the CRM numbers",
+  text().includes("1 234 DH") && text().includes("Digylog live"),
+  text().slice(0, 400));
+check("the live badge counts the Digylog orders",
+  text().includes("Digylog live · 3 commandes"), text().slice(0, 200));
 
 // The KPI rectangle must never be rendered on a phone: the page falls back to tables.
 Object.defineProperty(dom.window, "innerWidth", {value: 640, configurable: true});

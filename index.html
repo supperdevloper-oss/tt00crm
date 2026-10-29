@@ -544,6 +544,27 @@ function __PvDashChart({points,labels}){
     labels.map((l,i)=>(n<=8||i%Math.ceil(n/7)===0||i===n-1)&&s.jsx("text",{x:x(i),y:H-6,textAnchor:"middle",style:{fontSize:12,fill:"#94a3b8"},children:l},i))
   ]});
 }
+function __PvDashScope(list,sc){
+  if(sc==="now")return list.filter(o=>__pvInFlight(o));
+  if(sc==="ship")return list.filter(o=>o.livraison==="Expédier vers"||o.livraison==="Expédié");
+  if(sc==="liv")return list.filter(o=>o.livraison==="Livrée"||o.livraison==="Rechange");
+  if(sc==="ret")return list.filter(o=>o.livraison==="Remboursé");
+  if(sc==="ret2")return list.filter(o=>o.livraison==="Retour");
+  return list;
+}
+function __PvDashMapLive(s){
+  const t=String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  if(!t)return "";
+  if(/retour|retourn|rembours|refund|return/.test(t))return "Retour";
+  if(/out of stock|rupture/.test(t))return "Out Of Stock";
+  if(/rechange|exchange/.test(t))return "Rechange";
+  if(/livree/.test(t)&&/\*/.test(t))return "Rechange";
+  if(/livree|livre(\s|$)|deliver/.test(t))return "Livrée";
+  if(/expedier vers|a expedier|a ship|non env|not sent|to ship|prepar/.test(t))return "Expédier vers";
+  if(/expedi|shipped|dispatch|envoy|transit|en route|en cours/.test(t))return "Expédié";
+  if(/annul|cancel/.test(t))return "Annulé";
+  return "";
+}
 function __PvDigylogDash(){
   const {orders:raw}=Xt();
   const {inRange:ir,label:pLabel}=Tn();
@@ -559,6 +580,24 @@ function __PvDigylogDash(){
     try{addEventListener("resize",h)}catch{}
     return()=>{try{removeEventListener("resize",h)}catch{}};
   },[]);
+  const [liveData,setLiveData]=ee.useState(null);
+  const [liveErr,setLiveErr]=ee.useState("");
+  const fetchLive=ee.useCallback(async()=>{
+    try{
+      const res=await fetch("api.php?action=digylog_dash",{cache:"no-store",headers:{"X-Sync-Token":Rd}});
+      if(!res.ok)throw new Error("http "+res.status);
+      const j=await res.json();
+      if(j&&j.ok){setLiveData(j);setLiveErr("")}
+      else setLiveErr(String((j&&j.err)||"digylog"));
+    }catch(err){try{setLiveErr(String((err&&err.message)||err))}catch(_){}}
+  },[]);
+  ee.useEffect(()=>{
+    fetchLive();
+    const t=setInterval(fetchLive,6e4);
+    const onVis=()=>{try{if(!document.hidden)fetchLive()}catch(_){}};
+    try{document.addEventListener("visibilitychange",onVis)}catch(_){}
+    return()=>{clearInterval(t);try{document.removeEventListener("visibilitychange",onVis)}catch(_){}};
+  },[fetchLive]);
   const SCOPES=[
     {k:"global",l:"Global",tip:"كل الطلبيات"},
     {k:"now",l:"En ce moment",tip:"الطلبيات لي مازال فـ الطريق"},
@@ -569,20 +608,27 @@ function __PvDigylogDash(){
   ];
   const orders=ee.useMemo(()=>(raw||[]).filter(o=>o&&!o._del),[raw]);
   const lastMonth=ee.useMemo(()=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);return __pvLocalDate(d)},[]);
-  const base=ee.useMemo(()=>{
-    let l=orders.filter(o=>{try{return ir(o.dateCreation)}catch{return true}});
-    if(since)l=l.filter(o=>String(o.dateCreation||"")>=lastMonth);
-    return l;
-  },[orders,ir,since,lastMonth]);
-  const scoped=ee.useMemo(()=>{
-    if(scope==="now")return base.filter(o=>__pvInFlight(o));
-    if(scope==="ship")return base.filter(o=>o.livraison==="Expédier vers"||o.livraison==="Expédié");
-    if(scope==="liv")return base.filter(o=>o.livraison==="Livrée"||o.livraison==="Rechange");
-    if(scope==="ret")return base.filter(o=>o.livraison==="Remboursé");
-    if(scope==="ret2")return base.filter(o=>o.livraison==="Retour");
-    return base;
-  },[base,scope]);
-  const live=ee.useMemo(()=>scoped.filter(o=>o.statut!=="Annulé"),[scoped]);
+  const liveRows=ee.useMemo(()=>{
+    const rows=liveData&&liveData.rows&&liveData.rows.length?liveData.rows:null;
+    if(!rows)return [];
+    return rows.map(r=>{
+      const l=__PvDashMapLive(r.s);
+      return {livraison:l,statut:l==="Annulé"?"Annulé":"Confirmé",prix:Number(r.p)||0,qte:Number(r.q)||1,
+        produit:String(r.n||""),dateCreation:String(r.d||""),commission:0,agent:""};
+    });
+  },[liveData]);
+  const sets=ee.useMemo(()=>{
+    const prep=(list)=>{
+      let l=list.filter(o=>{try{return ir(o.dateCreation)}catch{return true}});
+      if(since)l=l.filter(o=>String(o.dateCreation||"")>=lastMonth);
+      return l;
+    };
+    const crm=prep(orders);
+    const src=liveRows.length?prep(liveRows):crm;
+    return {crm:crm,src:src};
+  },[orders,liveRows,ir,since,lastMonth]);
+  const crmLive=ee.useMemo(()=>__PvDashScope(sets.crm,scope).filter(o=>o.statut!=="Annulé"),[sets,scope]);
+  const live=ee.useMemo(()=>__PvDashScope(sets.src,scope).filter(o=>o.statut!=="Annulé"),[sets,scope]);
   const st=ee.useMemo(()=>{
     const sold=live.filter(o=>__pvSold(o));
     const back=live.filter(o=>__pvBack(o));
@@ -634,7 +680,7 @@ function __PvDigylogDash(){
   },[live]);
   const agents=ee.useMemo(()=>{
     const m=new Map;
-    live.forEach(o=>{
+    crmLive.forEach(o=>{
       const k=String(o.agent||"—").trim()||"—";
       const c=m.get(k)||{n:0,liv:0,ret:0,ca:0,com:0};
       c.n++;c.ca+=Number(o.prix)||0;c.com+=Number(o.commission)||0;
@@ -642,7 +688,7 @@ function __PvDigylogDash(){
       m.set(k,c);
     });
     return [...m.entries()].map(([name,c])=>({name,n:c.n,liv:c.liv,ret:c.ret,ca:c.ca,com:c.com,taux:c.n?c.liv/c.n*100:0})).sort((a,b)=>b.n-a.n);
-  },[live]);
+  },[crmLive]);
   const num=v=>hide?"•••":ya(v);
   const mon=v=>hide?"•••":ya(v)+" DH";
   const refresh=async()=>{
@@ -652,6 +698,7 @@ function __PvDigylogDash(){
       const snap=await __pvFetchSnap();
       if(snap){const ks=ig(snap);(ks||[]).forEach(k=>{const cb=lg.get(k);if(cb)cb()})}
     }catch{}
+    try{await fetchLive()}catch{}
     setBusy(false);
   };
   const sMore=(color)=>s.jsx("svg",{viewBox:"0 0 24 24",fill:"currentColor",className:"h-5 w-5 shrink-0",children:[[12,5],[12,12],[12,19]].map(([cx,cy],i)=>s.jsx("circle",{cx:cx,cy:cy,r:1.9},i))});
@@ -722,9 +769,13 @@ function __PvDigylogDash(){
     s.jsx("td",{className:"px-3 py-2 text-left font-bold text-violet-600",children:hide?"•••":ya(a.com)}),
     s.jsx("td",{className:"px-3 py-2 text-left font-bold text-slate-600",children:hide?"•••":a.taux.toFixed(0)+"%"})
   ]},a.name));
+  const liveTxt=liveRows.length?("Digylog live · "+liveRows.length+" commandes"):(liveErr?("Digylog: "+liveErr):"Digylog live…");
   const header=s.jsxs("div",{className:"mb-3",children:[
     s.jsxs("div",{className:"flex flex-wrap items-end gap-4 border-b border-slate-100 pb-1",children:tabs}),
-    s.jsxs("div",{className:"flex flex-wrap items-center justify-end gap-2 pt-2",children:[btnRefresh,btnHide,btnSince]})
+    s.jsxs("div",{className:"flex flex-wrap items-center justify-between gap-2 pt-2",children:[
+      s.jsx("span",{title:liveData&&liveData.endpoint?("Source Digylog: "+liveData.endpoint):"Lecture seule de Digylog",className:`rounded-full border px-3 py-1 text-[11px] font-bold ${liveRows.length?"border-emerald-300 bg-emerald-50 text-emerald-700":"border-slate-300 bg-white text-slate-500"}`,children:liveTxt}),
+      s.jsxs("div",{className:"flex flex-wrap items-center gap-2",children:[btnRefresh,btnHide,btnSince]})
+    ]})
   ]});
   const agentCard=s.jsxs("div",{className:"mt-4 border-t border-slate-100 pt-2",children:[
     s.jsxs("div",{className:"mb-3 flex items-center justify-between gap-3",children:[
@@ -1685,7 +1736,7 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
 <script id="pv-digylog-send-auto">
 (function(){
   const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
-  const EXPECTED='3.85';
+  const EXPECTED='3.86';
   let sending=false;
   function say(text){
     if(!document.body)return;
