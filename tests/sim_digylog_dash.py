@@ -244,7 +244,7 @@ def main():
     check("api.php caches the live payload", "function crm_dl_dash_cache_write(" in api)
     check("api.php probes several read-only endpoints",
           all(x in api for x in ["/orders/grid", "/orders/statistics", "/orders/chart", "/dashboard"]))
-    check("the api version is bumped", "CRM_API_VERSION', '3.91'" in api)
+    check("the api version is bumped", "CRM_API_VERSION', '3.92'" in api)
 
     # ---- client plumbing -------------------------------------------------
     check("the dashboard asks the server for the live Digylog dashboard",
@@ -257,12 +257,14 @@ def main():
     check("the live rows replace the CRM rows when Digylog answers",
           "liveRows.length?prep(liveRows):crm" in index)
     check("the agent table stays on the CRM data", "crmLive.forEach(o=>{" in index)
-    check("the client expects the new api version", "const EXPECTED='3.91'" in index)
+    check("the client expects the new api version", "const EXPECTED='3.92'" in index)
     check("the client partitions the Digylog statuses by tab", "__PvDashDlGroup" in index and "non envoy" in index)
     check("the client draws one card per Digylog status", "__PvDashStatusLook" in index and "statusCard" in index)
     check("the probe tries every authentication style", all(x in api for x in ("crm_dl_dash_headers", "'xseller'", "'cookie'", "'xauthtok'")))
     check("the probe tries every host and version", "'https://apiseller.digylog.com'" in api and "'v49'" in api and "'v50'" in api)
     check("the working authentication is remembered", "'style' => $style" in api and "'endpoint' => $used, 'style' => $style, 'kind' => $kind" in api)
+    check("the dashboard falls back on the real Digylog statuses", "crm_dl_dash_v2_rows" in api and "api/v2/seller/order/" in api)
+    check("the fallback reads only the tracked orders", "crm_dl_dash_v2_pick" in api and "'c' => $paid ? 'paid' : 'unpaid'" in api)
     check("the seller token can be saved and tested", "'seller_test'" in api and "'tracking_token_save'" in api)
     check("the seller token is saved with the main save button", "body.sellerToken" in open('/home/user/tt00crm/digylog-admin.html',encoding='utf-8').read())
     check("the period switch follows Digylog", "Aujourd'hui" in open('/home/user/tt00crm/index.html',encoding='utf-8').read())

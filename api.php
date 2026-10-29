@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.91');
+define('CRM_API_VERSION', '3.92');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
@@ -1332,6 +1332,83 @@ function crm_dl_dash_fetch_bundle($base, $headers, $method, $body = null) {
   }
   return $out;
 }
+/* Real status of the CRM orders, read one by one from Digylog (v2 API, read only).
+   This is the fallback used when the seller API (v48) refuses the token: the
+   status, the price and the payment of every order come from Digylog itself,
+   so the tabs of the dashboard show the same numbers as the Digylog screen. */
+function crm_dl_dash_v2_pick($orders, $limit) {
+  $list = array();
+  if (!is_array($orders)) return $list;
+  foreach ($orders as $o) {
+    if (!is_array($o) || !empty($o['_del'])) continue;
+    $tr = strtoupper(trim((string)(isset($o['tracking']) ? $o['tracking'] : '')));
+    if ($tr === '' || !preg_match('/^[A-Z0-9_-]{3,80}$/', $tr)) continue;
+    $list[] = array('t' => $tr, 'd' => (string)(isset($o['dateCreation']) ? $o['dateCreation'] : ''), 'o' => $o);
+  }
+  usort($list, function ($a, $b) { return strcmp($b['d'], $a['d']); });
+  return array_slice($list, 0, max(1, (int)$limit));
+}
+function crm_dl_dash_v2_row($c, $info) {
+  if (!is_array($info) || !$info) return null;
+  $status = trim((string)(isset($info['status']) ? $info['status'] : ''));
+  if ($status === '') return null;
+  $price = isset($info['price']) ? (float)$info['price'] : 0;
+  $cash  = strtolower(trim((string)(isset($info['cash_status']) ? $info['cash_status'] : '')));
+  $paid  = ($cash === 'paid' || $cash === 'paye' || $cash === 'paiement' || !empty($info['paidAt'])) ? 1 : 0;
+  $date  = (string)(isset($info['createdAt']) ? $info['createdAt'] : '');
+  $date  = substr($date, 0, 10);
+  $o = $c['o'];
+  return array(
+    's' => $status,
+    't' => $c['t'],
+    'p' => $price > 0 ? $price : (float)(isset($o['prix']) ? $o['prix'] : 0),
+    'q' => max(1, (int)(isset($o['qte']) ? $o['qte'] : 1)),
+    'n' => (string)(isset($o['produit']) ? $o['produit'] : ''),
+    'd' => $date !== '' ? $date : $c['d'],
+    'c' => $paid ? 'paid' : 'unpaid',
+    'a' => (string)(isset($o['agent']) ? $o['agent'] : '')
+  );
+}
+function crm_dl_dash_v2_rows($token, $limit) {
+  $data = crm_read_raw(true);
+  $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  if (!is_array($orders)) $orders = array();
+  $list = crm_dl_dash_v2_pick($orders, $limit);
+  $rows = array(); $n = 0;
+  $batch = array();
+  /* read them in small parallel batches (Digylog limits the request rate) */
+  $chunks = array_chunk($list, 10);
+  foreach ($chunks as $chunk) {
+    $mh = curl_multi_init(); $chs = array();
+    foreach ($chunk as $c) {
+      $url = 'https://api.digylog.com/api/v2/seller/order/' . rawurlencode($c['t']) . '/infos';
+      $ch = curl_init($url);
+      curl_setopt_array($ch, array(
+        CURLOPT_HTTPHEADER => array('Accept: application/json', 'Content-Type: application/json', 'Referer: https://apiseller.digylog.com', 'Authorization: Bearer ' . $token),
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_TIMEOUT => 15
+      ));
+      curl_multi_add_handle($mh, $ch); $chs[$c['t']] = $ch;
+    }
+    $running = null;
+    do { $mrc = curl_multi_exec($mh, $running); if ($running) curl_multi_select($mh, 0.2); } while ($running && $mrc === CURLM_OK);
+    foreach ($chs as $trk => $ch) {
+      $body = (string)curl_multi_getcontent($ch);
+      curl_multi_remove_handle($mh, $ch); curl_close($ch);
+      $j = json_decode($body, true);
+      if (!is_array($j) || empty($j)) continue;
+      $info = isset($j['order']) && is_array($j['order']) ? $j['order'] : $j;
+      foreach ($chunk as $c) {
+        if ($c['t'] !== $trk) continue;
+        $row = crm_dl_dash_v2_row($c, $info);
+        if ($row) $rows[] = $row;
+      }
+    }
+    curl_multi_close($mh);
+    $n += count($chunk);
+  }
+  return array('rows' => $rows, 'checked' => $n);
+}
+
 /* Live entry point used by the CRM «Tableau de bord». */
 function crm_dl_dash_live($q) {
   $probe = isset($q['probe']) && (string)$q['probe'] !== '' && (string)$q['probe'] !== '0';
@@ -1340,6 +1417,7 @@ function crm_dl_dash_live($q) {
   $cache = crm_dl_dash_cache_read();
   $now = time();
   $ttl = $probe ? 0 : 90;
+  if (!$probe && isset($cache['payload']['mode']) && (string)$cache['payload']['mode'] === 'v2') $ttl = 600;
   if (!$probe && isset($cache['failAt']) && ($now - (int)$cache['failAt']) < 240) {
     $p = $cache['payload'];
     $p['cached'] = true;
@@ -1483,6 +1561,19 @@ function crm_dl_dash_live($q) {
       }
     }
   }
+  /* the seller API refused the token: read the real status of every order
+     from the Digylog API v2 (the token that works) so the dashboard still
+     shows the Digylog numbers */
+  if ($mode === 'none' && $tok['api'] !== '') {
+    $lim = isset($q['limit']) ? max(1, min(400, (int)$q['limit'])) : 80;
+    $v2 = crm_dl_dash_v2_rows($tok['api'], $lim);
+    if (!empty($v2['rows'])) {
+      $rows = $v2['rows'];
+      $mode = 'v2';
+      $used = 'api/v2/seller/order/{tracking}/infos';
+    }
+  }
+
   /* the Seller token refused by Digylog (expired or invalid) */
   $authError = ''; $authMessage = '';
   foreach ($heads as $k => $hd) {
@@ -1495,6 +1586,7 @@ function crm_dl_dash_live($q) {
   if ($authError === '') {
     foreach ($codes as $k => $cc) if ((int)$cc === 401) { $authError = 'expired'; break; }
   }
+  if ($mode === 'v2') $authError = '';
   $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'now' => $nowRows, 'statuses' => $statuses, 'chart' => $chart, 'products' => $products, 'kpis' => $kpis, 'stats' => $stats, 'pages' => $pages, 'authError' => $authError, 'authMessage' => $authMessage);
   if ($probe) { $payload['probes'] = $codes; $payload['raw'] = substr($body, 0, 8000); }
   if ($probe) { $payload['heads'] = $heads; $payload['raws'] = $raws; }

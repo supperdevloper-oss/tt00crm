@@ -181,6 +181,13 @@
         box.appendChild(inp);
       });
     }
+    function applyAgentStores(as){
+      if(!as) return;
+      Object.keys(as).forEach(function(a){
+        var el=document.getElementById('st_'+a);
+        if(el && !String(el.value||'').trim() && as[a]) el.value=as[a];
+      });
+    }
     function fill(cfg) {
       $('apiVer').textContent = cfg.apiVersion ? ('· v' + cfg.apiVersion) : '';
       $('network').value = cfg.network || 1;
@@ -198,6 +205,10 @@
     call({ action: 'digylog_admin', op: 'get' }).then(function (j) {
       if (j && j.ok) { fill(j.cfg); out(j); }
       else show('❌ ما قدرتش نجيب الإعدادات (' + ((j && j.err) || 'error') + ')', false);
+      /* the stores of every agent are computed on the server: fill the empty boxes */
+      call({ action: 'digylog_admin', op: 'status' }).then(function (d) {
+        if (d && d.ok) { out(d); applyAgentStores(d.agentStores); }
+      }).catch(function () { });
     }).catch(function () { show('❌ مشكل فالاتصال', false); });
 
     function run(btn, body, after) {
@@ -255,10 +266,7 @@
         var ak=Object.keys(as);
         if(ak.length) lines.push('المتجر ديال كل بنت (محسوب): '+ak.map(function(a){return a+' → '+as[a];}).join(' | '));
         /* المتاجر المحسوبة كتملأ الخانات الخاوية (باش تبان التوجيه ديال كل بنت) */
-        ak.forEach(function(a){
-          var el=document.getElementById('st_'+a);
-          if(el && !String(el.value||'').trim() && as[a]) el.value=as[a];
-        });
+        applyAgentStores(as);
         lines.push('الشبكات Discovery: '+((st.networks&&st.networks.length)?st.networks.map(function(n){return n.id+' '+(n.name||'');}).join(', '):'(ماكاينش)'));
         lines.push('متجر افتراضي: '+(st.defaultStore||'(ماكاينش)'));
         lines.push('آخر تشغيل: '+(last.when?new Date(last.when).toLocaleString():'(مازال عمرو)')+' | بعت: '+(last.sent||0)+' | فشل: '+(last.failed||0));

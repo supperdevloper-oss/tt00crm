@@ -645,7 +645,7 @@ function __PvDigylogDash(){
     return rows.map(r=>{
       const l=__PvDashMapLive(r.s);
       return {livraison:l,raw:String(r.s||""),statut:l==="Annulé"?"Annulé":"Confirmé",prix:Number(r.p)||0,qte:Number(r.q)||1,
-        produit:String(r.n||""),dateCreation:String(r.d||""),commission:0,agent:""};
+        produit:String(r.n||""),dateCreation:String(r.d||""),commission:0,agent:String(r.a||""),cash:String(r.c||"")};
     });
   },[liveData]);
   const sets=ee.useMemo(()=>{
@@ -678,6 +678,8 @@ function __PvDigylogDash(){
       sent:sent.length,wait:wait.length,enc:onRoad.length,
       ca:sum(live,o=>o.prix),pieces:live.reduce((a,o)=>a+__pvQ(o),0),
       paye:sum(sold,o=>o.prix),encours:sum(onRoad,o=>o.prix),nonpaye:sum(wait,o=>o.prix),
+      payeD:sum(live.filter(o=>o.cash==="paid"),o=>o.prix),nonpayeD:sum(live.filter(o=>o.cash==="unpaid"),o=>o.prix),
+      paidN:live.filter(o=>o.cash==="paid").length,unpaidN:live.filter(o=>o.cash==="unpaid").length,
       comm:sum(live,o=>o.commission)
     };
   },[live]);
@@ -782,9 +784,9 @@ function __PvDigylogDash(){
     {l:"Chiffre d'affaire",v:mon(st.ca),icon:ico(ICONS.trend,s.jsx("path",{d:ICONS.trend2})),menu:!0},
     {l:"Total colis livrés",v:num(st.sold),icon:ico(ICONS.square,s.jsx("path",{d:"M8.5 12l3 3 4.5-5.5"})),menu:!1},
     {l:"Total Expédition",v:num(st.sent),icon:ico(ICONS.truck,s.jsx("path",{d:ICONS.truck2})),menu:!1},
-    {l:"Non payé",v:mon(st.nonpaye),icon:ico(ICONS.eye,s.jsx("path",{d:ICONS.eye2})),menu:!1},
+    {l:"Non payé",v:mon(st.paidN||st.unpaidN?st.nonpayeD:st.nonpaye),icon:ico(ICONS.eye,s.jsx("path",{d:ICONS.eye2})),menu:!1},
     {l:"En cours de paiement",v:mon(st.encours),icon:ico(ICONS.eye,s.jsx("path",{d:ICONS.eye2})),menu:!1},
-    {l:"Total Payé",v:mon(st.paye),icon:ico(ICONS.check,null),menu:!1}
+    {l:"Total Payé",v:mon(st.paidN||st.unpaidN?st.payeD:st.paye),icon:ico(ICONS.check,null),menu:!1}
   ];
   const statRows=[
     {l:"Livrées",v:cnt.Livree,c:"#047857",bg:"#d1fae5",ic:["M12 21a9 9 0 100-18 9 9 0 000 18z","M8.2 12.3l2.6 2.6 5-5.4"]},
@@ -836,7 +838,8 @@ function __PvDigylogDash(){
     s.jsx("td",{className:"px-3 py-2 text-left font-bold text-slate-600",children:hide?"•••":a.taux.toFixed(0)+"%"})
   ]},a.name));
   const liveAuth=!!(liveData&&liveData.authError);
-  const liveTxt=liveRows.length?("Digylog live · "+liveRows.length+" commandes"):(liveAuth?("⚠️ توكن Digylog منتهي — خاصك تجددو"):(liveErr?("Digylog: "+liveErr):"Digylog live…"));
+  const liveV2=!!(liveData&&liveData.mode==="v2");
+  const liveTxt=liveRows.length?("Digylog live · "+liveRows.length+" commandes"+(liveV2?" (statuts Digylog)":"")):(liveAuth?("⚠️ توكن Digylog منتهي — خاصك تجددو"):(liveErr?("Digylog: "+liveErr):"Digylog live…"));
   const header=s.jsxs("div",{className:"mb-3",children:[
     s.jsxs("div",{className:"flex flex-wrap items-end gap-4 border-b border-slate-100 pb-1",children:tabs}),
     s.jsxs("div",{className:"flex flex-wrap items-center justify-between gap-2 pt-2",children:[
@@ -1805,7 +1808,7 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
 <script id="pv-digylog-send-auto">
 (function(){
   const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
-  const EXPECTED='3.91';
+  const EXPECTED='3.92';
   let sending=false;
   function say(text){
     if(!document.body)return;
