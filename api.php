@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.87');
+define('CRM_API_VERSION', '3.88');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
@@ -1044,10 +1044,25 @@ function crm_dl_dash_candidates() {
     '/products',
     '/counts'
   );
+  $v48extra = array(
+    '/orders/grid?countPerPage=500&currentPage=1&sort=0',
+    '/orders/grid?countPerPage=100&currentPage=1&sort=0&status=all',
+    '/orders/grid?countPerPage=100&currentPage=1&sort=0&tab=global',
+    '/orders/grid?countPerPage=100&currentPage=1&sort=0&dateFrom=2000-01-01&dateTo=2100-01-01',
+    '/orders/statistics?dateFrom=2000-01-01&dateTo=2100-01-01',
+    '/orders/statistics?tab=global',
+    '/dashboard/statistics?tab=global',
+    '/dashboard/delivery?tab=atthemoment'
+  );
+  foreach ($v48extra as $p) {
+    $out[] = array('key' => 'v48 ' . $p, 'url' => $v48 . $p . '&datatype=1', 'ref' => 'https://seller.digylog.com/');
+  }
   foreach ($v48paths as $p) {
     $out[] = array('key' => 'v48 ' . $p, 'url' => $v48 . $p . '?datatype=1&countPerPage=100&currentPage=1&sort=0',
                    'ref' => 'https://seller.digylog.com/');
     $out[] = array('key' => 'v48 ' . $p . ' (plain)', 'url' => $v48 . $p . '?datatype=1',
+                   'ref' => 'https://seller.digylog.com/');
+    $out[] = array('key' => 'v48 ' . $p . ' (500)', 'url' => $v48 . $p . '?datatype=1&countPerPage=500&currentPage=1&sort=0',
                    'ref' => 'https://seller.digylog.com/');
   }
   $v2paths = array('/orders/grid', '/orders/statistics', '/orders/chart', '/orders/products', '/dashboard', '/statistics');
@@ -1193,6 +1208,52 @@ function crm_dl_dash_kpis($json) {
   }
   return $k;
 }
+/* How many pages does the answer announce? */
+function crm_dl_dash_pages_hint($json, $depth = 0) {
+  if ($depth > 2 || !is_array($json)) return 0;
+  foreach ($json as $k => $v) {
+    if (is_numeric($v)) {
+      $lk = strtolower((string)$k);
+      if (in_array($lk, array('totalpages', 'total_pages', 'nbpages', 'pagecount', 'lastpage', 'nbpage', 'nbrepages'), true)) {
+        $n = (int)$v;
+        if ($n > 0) return $n;
+      }
+    }
+  }
+  foreach ($json as $v) if (is_array($v)) { $h = crm_dl_dash_pages_hint($v, $depth + 1); if ($h) return $h; }
+  return 0;
+}
+/* Rewrite the page number of a query string. */
+function crm_dl_dash_page_url($url, $page) {
+  if (strpos($url, 'currentPage=') !== false) return preg_replace('/currentPage=\d+/', 'currentPage=' . (int)$page, $url);
+  if (strpos($url, 'page=') !== false) return preg_replace('/page=\d+/', 'page=' . (int)$page, $url);
+  return $url;
+}
+/* Fetch a batch of pages in parallel. */
+function crm_dl_dash_get_pages($urls, $token, $ref) {
+  $out = array();
+  if (!function_exists('curl_multi_init')) {
+    foreach ($urls as $u) { list($c, $b, $e) = crm_dl_http_url('GET', $u, $token, $ref); $out[$u] = array($c, $b); }
+    return $out;
+  }
+  $mh = curl_multi_init(); $chs = array();
+  foreach ($urls as $u) {
+    $ch = curl_init($u);
+    curl_setopt_array($ch, array(
+      CURLOPT_HTTPHEADER => array('Accept: application/json, text/plain, */*', 'Content-Type: application/json', 'Referer: ' . $ref, 'Origin: ' . rtrim($ref, '/'), 'Authorization: Bearer ' . $token),
+      CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_TIMEOUT => 18
+    ));
+    curl_multi_add_handle($mh, $ch); $chs[$u] = $ch;
+  }
+  $running = null;
+  do { $mrc = curl_multi_exec($mh, $running); if ($running) curl_multi_select($mh, 0.2); } while ($running && $mrc === CURLM_OK);
+  foreach ($chs as $u => $ch) {
+    $out[$u] = array((int)curl_getinfo($ch, CURLINFO_HTTP_CODE), (string)curl_multi_getcontent($ch));
+    curl_multi_remove_handle($mh, $ch); curl_close($ch);
+  }
+  curl_multi_close($mh);
+  return $out;
+}
 /* Live entry point used by the CRM «Tableau de bord». */
 function crm_dl_dash_live($q) {
   $probe = isset($q['probe']) && (string)$q['probe'] !== '' && (string)$q['probe'] !== '0';
@@ -1229,7 +1290,7 @@ function crm_dl_dash_live($q) {
       if (!empty($res['ok'])) { $body = $res['body']; $used = $res['cand']['url']; break; }
     }
   }
-  $rows = array(); $kpis = array(); $mode = 'none';
+  $rows = array(); $kpis = array(); $mode = 'none'; $pages = 1;
   if ($body !== '') {
     $json = json_decode($body, true);
     if (is_array($json)) {
@@ -1240,7 +1301,55 @@ function crm_dl_dash_live($q) {
       if ($mode === 'none') $mode = 'raw';
     }
   }
-  $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'kpis' => $kpis);
+  /* Digylog answers with a page of orders: read every page so the counts
+     of the dashboard are the real ones (and not only the first 100). */
+  if ($mode === 'orders' && $used !== '') {
+    $per = 100;
+    if (preg_match('/countPerPage=(\d+)/', $used, $pm)) $per = max(1, (int)$pm[1]);
+    $hint = crm_dl_dash_pages_hint($json);
+    $maxPages = $hint > 0 ? min(20, $hint) : 20;
+    if ($maxPages > 1) {
+      $urls = array();
+      for ($p = 2; $p <= $maxPages; $p++) $urls[] = crm_dl_dash_page_url($used, $p);
+      $got = crm_dl_dash_get_pages($urls, $tokens[0], 'https://seller.digylog.com/');
+      foreach ($got as $u => $res) {
+        list($pc, $pb) = $res;
+        if ($pc < 200 || $pc >= 300 || trim((string)$pb) === '') continue;
+        $pj = json_decode($pb, true);
+        if (!is_array($pj)) continue;
+        $pr = crm_dl_dash_find_rows($pj);
+        if (!$pr) break;
+        $pages++;
+        $rows = array_merge($rows, crm_dl_dash_normalize_rows($pr));
+        if (count($pr) < $per) break;
+      }
+      /* remove the duplicated tracking numbers */
+      $seen = array(); $uniq = array();
+      foreach ($rows as $r) {
+        $k = $r['t'];
+        if ($k !== '' && isset($seen[$k])) continue;
+        if ($k !== '') $seen[$k] = 1;
+        $uniq[] = $r;
+      }
+      $rows = $uniq;
+    }
+  }
+  /* The seller dashboard also publishes its own totals: read them too so the
+     CRM can show exactly the same numbers as Digylog. */
+  $stats = array();
+  if ($mode !== 'none') {
+    $statUrl = 'https://api.digylog.com/api/seller/v48/orders/statistics?datatype=1';
+    list($sc, $sb, $se) = crm_dl_http_url('GET', $statUrl, $tokens[0], 'https://seller.digylog.com/');
+    if ($sc >= 200 && $sc < 300 && trim((string)$sb) !== '') {
+      $sj = json_decode($sb, true);
+      if (is_array($sj)) {
+        $stats = crm_dl_dash_kpis($sj);
+        if (!$stats) { $flat = array(); crm_dl_dash_flatten($sj, $flat); $stats = $flat; }
+        if ($probe) $stats['_raw'] = substr((string)$sb, 0, 4000);
+      }
+    }
+  }
+  $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'kpis' => $kpis, 'stats' => $stats, 'pages' => $pages);
   if ($probe) { $payload['probes'] = $codes; $payload['raw'] = substr($body, 0, 8000); }
   if ($probe) { $payload['heads'] = isset($res['heads']) ? $res['heads'] : array(); }
   crm_dl_dash_cache_write(array('endpoint' => $used, 'payload' => $payload));
