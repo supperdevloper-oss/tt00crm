@@ -28,7 +28,7 @@ try {
 }
 
 const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-const comp = html.slice(html.indexOf("function __PvDigylogDash"),
+const comp = html.slice(html.indexOf("function __PvDashChart"),
                         html.indexOf("function Fj(){const{orders:e}=Xt()"));
 const charts = html.slice(html.indexOf("function f_({livrees"),
                           html.indexOf("function or({label:e,value:n,sub:a,color:i,bg:c,onClick:f})"));
@@ -77,6 +77,7 @@ const ig = () => [];
 const lg = new Map();
 const __pvEtag = null;
 const __pvFetchSnap = async () => ({});
+const __pvAdminMobile = () => false;
 `;
 
 const modFile = path.join(HERE, "_dashboard_component.mjs");
@@ -95,6 +96,8 @@ try { Object.defineProperty(global, "navigator", {value: dom.window.navigator, c
 global.HTMLElement = dom.window.HTMLElement;
 global.Node = dom.window.Node;
 global.IS_REACT_ACT_ENVIRONMENT = true;
+global.addEventListener = dom.window.addEventListener.bind(dom.window);
+global.removeEventListener = dom.window.removeEventListener.bind(dom.window);
 
 const {__PvDigylogDash} = await import(pathToFileURL(modFile).href + "?v=" + Date.now());
 
@@ -113,7 +116,7 @@ check("the six Digylog scope tabs are rendered",
   ["Global", "En ce moment", "Hub d'expédition", "Hub de livraison", "Hub des retours", "Retournée"].every(t => !!byText(t)),
   buttons().map(b => b.textContent).join(" | "));
 check("the six KPI cards are rendered",
-  ["Chiffre d'affaires", "Total colis livrés", "Total Expédition", "Non payé", "En cours de paiement", "Total Payé"].every(t => text().includes(t)));
+  ["Chiffre d'affaire", "Total colis livrés", "Total Expédition", "Non payé", "En cours de paiement", "Total Payé"].every(t => text().includes(t)));
 check("the charts and the tables are rendered",
   text().includes("Évolution des expéditions") && text().includes("Taux de livraison")
   && text().includes("Top 5 produits vendus") && text().includes("Statuts livraisons"));
@@ -134,16 +137,23 @@ check("the returned hub only counts returned parcels",
 await click(byText("Global"));
 await click(byText("Masquer les données"));
 check("Masquer les données hides every number", text().includes("•••"), text().slice(0, 200));
-await click(byText("إظهار البيانات"));
+await click(byText("Afficher les données"));
 check("the numbers come back", !text().includes("•••"), text().slice(0, 200));
 
-await click(byText("منذ الشهر الماضي"));
-check("the since last month switch keeps the page alive", text().includes("Tableau de bord"));
+await click(byText("Depuis le mois dernier"));
+check("the since last month switch keeps the page alive", text().includes("Depuis le mois dernier"));
 await click(byText("15 Jours"));
 await click(byText("30 Jours"));
 check("the chart period toggles work", text().includes("Évolution des expéditions"));
-await click(byText("تحديث"));
-check("the refresh button works", text().includes("Tableau de bord"));
+await click(byText("refresh"));
+check("the refresh button works", text().includes("refresh"));
+
+// The KPI rectangle must never be rendered on a phone: the page falls back to tables.
+Object.defineProperty(dom.window, "innerWidth", {value: 640, configurable: true});
+await act(async () => { dom.window.dispatchEvent(new dom.window.Event("resize")); });
+check("the KPI rectangle is not rendered on a phone",
+  !text().includes("Évolution des expéditions") && text().includes("Indicateurs"),
+  text().slice(0, 300));
 
 root.unmount();
 try { fs.unlinkSync(modFile); } catch {}
