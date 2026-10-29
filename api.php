@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.88');
+define('CRM_API_VERSION', '3.89');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
@@ -984,6 +984,8 @@ function crm_dl_http($method, $path, $token, $body = null) {
  * فأقل من دقيقة، بلا ما الفريق يحتاج يفتح ديجيلوج.
  *   GET api.php?action=digylog_dash           → البيانات لايف
  *   GET api.php?action=digylog_dash&probe=1   → تشخيص المسارات (نتائج خام)
+ *   GET api.php?action=digylog_dash&probe=1&stage=2&base=<base>&style=<style>&kind=<seller|api>
+ *                                                → بحث المسارات على الطريقة الصحيحة
  * ================================================================ */
 function crm_dl_dash_cache_path() {
   global $DATA_DIR;
@@ -1001,97 +1003,141 @@ function crm_dl_dash_cache_write($j) {
   if (@file_put_contents($tmp, json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX) !== false) @rename($tmp, $p);
 }
 /* Generic read-only HTTP call to any Digylog URL (Bearer token). */
-function crm_dl_http_url($method, $url, $token, $ref) {
+function crm_dl_http_url($method, $url, $token, $ref, $headers = null, $body = null) {
   if (!function_exists('curl_init')) return array(0, '', 'no-curl');
   $ch = curl_init($url);
-  $h = array('Accept: application/json, text/plain, */*', 'Content-Type: application/json', 'Referer: ' . $ref, 'Origin: ' . rtrim($ref, '/'), 'Authorization: Bearer ' . $token);
+  $h = ($headers !== null && is_array($headers) && count($headers))
+      ? $headers
+      : array('Accept: application/json, text/plain, */*', 'Content-Type: application/json', 'Referer: ' . $ref, 'Origin: ' . rtrim($ref, '/'), 'Authorization: Bearer ' . $token);
   curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
   curl_setopt($ch, CURLOPT_HTTPHEADER, $h);
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
   curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
   curl_setopt($ch, CURLOPT_TIMEOUT, 18);
+  if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
   $resp = curl_exec($ch);
   $err = (string)curl_error($ch);
   $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
   curl_close($ch);
   return array($code, $resp === false ? '' : (string)$resp, $err);
 }
-/* Read-only endpoints of the Digylog seller dashboard (order matters).
-   The seller API (v48) only answers when datatype=1 is present: without it
-   every path replies 403 instead of the real payload. */
-function crm_dl_dash_candidates() {
-  $v2  = 'https://api.digylog.com/api/v2/seller';
-  $v48 = 'https://api.digylog.com/api/seller/v48';
+/* ---- Digylog seller dashboard: authentication matrix + path discovery ----
+ * The seller API (api/seller/v48) answers 403 "Forbidden" when the request is
+ * not authenticated the way the seller web app does it. This probe tries every
+ * plausible way of sending the token (bearer, raw, custom headers, cookie),
+ * every host and every API version, and reports the code + the body head of
+ * each answer so the working combination can be found without guessing. */
+function crm_dl_dash_toks() {
+  $cfg = crm_dl_cfg_get();
+  $seller = isset($cfg['sellerToken']) ? crm_tracking_bearer($cfg['sellerToken']) : '';
+  $api = isset($cfg['token']) ? crm_tracking_bearer($cfg['token']) : '';
+  return array('seller' => $seller, 'api' => $api);
+}
+function crm_dl_dash_headers($style, $tok) {
+  $h = array('Accept: application/json, text/plain, */*', 'Content-Type: application/json',
+             'Referer: https://seller.digylog.com/', 'Origin: https://seller.digylog.com',
+             'X-Requested-With: XMLHttpRequest');
+  switch ($style) {
+    case 'raw':       $h[] = 'Authorization: ' . $tok; break;
+    case 'token':     $h[] = 'Authorization: Token ' . $tok; break;
+    case 'sellerpfx': $h[] = 'Authorization: Seller ' . $tok; break;
+    case 'xauth':     $h[] = 'X-Authorization: ' . $tok; break;
+    case 'xauthtok':  $h[] = 'X-Auth-Token: ' . $tok; break;
+    case 'plainhdr':  $h[] = 'token: ' . $tok; break;
+    case 'xapi':      $h[] = 'X-API-Key: ' . $tok; break;
+    case 'xseller':   $h[] = 'X-Seller-Authorization: ' . $tok; break;
+    case 'cookie':    $h[] = 'Cookie: token=' . $tok . '; seller_token=' . $tok . '; auth_token=' . $tok . '; access_token=' . $tok; break;
+    case 'nobearer':  break;
+    default:          $h[] = 'Authorization: Bearer ' . $tok; break;
+  }
+  return $h;
+}
+function crm_dl_dash_candidates($q, $tk) {
+  $stage = isset($q['stage']) ? (int)$q['stage'] : 1;
   $out = array();
-  $v48paths = array(
-    '/orders/grid',
-    '/historic/orders',
-    '/orders/statistics',
-    '/orders/chart',
-    '/orders/products',
-    '/orders/statuses',
-    '/orders/delivery',
-    '/orders/atthemoment',
-    '/historic/statistics',
-    '/dashboard',
-    '/dashboard/statistics',
-    '/dashboard/delivery',
-    '/delivery/statistics',
-    '/delivery/atthemoment',
-    '/statistics',
-    '/statuses',
-    '/shipments',
-    '/products',
-    '/counts'
-  );
-  $v48extra = array(
-    '/orders/grid?countPerPage=500&currentPage=1&sort=0',
-    '/orders/grid?countPerPage=100&currentPage=1&sort=0&status=all',
-    '/orders/grid?countPerPage=100&currentPage=1&sort=0&tab=global',
-    '/orders/grid?countPerPage=100&currentPage=1&sort=0&dateFrom=2000-01-01&dateTo=2100-01-01',
-    '/orders/statistics?dateFrom=2000-01-01&dateTo=2100-01-01',
-    '/orders/statistics?tab=global',
-    '/dashboard/statistics?tab=global',
-    '/dashboard/delivery?tab=atthemoment'
-  );
-  foreach ($v48extra as $p) {
-    $out[] = array('key' => 'v48 ' . $p, 'url' => $v48 . $p . '&datatype=1', 'ref' => 'https://seller.digylog.com/');
+  if ($stage <= 1) {
+    /* stage 1: which (host, version, header style) is accepted? */
+    $hosts = array('https://api.digylog.com', 'https://apiseller.digylog.com');
+    $vers  = array('v48', 'v49', 'v50');
+    $styles = array(
+      array('bearer', 'seller'), array('raw', 'seller'), array('token', 'seller'),
+      array('sellerpfx', 'seller'), array('xauth', 'seller'), array('xauthtok', 'seller'),
+      array('xseller', 'seller'), array('cookie', 'seller'), array('bearer', 'api')
+    );
+    foreach ($hosts as $h) foreach ($vers as $v) foreach ($styles as $st) {
+      $tok = ($tk[$st[1]] !== '') ? $tk[$st[1]] : $tk['api'];
+      $out[] = array(
+        'key' => $h . '/api/seller/' . $v . ' [' . $st[0] . '/' . $st[1] . ']',
+        'url' => $h . '/api/seller/' . $v . '/orders/grid?datatype=1&countPerPage=100&currentPage=1&sort=0',
+        'headers' => crm_dl_dash_headers($st[0], $tok), 'method' => 'GET', 'body' => null,
+        'style' => $st[0], 'kind' => $st[1]
+      );
+    }
+    return $out;
   }
-  foreach ($v48paths as $p) {
-    $out[] = array('key' => 'v48 ' . $p, 'url' => $v48 . $p . '?datatype=1&countPerPage=100&currentPage=1&sort=0',
-                   'ref' => 'https://seller.digylog.com/');
-    $out[] = array('key' => 'v48 ' . $p . ' (plain)', 'url' => $v48 . $p . '?datatype=1',
-                   'ref' => 'https://seller.digylog.com/');
-    $out[] = array('key' => 'v48 ' . $p . ' (500)', 'url' => $v48 . $p . '?datatype=1&countPerPage=500&currentPage=1&sort=0',
-                   'ref' => 'https://seller.digylog.com/');
+  /* stage 2/3: the paths of the API that answered (base given by the caller) */
+  $base  = isset($q['base']) ? trim((string)$q['base']) : 'https://api.digylog.com/api/seller/v48';
+  $base  = rtrim($base, '/');
+  $style = isset($q['style']) ? trim((string)$q['style']) : 'bearer';
+  $kind  = isset($q['kind']) ? trim((string)$q['kind']) : 'seller';
+  $tok   = ($tk[$kind] !== '') ? $tk[$kind] : $tk['api'];
+  $hdr   = crm_dl_dash_headers($style, $tok);
+  $paths = array(
+    '/orders/grid', '/orders', '/orders/statistics', '/orders/chart', '/orders/products',
+    '/orders/statuses', '/orders/delivery', '/orders/atthemoment', '/orders/list', '/orders/all',
+    '/historic/orders', '/historic/statistics', '/dashboard', '/dashboard/statistics',
+    '/dashboard/delivery', '/dashboard/delivery/atthemoment', '/delivery/statistics',
+    '/delivery/atthemoment', '/statistics', '/statuses', '/shipments', '/products', '/counts',
+    '/orders/export', '/orders/count', '/orders/kpis', '/orders/summary'
+  );
+  foreach ($paths as $pp) {
+    $out[] = array(
+      'key' => $base . $pp,
+      'url' => $base . $pp . '?datatype=1&countPerPage=100&currentPage=1&sort=0',
+      'headers' => $hdr, 'method' => 'GET', 'body' => null,
+      'style' => $style, 'kind' => $kind
+    );
   }
-  $v2paths = array('/orders/grid', '/orders/statistics', '/orders/chart', '/orders/products', '/dashboard', '/statistics');
-  foreach ($v2paths as $p) {
-    $out[] = array('key' => 'v2 ' . $p, 'url' => $v2 . $p, 'ref' => 'https://apiseller.digylog.com');
+  if ($stage >= 3) {
+    /* maybe the seller token must be exchanged for a session token first */
+    $logins = array(
+      '/auth/login', '/login', '/auth/token', '/token', '/auth', '/session', '/me', '/profile'
+    );
+    foreach ($logins as $pp) {
+      $out[] = array(
+        'key' => $base . $pp . ' [login]',
+        'url' => $base . $pp . '?datatype=1',
+        'headers' => $hdr, 'method' => 'POST',
+        'body' => array('authorization' => $tok, 'token' => $tok, 'sellerAuthorization' => $tok)
+      );
+    }
   }
   return $out;
 }
 /* Try every candidate in parallel and keep the first one that answers. */
-function crm_dl_dash_probe($cands, $token) {
+function crm_dl_dash_probe($cands, $token, $ref = 'https://seller.digylog.com/') {
   $res = array('ok' => false, 'codes' => array(), 'heads' => array());
   if (!function_exists('curl_multi_init')) {
     foreach ($cands as $c) {
-      list($code, $body, $err) = crm_dl_http_url('GET', $c['url'], $token, $c['ref']);
+      list($code, $body, $err) = crm_dl_http_url($c['method'], $c['url'], $token, $ref, isset($c['headers']) ? $c['headers'] : null, isset($c['body']) ? $c['body'] : null);
       $res['codes'][$c['key']] = $code;
       $res['heads'][$c['key']] = substr((string)$body, 0, 300);
-      if ($code >= 200 && $code < 300 && trim($body) !== '') { $res['ok'] = true; $res['cand'] = $c; $res['body'] = $body; break; }
+      if ($code >= 200 && $code < 300 && trim($body) !== '') { $res['ok'] = true; $res['cand'] = $c; $res['body'] = $body; }
     }
     return $res;
   }
   $mh = curl_multi_init(); $chs = array();
   foreach ($cands as $i => $c) {
     $ch = curl_init($c['url']);
+    $hs = isset($c['headers']) ? $c['headers'] : array('Accept: application/json', 'Referer: ' . $ref, 'Origin: ' . rtrim($ref, '/'), 'Authorization: Bearer ' . $token);
     curl_setopt_array($ch, array(
-      CURLOPT_HTTPHEADER => array('Accept: application/json, text/plain, */*', 'Content-Type: application/json', 'Referer: ' . $c['ref'], 'Origin: ' . rtrim($c['ref'], '/'), 'Authorization: Bearer ' . $token),
+      CURLOPT_HTTPHEADER => $hs,
+      CURLOPT_CUSTOMREQUEST => isset($c['method']) ? $c['method'] : 'GET',
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_CONNECTTIMEOUT => 6,
       CURLOPT_TIMEOUT => 18
     ));
+    if (isset($c['body']) && $c['body'] !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($c['body'], JSON_UNESCAPED_UNICODE));
     curl_multi_add_handle($mh, $ch);
     $chs[$i] = $ch;
   }
@@ -1269,25 +1315,32 @@ function crm_dl_dash_live($q) {
     crm_out($p);
     return;
   }
-  $cands = crm_dl_dash_candidates();
-  $body = ''; $used = ''; $codes = array();
+  $tok = crm_dl_dash_toks();
+  $cands = crm_dl_dash_candidates($q, $tok);
+  $body = ''; $used = ''; $codes = array(); $heads = array(); $style = ''; $kind = '';
+  /* the working combination is remembered: no probe is needed any more */
   $cachedUrl = isset($cache['endpoint']) ? trim((string)$cache['endpoint']) : '';
-  if ($cachedUrl !== '') {
-    foreach ($cands as $c) {
-      if ($c['url'] !== $cachedUrl) continue;
-      foreach ($tokens as $tk) {
-        list($code, $b, $err) = crm_dl_http_url('GET', $c['url'], $tk, $c['ref']);
-        $codes[$c['key']] = $code;
-        if ($code >= 200 && $code < 300 && trim($b) !== '') { $body = $b; $used = $c['url']; break 2; }
-      }
-      break;
+  $cachedStyle = isset($cache['style']) ? trim((string)$cache['style']) : '';
+  $cachedKind = isset($cache['kind']) ? trim((string)$cache['kind']) : '';
+  if ($cachedUrl !== '' && $cachedStyle !== '') {
+    $ct = ($cachedKind === 'api') ? $tok['api'] : $tok['seller'];
+    if ($ct === '') $ct = $tok['api'];
+    list($code, $b, $err) = crm_dl_http_url('GET', $cachedUrl, $ct, 'https://seller.digylog.com/', crm_dl_dash_headers($cachedStyle, $ct));
+    $codes['cached ' . $cachedUrl] = $code;
+    $heads['cached ' . $cachedUrl] = substr((string)$b, 0, 300);
+    if ($code >= 200 && $code < 300 && trim((string)$b) !== '') {
+      $body = $b; $used = $cachedUrl; $style = $cachedStyle; $kind = $cachedKind;
     }
   }
   if ($body === '') {
-    foreach ($tokens as $tk) {
-      $res = crm_dl_dash_probe($cands, $tk);
-      if (isset($res['codes']) && is_array($res['codes'])) $codes = array_merge($codes, $res['codes']);
-      if (!empty($res['ok'])) { $body = $res['body']; $used = $res['cand']['url']; break; }
+    $res = crm_dl_dash_probe($cands, $tok['seller'] !== '' ? $tok['seller'] : $tok['api']);
+    if (isset($res['codes']) && is_array($res['codes'])) $codes = array_merge($codes, $res['codes']);
+    if (isset($res['heads']) && is_array($res['heads'])) $heads = array_merge($heads, $res['heads']);
+    if (!empty($res['ok'])) {
+      $body = $res['body'];
+      $used = $res['cand']['url'];
+      $style = isset($res['cand']['style']) ? $res['cand']['style'] : '';
+      $kind = isset($res['cand']['kind']) ? $res['cand']['kind'] : '';
     }
   }
   $rows = array(); $kpis = array(); $mode = 'none'; $pages = 1;
@@ -1351,8 +1404,8 @@ function crm_dl_dash_live($q) {
   }
   $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'kpis' => $kpis, 'stats' => $stats, 'pages' => $pages);
   if ($probe) { $payload['probes'] = $codes; $payload['raw'] = substr($body, 0, 8000); }
-  if ($probe) { $payload['heads'] = isset($res['heads']) ? $res['heads'] : array(); }
-  crm_dl_dash_cache_write(array('endpoint' => $used, 'payload' => $payload));
+  if ($probe) { $payload['heads'] = $heads; }
+  crm_dl_dash_cache_write(array('endpoint' => $used, 'style' => $style, 'kind' => $kind, 'payload' => $payload));
   crm_audit('digylog-dash | mode=' . $mode . ' | endpoint=' . $used . ' | rows=' . count($rows));
   crm_out($payload);
 }
