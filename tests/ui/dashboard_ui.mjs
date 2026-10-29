@@ -146,6 +146,13 @@ check("the global scope shows every delivered and shipped parcel",
   text().includes(String(EXPECT.sold)) && text().includes(String(EXPECT.sent)),
   `sold=${EXPECT.sold} sent=${EXPECT.sent} :: ${text().slice(0, 300)}`);
 
+// "En ce moment" shows the Digylog status cards (one card per status).
+await click(byText("En ce moment"));
+check("En ce moment shows the Digylog status cards",
+  !text().includes("Chiffre d\'affaire") && (text().includes("Expédié") || text().includes("Expédier vers")),
+  text().slice(0, 300));
+await click(byText("Global"));
+
 await click(byText("Hub de livraison"));
 check("the delivery hub only counts delivered orders",
   text().includes(String(EXPECT.sold)) && !text().includes(String(EXPECT.road)),

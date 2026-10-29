@@ -1016,36 +1016,54 @@ function crm_dl_http_url($method, $url, $token, $ref) {
   curl_close($ch);
   return array($code, $resp === false ? '' : (string)$resp, $err);
 }
-/* Read-only endpoints of the Digylog seller dashboard (order matters). */
+/* Read-only endpoints of the Digylog seller dashboard (order matters).
+   The seller API (v48) only answers when datatype=1 is present: without it
+   every path replies 403 instead of the real payload. */
 function crm_dl_dash_candidates() {
   $v2  = 'https://api.digylog.com/api/v2/seller';
   $v48 = 'https://api.digylog.com/api/seller/v48';
-  $paths = array(
-    '/orders/grid?countPerPage=100&currentPage=1&sort=0',
-    '/orders?countPerPage=100&currentPage=1&sort=0',
-    '/historic/orders?countPerPage=100&currentPage=1&sort=0',
+  $out = array();
+  $v48paths = array(
+    '/orders/grid',
+    '/historic/orders',
     '/orders/statistics',
     '/orders/chart',
     '/orders/products',
     '/orders/statuses',
+    '/orders/delivery',
+    '/orders/atthemoment',
+    '/historic/statistics',
     '/dashboard',
     '/dashboard/statistics',
-    '/statistics'
+    '/dashboard/delivery',
+    '/delivery/statistics',
+    '/delivery/atthemoment',
+    '/statistics',
+    '/statuses',
+    '/shipments',
+    '/products',
+    '/counts'
   );
-  $out = array();
-  foreach ($paths as $p) {
+  foreach ($v48paths as $p) {
+    $out[] = array('key' => 'v48 ' . $p, 'url' => $v48 . $p . '?datatype=1&countPerPage=100&currentPage=1&sort=0',
+                   'ref' => 'https://seller.digylog.com/');
+    $out[] = array('key' => 'v48 ' . $p . ' (plain)', 'url' => $v48 . $p . '?datatype=1',
+                   'ref' => 'https://seller.digylog.com/');
+  }
+  $v2paths = array('/orders/grid', '/orders/statistics', '/orders/chart', '/orders/products', '/dashboard', '/statistics');
+  foreach ($v2paths as $p) {
     $out[] = array('key' => 'v2 ' . $p, 'url' => $v2 . $p, 'ref' => 'https://apiseller.digylog.com');
-    $out[] = array('key' => 'v48 ' . $p, 'url' => $v48 . $p, 'ref' => 'https://seller.digylog.com/');
   }
   return $out;
 }
 /* Try every candidate in parallel and keep the first one that answers. */
 function crm_dl_dash_probe($cands, $token) {
-  $res = array('ok' => false, 'codes' => array());
+  $res = array('ok' => false, 'codes' => array(), 'heads' => array());
   if (!function_exists('curl_multi_init')) {
     foreach ($cands as $c) {
       list($code, $body, $err) = crm_dl_http_url('GET', $c['url'], $token, $c['ref']);
       $res['codes'][$c['key']] = $code;
+      $res['heads'][$c['key']] = substr((string)$body, 0, 300);
       if ($code >= 200 && $code < 300 && trim($body) !== '') { $res['ok'] = true; $res['cand'] = $c; $res['body'] = $body; break; }
     }
     return $res;
@@ -1068,6 +1086,7 @@ function crm_dl_dash_probe($cands, $token) {
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $body = (string)curl_multi_getcontent($ch);
     $res['codes'][$cands[$i]['key']] = $code;
+    $res['heads'][$cands[$i]['key']] = substr($body, 0, 300);
     if (!$res['ok'] && $code >= 200 && $code < 300 && trim($body) !== '') { $res['ok'] = true; $res['cand'] = $cands[$i]; $res['body'] = $body; }
     curl_multi_remove_handle($mh, $ch);
     curl_close($ch);
@@ -1222,7 +1241,8 @@ function crm_dl_dash_live($q) {
     }
   }
   $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'kpis' => $kpis);
-  if ($probe) { $payload['probes'] = $codes; $payload['raw'] = substr($body, 0, 3000); }
+  if ($probe) { $payload['probes'] = $codes; $payload['raw'] = substr($body, 0, 8000); }
+  if ($probe) { $payload['heads'] = isset($res['heads']) ? $res['heads'] : array(); }
   crm_dl_dash_cache_write(array('endpoint' => $used, 'payload' => $payload));
   crm_audit('digylog-dash | mode=' . $mode . ' | endpoint=' . $used . ' | rows=' . count($rows));
   crm_out($payload);

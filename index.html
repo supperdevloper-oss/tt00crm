@@ -544,6 +544,24 @@ function __PvDashChart({points,labels}){
     labels.map((l,i)=>(n<=8||i%Math.ceil(n/7)===0||i===n-1)&&s.jsx("text",{x:x(i),y:H-6,textAnchor:"middle",style:{fontSize:12,fill:"#94a3b8"},children:l},i))
   ]});
 }
+function __PvDashFold(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
+function __PvDashStatusLook(l){
+  const t=__PvDashFold(l);
+  if(/livree|confirme/.test(t))return{k:"check",c:"#16a34a"};
+  if(/cours de livraison/.test(t))return{k:"truck",c:"#0d9488"};
+  if(/injoignable|rappel/.test(t))return{k:"phone",c:"#0d9488"};
+  if(/report/.test(t))return{k:"calendar",c:"#f97316"};
+  if(/refus/.test(t))return{k:"ban",c:"#94a3b8"};
+  if(/ville|annul/.test(t))return{k:"x",c:"#94a3b8"};
+  if(/exped/.test(t))return{k:"truck",c:"#0d9488"};
+  return{k:"dot",c:"#94a3b8"};
+}
+function __PvDashStatusRank(l){
+  const t=__PvDashFold(l);
+  const PRI=[[/livree/,1],[/confirme/,2],[/cours de livraison/,3],[/rappel/,4],[/injoignable/,5],[/report/,6],[/ville/,7],[/annul/,8],[/refus/,9]];
+  for(const [re,n] of PRI) if(re.test(t)) return n;
+  return 50;
+}
 function __PvDashScope(list,sc){
   if(sc==="now")return list.filter(o=>__pvInFlight(o));
   if(sc==="ship")return list.filter(o=>o.livraison==="Expédier vers"||o.livraison==="Expédié");
@@ -613,7 +631,7 @@ function __PvDigylogDash(){
     if(!rows)return [];
     return rows.map(r=>{
       const l=__PvDashMapLive(r.s);
-      return {livraison:l,statut:l==="Annulé"?"Annulé":"Confirmé",prix:Number(r.p)||0,qte:Number(r.q)||1,
+      return {livraison:l,raw:String(r.s||""),statut:l==="Annulé"?"Annulé":"Confirmé",prix:Number(r.p)||0,qte:Number(r.q)||1,
         produit:String(r.n||""),dateCreation:String(r.d||""),commission:0,agent:""};
     });
   },[liveData]);
@@ -689,6 +707,17 @@ function __PvDigylogDash(){
     });
     return [...m.entries()].map(([name,c])=>({name,n:c.n,liv:c.liv,ret:c.ret,ca:c.ca,com:c.com,taux:c.n?c.liv/c.n*100:0})).sort((a,b)=>b.n-a.n);
   },[crmLive]);
+  const statusCards=ee.useMemo(()=>{
+    const m=new Map;
+    live.forEach(o=>{
+      const k=String(o.raw||o.livraison||"").trim();
+      if(!k)return;
+      const c=m.get(k)||{l:k,v:0};c.v++;m.set(k,c);
+    });
+    return [...m.values()].map(c=>{const look=__PvDashStatusLook(c.l);
+      return {l:c.l,v:c.v,k:look.k,c:look.c,rank:__PvDashStatusRank(c.l)};})
+      .sort((a,b)=>a.rank-b.rank||b.v-a.v||a.l.localeCompare(b.l));
+  },[live]);
   const num=v=>hide?"•••":ya(v);
   const mon=v=>hide?"•••":ya(v)+" DH";
   const refresh=async()=>{
@@ -701,6 +730,22 @@ function __PvDigylogDash(){
     try{await fetchLive()}catch{}
     setBusy(false);
   };
+  const sStatusIcon=(kind,color)=>{
+    const P={check:["M4.5 12.5l5 5L20 7"],truck:["M3 6h11v10H3zM14 9h4l3 3v4h-7"],
+      phone:["M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.3-1.2a2 2 0 012.1-.5c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"],
+      calendar:["M8 2.5v4","M16 2.5v4","M3.5 10h17","M5.5 4.5h13a2 2 0 012 2v13a2 2 0 01-2 2h-13a2 2 0 01-2-2v-13a2 2 0 012-2z"],
+      x:["M6 6l12 12","M18 6L6 18"],ban:["M12 21a9 9 0 100-18 9 9 0 000 18z","M5.6 5.6l12.8 12.8"],
+      dot:["M12 13.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"]};
+    const paths=P[kind]||P.dot;
+    return s.jsx("svg",{viewBox:"0 0 24 24",fill:"none",stroke:color,strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",className:"h-7 w-7 shrink-0",children:paths.map((d,i)=>s.jsx("path",{d:d},i))});
+  };
+  const statusCard=(c)=>s.jsxs("div",{className:"rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",children:[
+    s.jsxs("div",{className:"flex items-start justify-between gap-3",children:[
+      s.jsx("h3",{className:"text-base font-bold text-slate-800",children:c.l}),
+      sStatusIcon(c.k,c.c)
+    ]}),
+    s.jsx("div",{className:"mt-4 text-3xl font-extrabold leading-none text-slate-900",children:hide?"•••":String(c.v)})
+  ]},c.l);
   const sMore=(color)=>s.jsx("svg",{viewBox:"0 0 24 24",fill:"currentColor",className:"h-5 w-5 shrink-0",children:[[12,5],[12,12],[12,19]].map(([cx,cy],i)=>s.jsx("circle",{cx:cx,cy:cy,r:1.9},i))});
   const sIc=(paths,color)=>s.jsx("svg",{viewBox:"0 0 24 24",fill:"none",stroke:color||"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"h-4 w-4 shrink-0",children:(Array.isArray(paths)?paths:[paths]).map((d,i)=>s.jsx("path",{d:d},i))});
   const ico=(d,extra)=>s.jsx("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"#16a34a",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",className:"h-7 w-7 shrink-0",children:s.jsxs("g",{children:[s.jsx("path",{d:d}),extra||null]})});
@@ -823,7 +868,9 @@ function __PvDigylogDash(){
   return s.jsxs("div",{dir:"ltr",className:"h-full overflow-auto bg-slate-100 p-3",children:[
     s.jsxs("div",{className:"pv-dash-wrap rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",children:[
       header,
-      s.jsxs("div",{className:"pv-dash-kpi mt-4",children:cards.map(c=>kpiCard(c))}),
+      scope==="now"
+        ? s.jsxs("div",{className:"pv-dash-kpi mt-4",children:statusCards.length?statusCards.map(c=>statusCard(c)):cards.map(c=>kpiCard(c))})
+        : s.jsxs("div",{className:"pv-dash-kpi mt-4",children:cards.map(c=>kpiCard(c))}),
       s.jsxs("div",{className:"pv-dash-charts mt-4",children:[
         s.jsxs("div",{className:"rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",children:[
           s.jsxs("div",{className:"mb-4 flex flex-wrap items-center justify-between gap-3",children:[
