@@ -1,0 +1,11 @@
+{
+  "name": "paraveda-dashboard-ui-tests",
+  "private": true,
+  "type": "module",
+  "description": "Optional React/jsdom checks of the CRM dashboard tab",
+  "dependencies": {
+    "jsdom": "^24.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
