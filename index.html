@@ -562,6 +562,16 @@ function __PvDashStatusRank(l){
   for(const [re,n] of PRI) if(re.test(t)) return n;
   return 50;
 }
+function __PvDashDlGroup(status){
+  const t=__PvDashFold(status);
+  if(/non envoy|a envoyer|expedier vers|a expedier|prepar/.test(t))return "ship";
+  if(/^confirme/.test(t)&&!/livreur/.test(t))return "ship";
+  if(/retourne/.test(t))return "ret2";
+  if(/rembours/.test(t))return "ret";
+  if(/out of stock|rupture/.test(t))return "oos";
+  if(/livree/.test(t)&&!/\*/.test(t))return "liv";
+  return "now";
+}
 function __PvDashScope(list,sc){
   if(sc==="now")return list.filter(o=>__pvInFlight(o));
   if(sc==="ship")return list.filter(o=>o.livraison==="Expédier vers"||o.livraison==="Expédié");
@@ -577,6 +587,9 @@ function __PvDashMapLive(s){
   if(/out of stock|rupture/.test(t))return "Out Of Stock";
   if(/rechange|exchange/.test(t))return "Rechange";
   if(/livree/.test(t)&&/\*/.test(t))return "Rechange";
+  if(/confirme avec livreur|avec livreur|livreur/.test(t))return "Expédié";
+  if(/injoignable|rappel|report|ville incorrecte/.test(t))return "Expédié";
+  if(/refus/.test(t))return "Retour";
   if(/livree|livre(\s|$)|deliver/.test(t))return "Livrée";
   if(/expedier vers|a expedier|a ship|non env|not sent|to ship|prepar/.test(t))return "Expédier vers";
   if(/expedi|shipped|dispatch|envoy|transit|en route|en cours/.test(t))return "Expédié";
@@ -646,7 +659,12 @@ function __PvDigylogDash(){
     return {crm:crm,src:src};
   },[orders,liveRows,ir,since,lastMonth]);
   const crmLive=ee.useMemo(()=>__PvDashScope(sets.crm,scope).filter(o=>o.statut!=="Annulé"),[sets,scope]);
-  const live=ee.useMemo(()=>__PvDashScope(sets.src,scope).filter(o=>o.statut!=="Annulé"),[sets,scope]);
+  const live=ee.useMemo(()=>{
+    if(!liveRows.length)return __PvDashScope(sets.src,scope).filter(o=>o.statut!=="Annulé");
+    if(scope==="global")return sets.src;
+    const grp=scope==="ship"?"ship":scope==="liv"?"liv":scope==="ret"?"ret":scope==="ret2"?"ret2":"now";
+    return sets.src.filter(o=>__PvDashDlGroup(o.raw||o.livraison||"")===grp);
+  },[sets,scope,liveRows]);
   const st=ee.useMemo(()=>{
     const sold=live.filter(o=>__pvSold(o));
     const back=live.filter(o=>__pvBack(o));
@@ -1783,7 +1801,7 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
 <script id="pv-digylog-send-auto">
 (function(){
   const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
-  const EXPECTED='3.86';
+  const EXPECTED='3.87';
   let sending=false;
   function say(text){
     if(!document.body)return;

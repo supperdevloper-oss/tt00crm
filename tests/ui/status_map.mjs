@@ -35,6 +35,11 @@ const CASES = [
   ["Out Of Stock", "Out Of Stock"], ["Rupture de stock", "Out Of Stock"],
   ["Annulée", "Annulé"], ["Cancelled", "Annulé"],
   ["Confirmé", ""], ["", ""], ["Inconnu", ""],
+  // the Digylog delivery-cycle statuses
+  ["Livrée *", "Rechange"], ["Confirmé avec livreur", "Expédié"], ["En cours de livraison", "Expédié"],
+  ["Injoignable *", "Expédié"], ["Injoignable * (Rappel en cours)", "Expédié"],
+  ["Reportée *", "Expédié"], ["Ville incorrecte *", "Expédié"], ["Annulée *", "Annulé"],
+  ["Refusée *", "Retour"],
 ];
 
 let bad = 0;

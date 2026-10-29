@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.86');
+define('CRM_API_VERSION', '3.87');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
