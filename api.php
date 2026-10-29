@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.89');
+define('CRM_API_VERSION', '3.90');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
@@ -1276,19 +1276,24 @@ function crm_dl_dash_page_url($url, $page) {
   return $url;
 }
 /* Fetch a batch of pages in parallel. */
-function crm_dl_dash_get_pages($urls, $token, $ref) {
+function crm_dl_dash_get_pages($urls, $token, $ref, $headers = null, $method = 'GET', $body = null) {
   $out = array();
   if (!function_exists('curl_multi_init')) {
-    foreach ($urls as $u) { list($c, $b, $e) = crm_dl_http_url('GET', $u, $token, $ref); $out[$u] = array($c, $b); }
+    foreach ($urls as $u) { list($c, $b, $e) = crm_dl_http_url($method, $u, $token, $ref, $headers, $body); $out[$u] = array($c, $b); }
     return $out;
   }
   $mh = curl_multi_init(); $chs = array();
   foreach ($urls as $u) {
     $ch = curl_init($u);
+    $hs = ($headers !== null && is_array($headers) && count($headers))
+        ? $headers
+        : array('Accept: application/json, text/plain, */*', 'Content-Type: application/json', 'Referer: ' . $ref, 'Origin: ' . rtrim($ref, '/'), 'Authorization: Bearer ' . $token);
     curl_setopt_array($ch, array(
-      CURLOPT_HTTPHEADER => array('Accept: application/json, text/plain, */*', 'Content-Type: application/json', 'Referer: ' . $ref, 'Origin: ' . rtrim($ref, '/'), 'Authorization: Bearer ' . $token),
+      CURLOPT_HTTPHEADER => $hs,
+      CURLOPT_CUSTOMREQUEST => $method,
       CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_TIMEOUT => 18
     ));
+    if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
     curl_multi_add_handle($mh, $ch); $chs[$u] = $ch;
   }
   $running = null;
@@ -1298,6 +1303,33 @@ function crm_dl_dash_get_pages($urls, $token, $ref) {
     curl_multi_remove_handle($mh, $ch); curl_close($ch);
   }
   curl_multi_close($mh);
+  return $out;
+}
+/* Every endpoint of the Digylog seller dashboard, fetched in one go (read only). */
+function crm_dl_dash_endpoints() {
+  return array(
+    'grid'        => '/orders/grid?datatype=1&countPerPage=100&currentPage=1&sort=0',
+    'atthemoment' => '/orders/atthemoment?datatype=1&countPerPage=100&currentPage=1&sort=0',
+    'statuses'    => '/orders/statuses?datatype=1',
+    'statistics'  => '/orders/statistics?datatype=1',
+    'chart'       => '/orders/chart?datatype=1',
+    'products'    => '/orders/products?datatype=1',
+    'delivery'    => '/orders/delivery?datatype=1&countPerPage=100&currentPage=1&sort=0',
+    'list'        => '/orders/list?datatype=1&countPerPage=100&currentPage=1&sort=0'
+  );
+}
+/* Fetch the bundle (max 8 requests at a time, never more). */
+function crm_dl_dash_fetch_bundle($base, $headers, $method, $body = null) {
+  $eps = crm_dl_dash_endpoints();
+  $urls = array(); $keys = array();
+  foreach ($eps as $k => $p) { $urls[] = $base . $p; $keys[] = $k; }
+  $got = crm_dl_dash_get_pages($urls, '', 'https://seller.digylog.com/', $headers, $method, $body);
+  $out = array();
+  foreach ($got as $u => $res) {
+    $k = array_search($u, $urls, true);
+    if ($k === false) continue;
+    $out[$keys[$k]] = array((int)$res[0], (string)$res[1]);
+  }
   return $out;
 }
 /* Live entry point used by the CRM «Tableau de bord». */
@@ -1344,6 +1376,48 @@ function crm_dl_dash_live($q) {
     }
   }
   $rows = array(); $kpis = array(); $mode = 'none'; $pages = 1;
+  $nowRows = array(); $statuses = array(); $chart = array(); $products = array(); $raws = array();
+  if ($body !== '' && $style !== '') {
+    /* the token works: read every endpoint of the Digylog dashboard at once */
+    $ct = ($kind === 'api') ? $tok['api'] : $tok['seller'];
+    if ($ct === '') $ct = $tok['api'];
+    $hdr = crm_dl_dash_headers($style, $ct);
+    $base = 'https://api.digylog.com/api/seller/v48';
+    if (preg_match('#^(https?://[^/]+/api/seller/v[0-9]+)#', $used, $bm)) $base = $bm[1];
+    $bundle = crm_dl_dash_fetch_bundle($base, $hdr, 'GET');
+    foreach ($bundle as $part => $res) {
+      list($pc, $pb) = $res;
+      if ($pc < 200 || $pc >= 300) { $codes['bundle ' . $part] = $pc; continue; }
+      $pj = json_decode($pb, true);
+      if (!is_array($pj)) { $codes['bundle ' . $part] = $pc; continue; }
+      if ($probe) $raws[$part] = substr($pb, 0, 3000);
+      switch ($part) {
+        case 'grid':
+          $raw = crm_dl_dash_find_rows($pj);
+          if ($raw) { $rows = crm_dl_dash_normalize_rows($raw); $mode = 'orders'; }
+          break;
+        case 'atthemoment':
+          $raw = crm_dl_dash_find_rows($pj);
+          if ($raw) $nowRows = crm_dl_dash_normalize_rows($raw);
+          break;
+        case 'statuses':
+          $statuses = $pj;
+          break;
+        case 'statistics':
+          $kpis = crm_dl_dash_kpis($pj);
+          if (!$kpis) { $flat = array(); crm_dl_dash_flatten($pj, $flat); $kpis = $flat; }
+          break;
+        case 'chart':
+          $chart = $pj;
+          break;
+        case 'products':
+          $products = $pj;
+          break;
+        default:
+          break;
+      }
+    }
+  }
   if ($body !== '') {
     $json = json_decode($body, true);
     if (is_array($json)) {
@@ -1402,9 +1476,21 @@ function crm_dl_dash_live($q) {
       }
     }
   }
-  $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'kpis' => $kpis, 'stats' => $stats, 'pages' => $pages);
+  /* the Seller token refused by Digylog (expired or invalid) */
+  $authError = ''; $authMessage = '';
+  foreach ($heads as $k => $hd) {
+    if (strpos((string)$hd, 'invalid_grant') !== false || strpos((string)$hd, 'expired') !== false) {
+      $authError = 'expired';
+      if (preg_match('/"error_description"\s*:\s*"([^"]+)"/', (string)$hd, $am)) $authMessage = $am[1];
+      break;
+    }
+  }
+  if ($authError === '') {
+    foreach ($codes as $k => $cc) if ((int)$cc === 401) { $authError = 'expired'; break; }
+  }
+  $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'now' => $nowRows, 'statuses' => $statuses, 'chart' => $chart, 'products' => $products, 'kpis' => $kpis, 'stats' => $stats, 'pages' => $pages, 'authError' => $authError, 'authMessage' => $authMessage);
   if ($probe) { $payload['probes'] = $codes; $payload['raw'] = substr($body, 0, 8000); }
-  if ($probe) { $payload['heads'] = $heads; }
+  if ($probe) { $payload['heads'] = $heads; $payload['raws'] = $raws; }
   crm_dl_dash_cache_write(array('endpoint' => $used, 'style' => $style, 'kind' => $kind, 'payload' => $payload));
   crm_audit('digylog-dash | mode=' . $mode . ' | endpoint=' . $used . ' | rows=' . count($rows));
   crm_out($payload);

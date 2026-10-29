@@ -244,7 +244,7 @@ def main():
     check("api.php caches the live payload", "function crm_dl_dash_cache_write(" in api)
     check("api.php probes several read-only endpoints",
           all(x in api for x in ["/orders/grid", "/orders/statistics", "/orders/chart", "/dashboard"]))
-    check("the api version is bumped", "CRM_API_VERSION', '3.89'" in api)
+    check("the api version is bumped", "CRM_API_VERSION', '3.90'" in api)
 
     # ---- client plumbing -------------------------------------------------
     check("the dashboard asks the server for the live Digylog dashboard",
@@ -257,12 +257,14 @@ def main():
     check("the live rows replace the CRM rows when Digylog answers",
           "liveRows.length?prep(liveRows):crm" in index)
     check("the agent table stays on the CRM data", "crmLive.forEach(o=>{" in index)
-    check("the client expects the new api version", "const EXPECTED='3.89'" in index)
+    check("the client expects the new api version", "const EXPECTED='3.90'" in index)
     check("the client partitions the Digylog statuses by tab", "__PvDashDlGroup" in index and "non envoy" in index)
     check("the client draws one card per Digylog status", "__PvDashStatusLook" in index and "statusCard" in index)
     check("the probe tries every authentication style", all(x in api for x in ("crm_dl_dash_headers", "'xseller'", "'cookie'", "'xauthtok'")))
     check("the probe tries every host and version", "'https://apiseller.digylog.com'" in api and "'v49'" in api and "'v50'" in api)
     check("the working authentication is remembered", "'style' => $style" in api and "crm_dl_dash_cache_write(array('endpoint' => $used, 'style' => $style" in api)
+    check("the server reads every endpoint of the Digylog dashboard", all(x in api for x in ("crm_dl_dash_endpoints", "'/orders/atthemoment'", "'/orders/statuses'", "'/orders/chart'", "'/orders/products'")))
+    check("an expired Digylog token is reported", "'authError'" in api and "invalid_grant" in api)
     check("the server reads every page of the Digylog orders", "crm_dl_dash_get_pages" in api and "currentPage=" in api)
     check("the server also reads the Digylog statistics", "orders/statistics?datatype=1" in api and "'stats'" in api)
     check("the status card order follows Digylog", all(x in index for x in ("__PvDashStatusRank","cours de livraison","injoignable","report","ville","annul","refus")))

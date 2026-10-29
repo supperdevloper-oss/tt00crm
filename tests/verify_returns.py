@@ -112,7 +112,7 @@ checks = {
     "Orders are sent exactly once": all(x in api for x in ("!empty($o['dlSent'])) continue;", "$o['_f']['dlSent'] = $now;", "$o['dlSent'] = 1; $o['dlAt'] = $now;")),
     "Failed Digylog sends stay pending with backoff": all(x in api for x in ("elseif (isset($failed[$id]))", "$o['dlNextTry']=$now+$delay", "$nextTry >", "min(60000,10000*")) and "$tries >= 20" not in api,
     "A failed order is never blocked forever": all(x in api for x in ("$gen !== CRM_DL_SENDER_GEN", "$tries = 0; $nextTry = 0;", "$o['dlGen']=CRM_DL_SENDER_GEN")),
-    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '3.89')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
+    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '3.90')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
     "Public diagnosis file explains a silent failure": all(x in api for x in ("function crm_dl_diag_save", "function crm_dl_diag_build", "dl-diag.json", "'pendingCount'", "crm_dl_diag_save(crm_dl_diag_build(")),
     "Digylog boutique is resolved automatically": all(x in api for x in ("function crm_dl_store_by_name", "function crm_dl_store_known", "function crm_dl_initials_match", "strpos($ns,$agentKey)!==false", "function crm_dl_networks", "!in_array((string)$network, $ids, true)")),
     "Digylog auth falls back to the seller token": all(x in api for x in ("$code===401 || $code===403", "sellerToken", "crm_tracking_bearer($cfg['sellerToken'])")),

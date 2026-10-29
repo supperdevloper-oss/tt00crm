@@ -832,11 +832,12 @@ function __PvDigylogDash(){
     s.jsx("td",{className:"px-3 py-2 text-left font-bold text-violet-600",children:hide?"•••":ya(a.com)}),
     s.jsx("td",{className:"px-3 py-2 text-left font-bold text-slate-600",children:hide?"•••":a.taux.toFixed(0)+"%"})
   ]},a.name));
-  const liveTxt=liveRows.length?("Digylog live · "+liveRows.length+" commandes"):(liveErr?("Digylog: "+liveErr):"Digylog live…");
+  const liveAuth=!!(liveData&&liveData.authError);
+  const liveTxt=liveRows.length?("Digylog live · "+liveRows.length+" commandes"):(liveAuth?("⚠️ توكن Digylog منتهي — خاصك تجددو"):(liveErr?("Digylog: "+liveErr):"Digylog live…"));
   const header=s.jsxs("div",{className:"mb-3",children:[
     s.jsxs("div",{className:"flex flex-wrap items-end gap-4 border-b border-slate-100 pb-1",children:tabs}),
     s.jsxs("div",{className:"flex flex-wrap items-center justify-between gap-2 pt-2",children:[
-      s.jsx("span",{title:liveData&&liveData.endpoint?("Source Digylog: "+liveData.endpoint):"Lecture seule de Digylog",className:`rounded-full border px-3 py-1 text-[11px] font-bold ${liveRows.length?"border-emerald-300 bg-emerald-50 text-emerald-700":"border-slate-300 bg-white text-slate-500"}`,children:liveTxt}),
+      s.jsx("span",{title:liveData&&liveData.endpoint?("Source Digylog: "+liveData.endpoint):"Lecture seule de Digylog",className:`rounded-full border px-3 py-1 text-[11px] font-bold ${liveRows.length?"border-emerald-300 bg-emerald-50 text-emerald-700":(liveAuth?"border-red-300 bg-red-50 text-red-700":"border-slate-300 bg-white text-slate-500}")}`,children:liveTxt}),
       s.jsxs("div",{className:"flex flex-wrap items-center gap-2",children:[btnRefresh,btnHide,btnSince]})
     ]})
   ]});
@@ -1801,7 +1802,7 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
 <script id="pv-digylog-send-auto">
 (function(){
   const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
-  const EXPECTED='3.89';
+  const EXPECTED='3.90';
   let sending=false;
   function say(text){
     if(!document.body)return;
