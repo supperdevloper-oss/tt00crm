@@ -510,22 +510,30 @@ const Z_=["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"],fd=
 function __PvDashChart({points,labels}){
   const n=(points||[]).length;
   if(!n)return null;
-  const W=900,H=250,P=26;
+  const W=900,H=260,G=40,P=16,T=14,B=28;
   const max=Math.max(1,...points);
-  const x=i=>P+i*(W-2*P)/Math.max(1,n-1);
-  const y=v=>H-26-(v/max)*(H-60);
+  const step=Math.max(1,Math.ceil(max/8/5)*5);
+  const top=Math.max(step,Math.ceil(max/step)*step);
+  const x=i=>G+P+i*(W-G-2*P)/Math.max(1,n-1);
+  const y=v=>H-B-(v/top)*(H-T-B);
   let d="";
   for(let i=0;i<n;i++){
     const p1={x:x(i-1),y:y(points[i-1])},p2={x:x(i),y:y(points[i])};
     if(i===0){d+=`M${p2.x},${p2.y}`;continue}
     const p0=i>1?{x:x(i-2),y:y(points[i-2])}:p1;
     const p3=i<n-1?{x:x(i+1),y:y(points[i+1])}:p2;
-    const c1x=p1.x+(p2.x-p0.x)/6,c1y=p1.y+(p2.y-p0.y)/6;
+    const c1x=p1.x+(p2.x-p0.x)/6,c1y=p1.y+(p2.y-p1.y)/6;
     const c2x=p2.x-(p3.x-p1.x)/6,c2y=p2.y-(p3.y-p1.y)/6;
     d+=` C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
   }
-  const area=`${d} L${x(n-1)},${H-26} L${x(0)},${H-26} Z`;
-  return s.jsxs("svg",{viewBox:`0 0 ${W} ${H}`,className:"w-full",style:{minWidth:600},children:[
+  const area=`${d} L${x(n-1)},${H-B} L${x(0)},${H-B} Z`;
+  const grid=[];
+  for(let gv=0;gv<=top;gv+=step)grid.push(gv);
+  return s.jsxs("svg",{viewBox:`0 0 ${W} ${H}`,className:"w-full",style:{minWidth:620},children:[
+    s.jsxs("g",{children:grid.map(gv=>s.jsxs("g",{children:[
+      s.jsx("line",{x1:G,y1:y(gv),x2:W-P,y2:y(gv),stroke:"#e2e8f0",strokeWidth:1}),
+      s.jsx("text",{x:G-8,y:y(gv)+4,textAnchor:"end",style:{fontSize:11,fill:"#94a3b8"},children:String(gv)})
+    ]},gv))}),
     s.jsxs("defs",{children:s.jsxs("linearGradient",{id:"pvDashArea",x1:"0",y1:"0",x2:"0",y2:"1",children:[
       s.jsx("stop",{offset:"0%",stopColor:"#3b82f6",stopOpacity:0.30}),
       s.jsx("stop",{offset:"100%",stopColor:"#3b82f6",stopOpacity:0.02})
@@ -646,6 +654,8 @@ function __PvDigylogDash(){
     }catch{}
     setBusy(false);
   };
+  const sMore=(color)=>s.jsx("svg",{viewBox:"0 0 24 24",fill:"currentColor",className:"h-5 w-5 shrink-0",children:[[12,5],[12,12],[12,19]].map(([cx,cy],i)=>s.jsx("circle",{cx:cx,cy:cy,r:1.9},i))});
+  const sIc=(paths,color)=>s.jsx("svg",{viewBox:"0 0 24 24",fill:"none",stroke:color||"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"h-4 w-4 shrink-0",children:(Array.isArray(paths)?paths:[paths]).map((d,i)=>s.jsx("path",{d:d},i))});
   const ico=(d,extra)=>s.jsx("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"#16a34a",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",className:"h-7 w-7 shrink-0",children:s.jsxs("g",{children:[s.jsx("path",{d:d}),extra||null]})});
   const ICONS={
     trend:"M3 17l6-6 4 4 7-7",
@@ -666,26 +676,26 @@ function __PvDigylogDash(){
     {l:"Total Payé",v:mon(st.paye),icon:ico(ICONS.check,null),menu:!1}
   ];
   const statRows=[
-    {l:"Livrées",v:cnt.Livree,c:"#047857",bg:"#d1fae5",ic:"✓"},
-    {l:"Livrées *",v:cnt.Rechange,c:"#0369a1",bg:"#e0f2fe",ic:"⏱"},
-    {l:"En cours",v:cnt.Road,c:"#b45309",bg:"#fef3c7",ic:"⏱"},
-    {l:"Échec de livraison",v:cnt.Retour+cnt.Rembourse,c:"#b91c1c",bg:"#fee2e2",ic:"⊗"}
+    {l:"Livrées",v:cnt.Livree,c:"#047857",bg:"#d1fae5",ic:["M12 21a9 9 0 100-18 9 9 0 000 18z","M8.2 12.3l2.6 2.6 5-5.4"]},
+    {l:"Livrées *",v:cnt.Rechange,c:"#0369a1",bg:"#e0f2fe",ic:["M12 21a9 9 0 100-18 9 9 0 000 18z","M12 7.6V12l3 2"]},
+    {l:"En cours",v:cnt.Road,c:"#b45309",bg:"#fef3c7",ic:["M12 21a9 9 0 100-18 9 9 0 000 18z","M12 7.6V12l3 2"]},
+    {l:"Échec de livraison",v:cnt.Retour+cnt.Rembourse,c:"#b91c1c",bg:"#fee2e2",ic:["M12 21a9 9 0 100-18 9 9 0 000 18z","M9 9l6 6","M15 9l-6 6"]}
   ];
-  if(cnt.OOS>0)statRows.push({l:"Out Of Stock",v:cnt.OOS,c:"#1d4ed8",bg:"#dbeafe",ic:"⊗"});
+  if(cnt.OOS>0)statRows.push({l:"Out Of Stock",v:cnt.OOS,c:"#1d4ed8",bg:"#dbeafe",ic:["M12 21a9 9 0 100-18 9 9 0 000 18z","M9 9l6 6","M15 9l-6 6"]});
   const kpiCard=(c)=>s.jsxs("div",{className:"rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",children:[
     s.jsxs("div",{className:"flex items-start justify-between gap-2",children:[
       s.jsx("h3",{className:"text-sm font-bold text-indigo-600",children:c.l}),
-      c.menu?s.jsx("span",{title:"Chiffre d'affaires détaillé",className:"select-none text-xl leading-none text-slate-400",children:"⋮"}):null
+      c.menu?s.jsx("span",{title:"Chiffre d'affaires détaillé",className:"text-slate-400",children:sMore("#94a3b8")}):null
     ]}),
     s.jsxs("div",{className:"mt-4 flex items-end justify-between gap-3",children:[
-      s.jsx("div",{className:"text-2xl font-extrabold leading-none text-slate-900",children:c.v}),
+      s.jsx("div",{className:"text-3xl font-extrabold leading-none text-slate-900",children:c.v}),
       c.icon
     ]})
   ]},c.l);
   const tabs=SCOPES.map(c=>s.jsx("button",{onClick:()=>setScope(c.k),title:c.tip,className:`pv-dash-tab text-sm font-bold transition ${scope===c.k?"pv-dash-tab-on text-indigo-600":"text-slate-600 hover:text-slate-900"}`,children:c.l},c.k));
-  const btnRefresh=s.jsx("button",{onClick:refresh,disabled:busy,title:"تحديث المعطيات من السيرفر",className:`flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-[12px] font-bold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98] ${busy?"opacity-60":""}`,children:[busy?"⏳":"🔄",busy?"refresh...":"refresh"]});
-  const btnHide=s.jsx("button",{onClick:()=>setHide(v=>!v),title:"Masquer les données",className:"flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-[12px] font-bold text-white shadow-sm transition active:scale-[0.98]",children:["🚫",hide?"Afficher les données":"Masquer les données"]});
-  const btnSince=s.jsx("button",{onClick:()=>setSince(v=>!v),title:"منذ الشهر الماضي",className:`flex h-9 items-center gap-2 rounded-lg border px-4 text-[12px] font-bold transition active:scale-[0.98] ${since?"border-indigo-600 bg-indigo-50 text-indigo-700":"border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`,children:["📅","Depuis le mois dernier"]});
+  const btnRefresh=s.jsx("button",{onClick:refresh,disabled:busy,title:"تحديث المعطيات من السيرفر",className:`flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-[12px] font-bold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98] ${busy?"opacity-60":""}`,children:[sIc(["M20.5 12a8.5 8.5 0 11-2.6-6.1","M20.5 4.5V10H15"],"#ffffff"),busy?"refresh...":"refresh"]});
+  const btnHide=s.jsx("button",{onClick:()=>setHide(v=>!v),title:"Masquer les données",className:"flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-[12px] font-bold text-white shadow-sm transition active:scale-[0.98]",children:[sIc(["M12 21a9 9 0 100-18 9 9 0 000 18z","M5.6 5.6l12.8 12.8"],"#ffffff"),hide?"Afficher les données":"Masquer les données"]});
+  const btnSince=s.jsx("button",{onClick:()=>setSince(v=>!v),title:"منذ الشهر الماضي",className:`flex h-9 items-center gap-2 rounded-lg border px-4 text-[12px] font-bold transition active:scale-[0.98] ${since?"border-emerald-600 bg-emerald-600 text-white":"border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50"}`,children:[sIc(["M8 2.5v4","M16 2.5v4","M3.5 10h17","M5.5 4.5h13a2 2 0 012 2v13a2 2 0 01-2 2h-13a2 2 0 01-2-2v-13a2 2 0 012-2z"],"#059669"),"Depuis le mois dernier"]});
   const topRows=top.map((p,i)=>s.jsxs("div",{className:"py-2",children:[
     s.jsxs("div",{className:"flex items-start gap-3",children:[
       s.jsx("span",{className:"w-5 shrink-0 text-[12px] font-bold text-slate-400",children:String(i+1)}),
@@ -700,7 +710,7 @@ function __PvDigylogDash(){
     ]})
   ]},p.name));
   const statList=statRows.map(r=>s.jsxs("div",{className:"flex items-center justify-between gap-3 rounded-xl px-4 py-3",style:{background:r.bg},children:[
-    s.jsxs("span",{className:"flex items-center gap-2 text-sm font-bold",style:{color:r.c},children:[s.jsx("span",{className:"text-[12px]",children:r.ic}),r.l]}),
+    s.jsxs("span",{className:"flex items-center gap-2 text-sm font-bold",style:{color:r.c},children:[sIc(r.ic,r.c),r.l]}),
     s.jsx("span",{className:"text-base font-extrabold",style:{color:r.c},children:hide?"•••":ya(r.v)})
   ]},r.l));
   const agentRows=agents.map(a=>s.jsxs("tr",{className:"border-b border-slate-100",children:[
@@ -713,13 +723,12 @@ function __PvDigylogDash(){
     s.jsx("td",{className:"px-3 py-2 text-left font-bold text-slate-600",children:hide?"•••":a.taux.toFixed(0)+"%"})
   ]},a.name));
   const header=s.jsxs("div",{className:"mb-3",children:[
-    s.jsxs("div",{className:"flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 pb-1",children:tabs}),
+    s.jsxs("div",{className:"flex flex-wrap items-end gap-4 border-b border-slate-100 pb-1",children:tabs}),
     s.jsxs("div",{className:"flex flex-wrap items-center justify-end gap-2 pt-2",children:[btnRefresh,btnHide,btnSince]})
   ]});
   const agentCard=s.jsxs("div",{className:"mt-4 border-t border-slate-100 pt-2",children:[
     s.jsxs("div",{className:"mb-3 flex items-center justify-between gap-3",children:[
       s.jsx("h3",{className:"text-base font-bold text-slate-800",children:"Performance par agent"}),
-      s.jsx("span",{className:"text-slate-400",children:"👥"})
     ]}),
     s.jsx("div",{className:"overflow-x-auto",children:s.jsx("table",{className:"pv-dash-tb pv-dash-minw w-full text-[12px]",children:[s.jsx("thead",{children:s.jsx("tr",{className:"border-b border-slate-200 text-[10px] uppercase text-slate-400",children:[
       s.jsx("th",{className:"px-3 py-1.5 text-left font-bold",children:"Agent"}),
@@ -770,7 +779,6 @@ function __PvDigylogDash(){
             s.jsx("h3",{className:"text-base font-bold text-slate-800",children:"Évolution des expéditions"}),
             s.jsxs("div",{className:"flex items-center gap-3",children:[
               s.jsxs("div",{className:"flex overflow-hidden rounded-lg border border-slate-200",children:[7,15,30].map(d=>s.jsx("button",{onClick:()=>setDays(d),className:`px-3 py-1.5 text-[12px] font-bold transition ${days===d?"bg-emerald-600 text-white":"bg-white text-slate-600 hover:bg-slate-50"}`,children:d+" Jours"},d))}),
-              s.jsx("span",{className:"text-slate-400",children:"📈"})
             ]})
           ]}),
           s.jsx("div",{className:"overflow-x-auto",children:s.jsx(__PvDashChart,{points:chart.pts,labels:chart.lbs})})
@@ -778,7 +786,7 @@ function __PvDigylogDash(){
         s.jsxs("div",{className:"rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",children:[
           s.jsxs("div",{className:"mb-2 flex items-center justify-between gap-3",children:[
             s.jsx("h3",{className:"text-base font-bold text-slate-800",children:"Taux de livraison"}),
-            s.jsx("span",{className:"select-none text-xl leading-none text-slate-400",children:"⋮"})
+            s.jsx("span",{className:"text-slate-400",children:sMore("#94a3b8")})
           ]}),
           s.jsx(f_,{livrees:st.sold,echouees:st.back,encours:st.enc})
         ]})
@@ -789,7 +797,6 @@ function __PvDigylogDash(){
             s.jsx("h3",{className:"text-base font-bold text-slate-800",children:"Top 5 produits vendus"}),
             s.jsxs("div",{className:"flex items-center gap-3",children:[
               s.jsx("span",{title:"Tous les produits",className:"cursor-pointer rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700",children:"Tous"}),
-              s.jsx("span",{className:"text-slate-400",children:"🏆"})
             ]})
           ]}),
           top.length?s.jsxs("div",{children:topRows}):s.jsx("div",{className:"py-8 text-center text-xs text-slate-400",children:"ما كاين حتى منتوج"})
@@ -797,7 +804,6 @@ function __PvDigylogDash(){
         s.jsxs("div",{className:"rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",children:[
           s.jsxs("div",{className:"mb-3 flex items-center justify-between gap-3",children:[
             s.jsx("h3",{className:"text-base font-bold text-slate-800",children:"Statuts livraisons"}),
-            s.jsx("span",{className:"text-slate-400",children:"📋"})
           ]}),
           s.jsxs("div",{className:"space-y-2",children:statList})
         ]})
