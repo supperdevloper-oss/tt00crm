@@ -1406,7 +1406,7 @@ function crm_dl_dash_v2_rows($token, $limit) {
     curl_multi_close($mh);
     $n += count($chunk);
   }
-  return array('rows' => $rows, 'checked' => $n);
+  return array('rows' => $rows, 'checked' => $n, 'tracked' => count($list));
 }
 
 /* Live entry point used by the CRM «Tableau de bord». */
@@ -1567,7 +1567,10 @@ function crm_dl_dash_live($q) {
   if ($mode === 'none' && $tok['api'] !== '') {
     $lim = isset($q['limit']) ? max(1, min(400, (int)$q['limit'])) : 80;
     $v2 = crm_dl_dash_v2_rows($tok['api'], $lim);
-    if (!empty($v2['rows'])) {
+    $tracked = isset($v2['tracked']) ? (int)$v2['tracked'] : 0;
+    /* only use the per order statuses when they cover a real part of the
+       tracked orders, so the dashboard never becomes empty */
+    if (!empty($v2['rows']) && count($v2['rows']) >= 10 && count($v2['rows']) >= $tracked * 0.2) {
       $rows = $v2['rows'];
       $mode = 'v2';
       $used = 'api/v2/seller/order/{tracking}/infos';
