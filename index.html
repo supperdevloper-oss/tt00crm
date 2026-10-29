@@ -1848,11 +1848,11 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
       const r=await fetch('api.php?export=version&token='+encodeURIComponent(token),{cache:'no-store'});
       const j=await r.json().catch(function(){return null});
       if(!j||!j.apiVersion){
-        say('⚠️ ملف api.php على السيرفر قديم — لازم ترفع النسخة الجديدة ('+EXPECTED+')');
+        say('⚠️ ما قدرناش نقراو api.php على السيرفر — رفع الحزمة كاملة (api.php + index.html + digylog-admin.html + .htaccess) فـ racine الموقع، ومن بعد دوز Ctrl+F5');
         return;
       }
       if(j.apiVersion!==EXPECTED){
-        say('⚠️ ملف api.php على السيرفر قديم ('+j.apiVersion+') — لازم ترفع النسخة الجديدة ('+EXPECTED+')');
+        say('⚠️ api.php على السيرفر ('+j.apiVersion+') ماشي بحال index.html ('+EXPECTED+') — رفع الحزمة كاملة (الملفات 4 مع بعض) فـ racine الموقع، ومن بعد دوز Ctrl+F5 باش يمسح الكاش');
       }
     }catch(e){}
   }
