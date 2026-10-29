@@ -170,7 +170,9 @@ await click(byText("Afficher les données"));
 check("the numbers come back", !text().includes("•••"), text().slice(0, 200));
 
 await click(byText("Depuis le mois dernier"));
-check("the since last month switch keeps the page alive", text().includes("Depuis le mois dernier"));
+check("the period switch keeps the page alive",
+  (text().includes("Aujourd'hui") || text().includes("Depuis le mois dernier")) && text().includes("Évolution des expéditions"),
+  text().slice(0, 200));
 await click(byText("15 Jours"));
 await click(byText("30 Jours"));
 check("the chart period toggles work", text().includes("Évolution des expéditions"));

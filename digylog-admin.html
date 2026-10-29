@@ -96,6 +96,7 @@
         <div class="hint" style="margin-bottom:10px;color:#166534;font-weight:700">هاد العملية كتكتب غير عمود Tracking. ما كتبدلش Suivie ولا Livrée ولا Retour ولا حتى تاريخ.</div>
         <label for="sellerToken">Seller Authorization ديال seller.digylog.com</label>
         <input id="sellerToken" type="password" autocomplete="new-password" placeholder="لسّق Authorization هنا مرة وحدة" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button id="saveSeller" type="button" style="background:#0f766e;color:#fff">حفظ التوكن</button><button id="testSeller" type="button" style="background:#e2e8f0;color:#0f172a">تجربة الاتصال بـDigylog</button></div>
         <div id="sellerTokInfo" class="hint" style="margin-top:7px;font-weight:700">كنتحقق من الإعداد…</div>
         <div class="hint" style="margin-top:5px">كيتحفظ مخفي فالسيرفر وما كيبانش للمستخدمين. إلا سالات صلاحيته، رجع لهنا وجدّدو.</div>
         <button class="primary" id="syncTracking" style="width:100%;margin-top:12px">حفظ وتشغيل جلب Tracking الآن</button>
@@ -218,6 +219,8 @@
       };
       var t = $('token').value.trim();
       if (t) body.token = t;
+      var stk = sellerTokenValue();
+      if (stk) body.sellerToken = stk;
       run($('save'), body, function (j) {
         if (j.ok) { show('✅ تحفظات', true); $('token').value = ''; call({ action: 'digylog_admin', op: 'get' }).then(function (g) { if (g.ok) fill(g.cfg); }); }
         else show('❌ ما تحفظاتش (' + (j.err || 'error') + ')', false);
@@ -269,6 +272,37 @@
         }
         $('diagOut').textContent=lines.join('\n');
       }).catch(function () { btn.disabled=false; $('diagOut').textContent='مشكل فالاتصال'; });
+    };
+
+    var saveSellerBtn = $('saveSeller'), testSellerBtn = $('testSeller');
+    if (saveSellerBtn) saveSellerBtn.onclick = async function () {
+      var tk = sellerTokenValue();
+      if (!tk) { show('❌ لصق توكن Seller Authorization أولا', false); return; }
+      saveSellerBtn.disabled = true;
+      try {
+        show('⏳ كنحفظ Seller Authorization…', true);
+        var saved = await call({ action: 'digylog_admin', op: 'tracking_token_save', sellerToken: tk });
+        if (!saved.ok) throw new Error(saved.err || 'save');
+        $('sellerToken').value = '';
+        var fresh = await call({ action: 'digylog_admin', op: 'get' });
+        if (fresh.ok) fill(fresh.cfg);
+        show('✅ Seller Authorization تحفظ (…' + (saved.sellerTokenTail || '?') + ')', true);
+      } catch (e) { show('❌ ' + (e.message || 'error'), false); }
+      finally { saveSellerBtn.disabled = false; }
+    };
+    if (testSellerBtn) testSellerBtn.onclick = async function () {
+      var tk = sellerTokenValue();
+      if (!tk) { show('❌ لصق توكن Seller Authorization أولا', false); return; }
+      testSellerBtn.disabled = true;
+      try {
+        show('⏳ كتجرب التوكن مع Digylog…', true);
+        var r = await call({ action: 'digylog_admin', op: 'seller_test', sellerToken: tk });
+        if (!r.ok) throw new Error(r.err || 'test');
+        if (r.authOk) show('✅ التوكن خدام! Digylog ردّ (HTTP ' + r.code + ').', true);
+        else show('❌ Digylog رفض التوكن (HTTP ' + r.code + ') — ' + String(r.detail || '').slice(0, 200), false);
+        out(r);
+      } catch (e) { show('❌ ' + (e.message || 'error'), false); }
+      finally { testSellerBtn.disabled = false; }
     };
 
     $('syncDelivery').onclick = function () {

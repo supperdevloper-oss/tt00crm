@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.90');
+define('CRM_API_VERSION', '3.91');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
@@ -1340,6 +1340,13 @@ function crm_dl_dash_live($q) {
   $cache = crm_dl_dash_cache_read();
   $now = time();
   $ttl = $probe ? 0 : 90;
+  if (!$probe && isset($cache['failAt']) && ($now - (int)$cache['failAt']) < 240) {
+    $p = $cache['payload'];
+    $p['cached'] = true;
+    $p['age'] = $now - (int)$cache['failAt'];
+    crm_out($p);
+    return;
+  }
   if (!$probe && isset($cache['payload']['at']) && ($now - (int)$cache['payload']['at']) < $ttl) {
     $p = $cache['payload'];
     $p['cached'] = true;
@@ -1491,7 +1498,9 @@ function crm_dl_dash_live($q) {
   $payload = array('ok' => true, 'source' => 'digylog', 'mode' => $mode, 'endpoint' => $used, 'at' => $now, 'rows' => $rows, 'now' => $nowRows, 'statuses' => $statuses, 'chart' => $chart, 'products' => $products, 'kpis' => $kpis, 'stats' => $stats, 'pages' => $pages, 'authError' => $authError, 'authMessage' => $authMessage);
   if ($probe) { $payload['probes'] = $codes; $payload['raw'] = substr($body, 0, 8000); }
   if ($probe) { $payload['heads'] = $heads; $payload['raws'] = $raws; }
-  crm_dl_dash_cache_write(array('endpoint' => $used, 'style' => $style, 'kind' => $kind, 'payload' => $payload));
+  $cacheWrite = array('endpoint' => $used, 'style' => $style, 'kind' => $kind, 'payload' => $payload);
+  if ($mode === 'none' && !$probe) $cacheWrite['failAt'] = $now;
+  crm_dl_dash_cache_write($cacheWrite);
   crm_audit('digylog-dash | mode=' . $mode . ' | endpoint=' . $used . ' | rows=' . count($rows));
   crm_out($payload);
 }
@@ -1900,6 +1909,26 @@ function crm_dl_admin($b) {
       'sellerTokenTail' => $sellerToken !== '' ? substr($sellerToken, -4) : ''
     )));
   }
+  if ($op === 'seller_test') {
+    $incoming = isset($b['sellerToken']) && trim((string)$b['sellerToken']) !== ''
+      ? crm_tracking_bearer($b['sellerToken']) : $sellerToken;
+    if ($incoming === '') crm_out(array('ok' => false, 'err' => 'no-seller-token'), 400);
+    $url = 'https://api.digylog.com/api/seller/v48/orders/grid?datatype=1&countPerPage=1&currentPage=1&sort=0';
+    list($code, $body, $err) = crm_dl_http_url('GET', $url, $incoming, 'https://seller.digylog.com/',
+      crm_dl_dash_headers('bearer', $incoming));
+    $msg = trim((string)$body);
+    if (strlen($msg) > 300) $msg = substr($msg, 0, 300);
+    $okAuth = ($code >= 200 && $code < 300);
+    $msgDec = json_decode($msg, true);
+    $detail = '';
+    if (is_array($msgDec)) {
+      if (isset($msgDec['error_description'])) $detail = (string)$msgDec['error_description'];
+      elseif (isset($msgDec['error']['message'])) $detail = (string)$msgDec['error']['message'];
+      elseif (isset($msgDec['message'])) $detail = (string)$msgDec['message'];
+    }
+    if ($detail === '') $detail = $msg;
+    crm_out(array('ok' => true, 'authOk' => $okAuth, 'code' => $code, 'detail' => $detail, 'tail' => substr($incoming, -4)));
+  }
   if ($op === 'tracking_token_save') {
     $incoming = isset($b['sellerToken']) ? crm_tracking_bearer($b['sellerToken']) : '';
     if ($incoming === '') crm_out(array('ok'=>false,'err'=>'no-seller-token'),400);
@@ -1910,6 +1939,10 @@ function crm_dl_admin($b) {
   }
   if ($op === 'save') {
     if (isset($b['token']) && trim((string)$b['token']) !== '') $c['token'] = trim((string)$b['token']);
+    if (isset($b['sellerToken']) && trim((string)$b['sellerToken']) !== '') {
+      $st = crm_tracking_bearer($b['sellerToken']);
+      if ($st !== '') { $c['sellerToken'] = $st; crm_audit('digylog-seller-token-saved | tail=' . substr($st, -4)); }
+    }
     if (isset($b['network'])) $c['network'] = (int)$b['network'];
     if (isset($b['sentType'])) {
       $st = (int)$b['sentType'];
