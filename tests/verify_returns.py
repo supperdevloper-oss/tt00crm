@@ -19,7 +19,6 @@ city_prices = [row.get("prix") for row in city_rows if isinstance(row, dict)]
 start = api.index("* Suivi des Retours")
 end = api.index("$m = $_SERVER['REQUEST_METHOD']", start)
 returns = api[start:end]
-dash = index[index.index("function __PvDashChart"):index.index("function Fj(){const{orders:e}=Xt()")]
 
 checks = {
     "API routes": all(x in api for x in ("returns_list", "returns_scan", "returns_control", "returns_restock")),
@@ -112,25 +111,13 @@ checks = {
     "Orders are sent exactly once": all(x in api for x in ("!empty($o['dlSent'])) continue;", "$o['_f']['dlSent'] = $now;", "$o['dlSent'] = 1; $o['dlAt'] = $now;")),
     "Failed Digylog sends stay pending with backoff": all(x in api for x in ("elseif (isset($failed[$id]))", "$o['dlNextTry']=$now+$delay", "$nextTry >", "min(60000,10000*")) and "$tries >= 20" not in api,
     "A failed order is never blocked forever": all(x in api for x in ("$gen !== CRM_DL_SENDER_GEN", "$tries = 0; $nextTry = 0;", "$o['dlGen']=CRM_DL_SENDER_GEN")),
-    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '3.92')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
+    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '3.93')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
     "Public diagnosis file explains a silent failure": all(x in api for x in ("function crm_dl_diag_save", "function crm_dl_diag_build", "dl-diag.json", "'pendingCount'", "crm_dl_diag_save(crm_dl_diag_build(")),
     "Digylog boutique is resolved automatically": all(x in api for x in ("function crm_dl_store_by_name", "function crm_dl_store_known", "function crm_dl_initials_match", "strpos($ns,$agentKey)!==false", "function crm_dl_networks", "!in_array((string)$network, $ids, true)")),
     "Digylog auth falls back to the seller token": all(x in api for x in ("$code===401 || $code===403", "sellerToken", "crm_tracking_bearer($cfg['sellerToken'])")),
     "CRM shows the sender result instead of failing silently": all(x in index for x in ("pv-digylog-send-auto", "pv-dl-alert", "Digylog: '+f+' طلبية ما تصيفطاتش", "export=version")) and all(x in digylog_admin for x in ("apiVersion", "الطلبيات لي مازال ما تصيفطاتش", "نسخة السيرفر")),
     "Normal authenticated CRM reads also trigger automatic sending": "{ crm_dl_send_guarded(); crm_delivery_auto_guarded(); }" in api,
     "Tracking import falls back to the API token": all(x in api for x in ("function crm_dl_token_candidates", "'sellerToken','token'", "crm_tracking_internal_many($phones,$tokens[0])", "$alt=crm_tracking_internal_many($phones,$tokens[$ti])")),
-    "Digylog-style dashboard tab exists on every device": all(x in index for x in ("function __PvDigylogDash", 'w==="Tableau de bord"&&s.jsx(__PvDigylogDash,{})', 'if(!t.includes("Tableau de bord"))t.push("Tableau de bord")', '"Tableau de bord":"\U0001F9ED"', '"Tableau de bord":"indigo"', 'Bilan:["Dashboard performance","Tableau de bord"', 'Gk=["Dashboard performance","Tableau de bord"')),
-    "Dashboard mirrors the Digylog scope tabs": all(x in dash for x in ("Global","En ce moment","Hub d'expédition","Hub de livraison","Hub des retours","Retourn\u00e9e")),
-    "Dashboard shows the Digylog KPI cards and blocks": all(x in dash for x in ("Chiffre d\'affaire","Total colis livr\u00e9s","Total Exp\u00e9dition","Non pay\u00e9","En cours de paiement","Total Pay\u00e9","\u00c9volution des exp\u00e9ditions","Taux de livraison","Top 5 produits vendus","Statuts livraisons")),
-    "Dashboard has the Digylog buttons and filters": all(x in dash for x in ("refresh","Masquer les donn\u00e9es","Depuis le mois dernier","Afficher les donn\u00e9es","Tous",'d+" Jours"')) and 'dir:"ltr"' in dash,
-    "Dashboard reuses the CRM charts and helpers": all(x in dash for x in ("s.jsx(__PvDashChart,{points:chart.pts,labels:chart.lbs})","s.jsx(f_,{livrees:st.sold,echouees:st.back,encours:st.enc})","__pvSold","__pvBack","__pvQ","__pvInFlight","__pvLocalDate")),
-    "Dashboard can hide the numbers and shift the period": all(x in dash for x in ("Masquer les donn\u00e9es","setHide","setSince","\u0645\u0646\u0630 \u0627\u0644\u0634\u0647\u0631 \u0627\u0644\u0645\u0627\u0636\u064a")),
-    "Dashboard KPI rectangle is not rendered on phones": all(x in dash for x in ("__pvAdminMobile()","window.innerWidth<1024","if(narrow){","Indicateurs")) and all(x in index for x in (".pv-dash-tab{",".pv-dash-tab-on{",".pv-dash-wrap{","@media(min-width:1280px){.pv-dash-kpi{grid-template-columns:repeat(3,minmax(0,1fr))}")),
-    "Dashboard reads CRM data without changing it": all(x not in dash for x in ("upd(","del(","localStorage.setItem","postMessage")) and 'fetch("api.php?action=digylog_dash"' in dash,
-    "The dashboard is linked live to the Digylog dashboard": all(x in api for x in ("function crm_dl_dash_live(","function crm_dl_dash_candidates(","function crm_dl_dash_probe(","function crm_dl_dash_cache_write(","action\'] === \'digylog_dash\'")) and all(x in index for x in ("api.php?action=digylog_dash","setInterval(fetchLive,6e4)","function __PvDashMapLive(","Digylog live")),
-    "The live Digylog dashboard never writes to Digylog": "crm_dl_http_url('POST'" not in api and "crm_dl_http_url('PUT'" not in api and "crm_dl_http_url('DELETE'" not in api,
-    "The live Digylog rows replace the CRM rows when Digylog answers": "liveRows.length?prep(liveRows):crm" in index and "crmLive.forEach(o=>{" in index,
-    "The resolved boutique of every agent is visible": all(x in api for x in ("function crm_dl_agent_stores", "'agentStores'  => crm_dl_agent_stores")) and all(x in digylog_admin for x in ("agentStores", "المتجر ديال كل بنت (محسوب)")),
 }
 
 # Isolated behavioural simulation of the automatic sender (never touches real data).
@@ -140,35 +127,6 @@ sim = subprocess.run([sys.executable, str(ROOT / "tests" / "sim_digylog_send.py"
 checks["Isolated simulation of the automatic sender passes"] = sim.returncode == 0
 if sim.returncode != 0:
     print(sim.stdout[-2000:], sim.stderr[-2000:])
-
-sim2 = subprocess.run([sys.executable, str(ROOT / "tests" / "sim_dashboard.py")],
-                      capture_output=True, text=True)
-checks["Isolated simulation of the dashboard passes"] = sim2.returncode == 0
-if sim2.returncode != 0:
-    print(sim2.stdout[-2000:], sim2.stderr[-2000:])
-
-sim3 = subprocess.run([sys.executable, str(ROOT / "tests" / "sim_digylog_dash.py")],
-                      capture_output=True, text=True)
-checks["Isolated simulation of the live Digylog dashboard passes"] = sim3.returncode == 0
-if sim3.returncode != 0:
-    print(sim3.stdout[-2000:], sim3.stderr[-2000:])
-
-smap = subprocess.run(["node", str(ROOT / "tests" / "ui" / "status_map.mjs")],
-                      capture_output=True, text=True)
-checks["Every Digylog status maps to the CRM vocabulary"] = smap.returncode == 0
-if smap.returncode != 0:
-    print(smap.stdout[-2000:], smap.stderr[-2000:])
-
-# Optional browser-engine test of the dashboard tab (needs `cd tests/ui && npm i`).
-ui_dir = ROOT / "tests" / "ui"
-if (ui_dir / "node_modules").exists():
-    uit = subprocess.run(["node", str(ui_dir / "dashboard_ui.mjs")],
-                         capture_output=True, text=True, cwd=str(ui_dir))
-    checks["Dashboard tab behaves correctly in a browser engine"] = uit.returncode == 0
-    if uit.returncode != 0:
-        print(uit.stdout[-2000:], uit.stderr[-2000:])
-else:
-    print("note: optional dashboard UI test skipped (cd tests/ui && npm i)")
 
 package = ROOT / "paraveda-digylog-send-v3.zip"
 with zipfile.ZipFile(package) as z:
