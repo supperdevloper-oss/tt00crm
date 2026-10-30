@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.93');
+define('CRM_API_VERSION', '3.94');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
@@ -1016,7 +1016,9 @@ function crm_dl_order_status($b) {
   $token = isset($cfg['token']) ? trim((string)$cfg['token']) : '';
   if ($token === '') crm_out(array('ok'=>false, 'err'=>'no-digylog-token'), 503);
 
-  list($infoCode, $infoBody, $infoErr) = crm_dl_http('GET', '/order/' . rawurlencode($tracking) . '/infos', $token);
+  $apiTokens = crm_dl_api_tokens();
+  if ($token !== '' && !in_array($token, $apiTokens, true)) array_unshift($apiTokens, $token);
+  list($infoCode, $infoBody, $infoErr) = crm_dl_http_tokens('GET', '/order/' . rawurlencode($tracking) . '/infos', $apiTokens);
   if ($infoCode < 200 || $infoCode >= 300) {
     crm_audit('digylog-order-status | tracking=' . $tracking . ' | http=' . $infoCode);
     crm_out(array('ok'=>false, 'err'=>'digylog-http', 'code'=>$infoCode), $infoCode === 404 ? 404 : 502);
@@ -1024,7 +1026,7 @@ function crm_dl_order_status($b) {
   $info = json_decode($infoBody, true);
   if (!is_array($info)) crm_out(array('ok'=>false, 'err'=>'digylog-invalid-response'), 502);
 
-  list($refsCode, $refsBody, $refsErr) = crm_dl_http('GET', '/order/' . rawurlencode($tracking) . '/refs', $token);
+  list($refsCode, $refsBody, $refsErr) = crm_dl_http_tokens('GET', '/order/' . rawurlencode($tracking) . '/refs', $apiTokens);
   $refsRaw = $refsCode >= 200 && $refsCode < 300 ? json_decode($refsBody, true) : array();
   if (!is_array($refsRaw)) $refsRaw = array();
   $refs = array();
@@ -1205,7 +1207,7 @@ function crm_dl_networks($token) {
       && ((int)(microtime(true))-(int)$cached['at'])<900) return $cached['list'];
   $list=array();
   if ($token!=='') {
-    list($code,$body,$err)=crm_dl_http('GET','/networks',$token);
+    list($code,$body,$err)=crm_dl_http_tokens('GET','/networks',crm_dl_api_tokens());
     if ($code>=200&&$code<300) {
       $j=json_decode((string)$body,true);
       $arr=array();
@@ -1235,7 +1237,7 @@ function crm_dl_discover_stores($token) {
   }
   $names=array();
   if ($token!=='') {
-    list($code,$body,$err)=crm_dl_http('GET','/stores',$token);
+    list($code,$body,$err)=crm_dl_http_tokens('GET','/stores',crm_dl_api_tokens());
     if ($code>=200&&$code<300) {
       $j=json_decode((string)$body,true);
       $list=array();
@@ -1383,7 +1385,11 @@ function crm_dl_admin($b) {
   foreach ($agents as $ag) $stores[$ag] = (isset($c['stores'][$ag]) ? (string)$c['stores'][$ag] : '');
 
   if ($op === 'get') {
-    crm_out(array('ok'=>true, 'cfg'=>array(
+    /* the store of every agent, computed on the server (shown in the page) */
+    $sc = crm_dl_state_read('.dl-stores-cache.json');
+    $boutiques = (is_array($sc) && isset($sc['names']) && is_array($sc['names'])) ? $sc['names'] : array();
+    $agentStores = crm_dl_agent_stores(crm_dl_store_map($c), $boutiques);
+    crm_out(array('ok'=>true, 'agentStores'=>$agentStores, 'cfg'=>array(
       'apiVersion' => CRM_API_VERSION,
       'senderGen'  => CRM_DL_SENDER_GEN,
       'enabled'   => !empty($c['enabled']) ? 1 : 0,
@@ -1399,6 +1405,36 @@ function crm_dl_admin($b) {
       'hasSellerToken' => $sellerToken !== '',
       'sellerTokenTail' => $sellerToken !== '' ? substr($sellerToken, -4) : ''
     )));
+  }
+  if ($op === 'api_test') {
+    /* read-only: GET /stores with every stored token, one click tells which one works */
+    $results = array();
+    $cfg = crm_dl_cfg_get();
+    $tries = array();
+    foreach (array('token', 'sellerToken') as $k) {
+      if (!isset($cfg[$k])) continue;
+      $t = ($k === 'sellerToken') ? crm_tracking_bearer($cfg[$k]) : trim((string)$cfg[$k]);
+      if ($t === '') continue;
+      $label = $k === 'sellerToken' ? 'Seller Authorization' : 'API token';
+      if (isset($tries[$t])) continue;
+      $tries[$t] = $label;
+    }
+    foreach ($tries as $t => $label) {
+      list($code, $body, $err) = crm_dl_http('GET', '/stores', $t);
+      $msg = trim((string)$body);
+      if (strlen($msg) > 220) $msg = substr($msg, 0, 220);
+      $dec = json_decode($msg, true);
+      $detail = '';
+      if (is_array($dec)) {
+        if (isset($dec['error_description'])) $detail = (string)$dec['error_description'];
+        elseif (isset($dec['error']['message'])) $detail = (string)$dec['error']['message'];
+        elseif (isset($dec['message'])) $detail = (string)$dec['message'];
+      }
+      if ($detail === '') $detail = ($msg !== '') ? $msg : (string)$err;
+      $results[] = array('field' => $label, 'tail' => substr($t, -4), 'code' => (int)$code,
+        'ok' => ($code >= 200 && $code < 300), 'detail' => $detail);
+    }
+    crm_out(array('ok' => true, 'results' => $results));
   }
   if ($op === 'seller_test') {
     $incoming = isset($b['sellerToken']) && trim((string)$b['sellerToken']) !== ''
@@ -1593,6 +1629,33 @@ function crm_tracking_records($v, &$out, $depth=0) {
 }
 /* التوكنات المرشحة: Seller Authorization أولاً، ثم التوكن ديال الـAPI.
  * (الـSeller Authorization كتموت بزاف فالحسابات، والتوكن الرئيسي كيدوز.) */
+/* Every token that can open the Digylog API, best first. A token can be
+   regenerated at any time in the Digylog «Configuration de l'API» page, so the
+   server always tries them one after the other instead of trusting one. */
+function crm_dl_api_tokens() {
+  $cfg = crm_dl_cfg_get();
+  $list = array();
+  foreach (array('token', 'sellerToken') as $k) {
+    if (!isset($cfg[$k])) continue;
+    $t = ($k === 'sellerToken') ? crm_tracking_bearer($cfg[$k]) : trim((string)$cfg[$k]);
+    if ($t !== '' && !in_array($t, $list, true)) $list[] = $t;
+  }
+  return $list;
+}
+/* Runs one Digylog call with every known token and keeps the first answer that
+   the API accepts. On a POST only an authentication rejection (401/403) is
+   retried with the next token: nothing was created, so it is safe. */
+function crm_dl_http_tokens($method, $path, $tokens, $body = null, $retryOnlyAuth = false) {
+  $last = array(0, '', 'no-token');
+  foreach ((array)$tokens as $tk) {
+    if (trim((string)$tk) === '') continue;
+    list($code, $resp, $err) = crm_dl_http($method, $path, $tk, $body);
+    $last = array($code, $resp, $err);
+    if ($code >= 200 && $code < 300) return $last;
+    if ($retryOnlyAuth && $code !== 401 && $code !== 403) break;
+  }
+  return $last;
+}
 function crm_dl_token_candidates($extra='') {
   $cfg=crm_dl_cfg_get();$list=array();
   $e=trim((string)$extra);
@@ -1768,6 +1831,7 @@ function crm_delivery_is_delivered($info) { return crm_delivery_status($info)===
 function crm_delivery_is_returned($info) { return crm_delivery_status($info)==='Retour'; }
 function crm_delivery_fetch_infos($trackings,$token) {
   $out=array();if(!function_exists('curl_multi_init'))return $out;
+  $tokens=is_array($token)?array_values($token):array($token);
   $mh=curl_multi_init();$chs=array();
   foreach($trackings as $tr){$tr=strtoupper(trim((string)$tr));if($tr==='')continue;
     $ch=curl_init(crm_dl_base().'/order/'.rawurlencode($tr).'/infos');
@@ -1781,11 +1845,21 @@ function crm_delivery_fetch_infos($trackings,$token) {
     $out[$tr]=array('code'=>$code,'state'=>$state,'delivered'=>$state==='Livrée','returned'=>$state==='Retour');
     curl_multi_remove_handle($mh,$ch);curl_close($ch);
   }
-  curl_multi_close($mh);return $out;
+  curl_multi_close($mh);
+  /* the whole batch was rejected (the token was rotated): retry with the next one */
+  $allBad=true;foreach($out as $r){if((int)$r['code']>=200&&(int)$r['code']<300){$allBad=false;break;}}
+  if($allBad&&count($tokens)>1){
+    $alt=crm_delivery_fetch_infos($trackings,array_slice($tokens,1));
+    $altOk=false;foreach($alt as $r){if((int)$r['code']>=200&&(int)$r['code']<300){$altOk=true;break;}}
+    if($altOk)return $alt;
+  }
+  return $out;
 }
 function crm_delivery_sync_batch($limit=20,$onlyTracking='') {
   global $LOCK_FILE;
-  $cfg=crm_dl_cfg_get();$token=isset($cfg['token'])?trim((string)$cfg['token']):'';if($token==='')return array('ok'=>false,'err'=>'no-token','checked'=>0,'updated'=>0);
+  $cfg=crm_dl_cfg_get();$token=isset($cfg['token'])?trim((string)$cfg['token']):'';
+  $apiTokens=crm_dl_api_tokens();if($token!==''&&!in_array($token,$apiTokens,true))array_unshift($apiTokens,$token);
+  if(!$apiTokens)return array('ok'=>false,'err'=>'no-token','checked'=>0,'updated'=>0);
   $onlyTracking=strtoupper(trim((string)$onlyTracking));
   $data=crm_read_raw(true);$orders=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($orders))$orders=array();
   /* Retour is terminal. Livrée remains eligible because a delivered parcel can
@@ -1812,7 +1886,7 @@ function crm_delivery_sync_batch($limit=20,$onlyTracking='') {
     for($i=0;$i<$activeTake;$i++)$batch[]=$active[($activeCursor+$i)%$activeN];for($i=0;$i<$finalTake;$i++)$batch[]=$final[($finalCursor+$i)%$finalN];
     $cfg['deliveryActiveCursor']=$activeN?(($activeCursor+$activeTake)%$activeN):0;$cfg['deliveryFinalCursor']=$finalN?(($finalCursor+$finalTake)%$finalN):0;crm_dl_cfg_set($cfg);
   }
-  $infos=crm_delivery_fetch_infos($batch,$token);$targets=array();$delivered=0;$returned=0;$httpErrors=0;$unrecognized=0;
+  $infos=crm_delivery_fetch_infos($batch,$apiTokens);$targets=array();$delivered=0;$returned=0;$httpErrors=0;$unrecognized=0;
   foreach($infos as $tr=>$r){$state=isset($r['state'])?(string)$r['state']:'';if(isset($r['code'])&&((int)$r['code']<200||(int)$r['code']>=300))$httpErrors++;elseif($state==='Livrée'){$targets[$tr]=$state;$delivered++;}elseif($state==='Retour'){$targets[$tr]=$state;$returned++;}else $unrecognized++;}
   $updated=0;$writeOk=true;if($targets){
     $fh=@fopen($LOCK_FILE,'c');if($fh)@flock($fh,LOCK_EX);$data=crm_read_raw(true);$cur=isset($data['paraveda_orders_v5']['d'])?crm_unwrap($data['paraveda_orders_v5']['d']):array();if(!is_array($cur))$cur=array();$prevT=isset($data['paraveda_orders_v5']['t'])?(int)$data['paraveda_orders_v5']['t']:0;$now=(int)(microtime(true)*1000);
@@ -1964,14 +2038,15 @@ function crm_dl_send_chunk($token,$store,$network,$rows,$status,$sentTyp,$route)
     $body = crm_dl_orders_body($store, $network, $rawRows, $status);
     $path = '/orders';
   }
+  /* نجربو كل التوكنات واحد واحد: توكن يمكن يتجدد فأي وقت فديجيلوج */
+  $try=array($token);foreach(crm_dl_api_tokens() as $t)if(!in_array($t,$try,true))$try[]=$t;
   list($code, $resp, $err) = crm_dl_http('POST', $path, $token, $body);
-  if (($code===401 || $code===403) && $route==='v2') {
-    /* التوكن الرئيسي ما دخلش. نجربو Seller Authorization (نفس-account OAuth2). */
-    $cfg=crm_dl_cfg_get();
-    $st=isset($cfg['sellerToken'])?crm_tracking_bearer($cfg['sellerToken']):'';
-    if ($st!=='' && $st!==$token) {
-      list($c2,$r2,$e2)=crm_dl_http('POST',$path,$st,$body);
-      if ($c2!==401 && $c2!==403) { $code=$c2; $resp=$r2; $err=$e2; }
+  if ($code===401 || $code===403) {
+    foreach($try as $t){
+      if ($t==='' || $t===$token) continue;
+      list($c2,$r2,$e2)=crm_dl_http('POST',$path,$t,$body);
+      $code=$c2; $resp=$r2; $err=$e2;
+      if ($c2!==401 && $c2!==403) break;
     }
   }
   if ($route==='v2' && ($code===404 || $code===405 || $code===501)) {
