@@ -36,6 +36,11 @@
 
 📁 كاينين فـ: `france/product/` و `france/product/bonus/`
 
+> 🔴 **تحذير من الصورة ديالك**: Gumroad كتب ليك
+> *«This product has no file or content»* — يعني **ما رفعتيش حتى ملف**.
+> خاصك ترجع لخانة **Content** (فوق، حدا Description) وتحمل الأربعة.
+> بلا هادشي، الزبون كيخلّص وكيوصل لصفحة خاوية.
+
 > **ماتديرش ZIP.** Gumroad كيقبل 4 ملفات فمنتج واحد، وكل واحد كيتحمّل بوحدو —
 > هادشي كيبيّن «قيمة أكبر» وكينقص الاسترجاع.
 
@@ -71,31 +76,33 @@ Ce n'est pas un livre papier : ce sont des fichiers PDF.
 
 ---
 
-## 4. الـCover والصور (الـ7 صور)
+## 4. الصور — ✅ مكانها هو خانة Cover (ماشي Gallery)
 
-حمّلهم فهاد الترتيب — **Gumroad كيبيّن غير 3-4 الأولين** فالمعرض:
+> 🔴 **Gumroad ما فيهاش خانة سميتها «Gallery»**. الصور كلها كتحط فبلوك **Cover**
+> بالزر **«+»**. حتى 8 صور، والزبون كيدير ليهم scroll. هادا هو «المعرض».
 
-| الترتيب | الملف | الاستعمال | القياس |
-|---|---|---|---|
-| **1** | `assets/img/book/gumroad-cover.jpg` | **Cover** (بانر الفوق) | 1280×720 |
-| **2** | `assets/img/book/gumroad-thumb.jpg` | **Thumbnail** | 600×600 |
-| **3** | `assets/img/book/apercu-1.jpg` | Sommaire | 1400×2089 |
-| **4** | `assets/img/book/apercu-2.jpg` | Une fiche recette | 1400×2089 |
-| **5** | `assets/img/book/apercu-3.jpg` | Tableau T° | 1400×2089 |
-| **6** | `assets/img/book/apercu-4.jpg` | 4 semaines de menus | 1400×2089 |
-| **7** | `assets/img/book/mockup-livre.png` | الموك أب (اختياري) | 1252×1611 |
+### ⚠️ قاعدة حرجة: كل الصور خاصهم يكون عندهم **نفس الارتفاع (720)**
 
-> 🔴 **الأهم**: الصور 3 → 6 (داخل الكتاب) هوما اللي كيبيعو. الغلاف وحدو ما كيبيعش.
-> الزبون كيخلّص 2,97 € على «شنو غادي ياخذ»، ماشي على غلاف زوين.
+Gumroad كيقول بالحرف: *«we auto-adjust the height of covers to match the height
+of the first cover»*. إلا حطيت صورة 1280×720 وصورة 1400×2089، التنسيق كيتخرّب.
 
-**باش تعاود تبنييهم** (إلا بدّلت شي حاجة فالكتاب):
-```bash
-python3 product/tools/make-covers.py      # cover + thumbnail
-python3 product/tools/make-previews.py    # الـ4 معاينات
-python3 product/tools/make-mockup.py      # الموك أب
-```
+**حيت هادشي، درت ليك 4 صور معاينة جداد بمقاس 1280×720 — نفس مقاس الـcover.**
 
----
+| الترتيب | الملف | فين كتحطو |
+|---|---|---|
+| 1 | `gumroad-cover.jpg` (1280×720) | **Cover** — الرئيسية |
+| 2 | `gallery-1.jpg` (1280×720) — Sommaire | Cover → زر **+** |
+| 3 | `gallery-2.jpg` (1280×720) — Fiche recette | Cover → زر **+** |
+| 4 | `gallery-3.jpg` (1280×720) — Tableau T° | Cover → زر **+** |
+| 5 | `gallery-4.jpg` (1280×720) — 4 semaines | Cover → زر **+** |
+| — | `gumroad-thumb.jpg` (600×600) | **Thumbnail** |
+
+📦 الأرشيف: **`GALERIE-GUMROAD.zip`** (0,35 MB) — الـ5 صور + شرح.
+
+**كيفاش بالضبط:** فخانة Cover → كليك على المربع اللي فيه **+** → اختار الصورة →
+عاود لـ2 و3 و4. الزبون غادي يشوف أسهم وكيقلّب بيناتهم.
+
+> 4–6 صور هو العدد الأمثل. أكثر من 8 كيبطّأ الصفحة بلا فايدة.
 
 ## 5. الرابط والربط باللاندينغ
 
