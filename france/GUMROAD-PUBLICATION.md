@@ -220,22 +220,40 @@ Garantie 14 jours : si le guide ne vous convient pas, répondez à cet email, re
 
 ---
 
-## 6 bis. 🔴 سميتك و إيميلك بانو فالإيصال — بدّلهم دابا
+## 6 bis. 🔴 « pablo monika » — فين كتبدل الاسم (تبويب Profile ما بقاش كاين)
 
-فـpreview الإيصال كيبان:
-> From **pablo monika** &lt;noreply@customers.gumroad.com&gt;
-> Contact **pablo monika** at **airfryer@admin.com**
+**علاش ما لقيتيهش:** Gumroad حيّد **Profile** من قائمة Settings (بقاو غير Settings · Team · Payments · Billing · Password · Social · Analytics · Advanced). الاسم ما كيتبدلش لا من **Team** لا من **Receipt** — كيتبدل من صفحة الـprofile.
 
-هادو **جوج** ما كيتصلحوش من تبويب Receipt. كيتبدلو من **Settings**:
+### الطريقة 1 — الرابط المباشر (الأسهل)
+حل هاد الرابط فالبراوزر وانت مسجل الدخول:
+```
+https://gumroad.com/settings/profile
+```
+بدّل خانة **Name** → `Friteuse Facile` → Save.
 
-| شنو | فين | علاش مهم |
-|---|---|---|
-| **Profile name** → `Friteuse Facile` | Settings → **Profile** → Profile name | كيبان فالإيصال **وفكشف الحساب البنكي** ديال الزبون. «pablo monika» فكشف بنكي = الزبون كيظنها fraud وكيطّلب chargeback |
-| **Support email** → إيميل حقيقي | Settings → **Support email** | كيبان فالفوتر ديال الإيصال. `airfryer@admin.com` كيبان مزيف ⇒ صفر ثقة |
+> إلا ما فتحاتش، جرّب: `https://gumroad.com/profile/edit`
 
-> إذا خليتي **Support email** خاوي، Gumroad كيستعمل الإيميل ديال الحساب. حط إيميل خدام ومقروء (مثلاً `contact@easymeatrecipe.com`).
+### الطريقة 2 — من القائمة
+كليكي على **الصورة/الاسم** ديالك فأسفل الشريط الأيسر (فين كاين « pablo monika ») → **Profile** → **Edit profile** (أو القلم ✏️ فوق الصورة).
 
-**ملاحظة على subject:** «You bought …» بالإنجليزية وكتبقى هكاك — Gumroad ما كيخليكش تبدل السؤال ديال الإيصال. ماشي مشكل: الجسم كامل بالفرنسية.
+### الطريقة 3 — من خانة Username
+فـ**Settings** (التبويب اللول) كاينة خانة **Username** فوق. الاسم و الـusername جوج حوايج مختالفين:
+- **Username** = الرابط: `isabelkemp.gumroad.com`
+- **Profile name** = الاسم اللي كيبان فالإيصال وفكشف البنك ← هادا اللي كتحتاج تبدل
+
+> ⚠️ إلى بدّلتي الـusername، **الرابط ديال المنتج كيتبدل معاه** ومولّي `isabelkemp.gumroad.com/l/airfryer` كيموت ⇒ اللاندينغ كلها كتحيل على 404. **ما تبدلوش.** بدّل غير الـ**Profile name**.
+
+### Support email — ماشي فـTeam، ماشي فـProfile
+فـ**Settings** (التبويب اللول، فوق) كاينة خانة **Support email**. هي اللي كتعطي `airfryer@admin.com` فالإيصال. حط: `contact@easymeatrecipe.com`
+> إذا خليتيها خاوية، Gumroad كيستعمل إيميل الحساب.
+
+### ملاحظة على Team
+فالصورة باين **جوج صفوف بنفس الإيميل** `contact@easymeatrecipe.com` (Owner + Admin). إلى ما كنتيش محتاج صلاحيات إضافية، حيّد صف الـAdmin — نافس الحساب على راسو ما كيزيدش شي حاجة، وكيخلق لبس من بعد.
+
+### الخلاصة بـ3 خطوات
+1. `gumroad.com/settings/profile` ← Name = `Friteuse Facile` ← Save
+2. `gumroad.com/settings` ← Support email = `contact@easymeatrecipe.com` ← Save
+3. رجع لتبويب **Receipt** ديال المنتج ← شوف الـpreview: خاص يبان `From Friteuse Facile` و `Contact Friteuse Facile at contact@easymeatrecipe.com`
 
 ---
 
