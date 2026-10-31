@@ -213,6 +213,7 @@ section.dark .muted{color:#b9cfc2}
 .product{display:grid;grid-template-columns:300px 1fr;gap:34px;align-items:center;margin-top:8px}
 @media(max-width:680px){.product{grid-template-columns:1fr;gap:18px;justify-items:center}}
 .product .shot{position:relative;display:grid;place-items:center}
+.product .shot picture{display:block;width:100%;max-width:300px}
 .product .shot img{width:100%;max-width:300px;height:auto;filter:drop-shadow(0 22px 34px rgba(20,15,8,.22))}
 .product .shot .rote{position:absolute;top:6px;right:-6px;transform:rotate(-8deg)}
 @media(max-width:680px){.product .shot .rote{right:0}}
@@ -481,11 +482,13 @@ footer.site p{margin:0 0 8px}
 
     <div class="product">
       <div class="shot">
+        <picture>
+        <source srcset="assets/img/book/mockup-livre.webp" type="image/webp">
         <img src="assets/img/book/mockup-livre@520.png"
-             srcset="assets/img/book/mockup-livre@520.png 718w, assets/img/book/mockup-livre.png 1252w"
              sizes="300px"
-             width="718" height="856" fetchpriority="high" decoding="async"
+             width="718" height="856" loading="lazy" decoding="async"
              alt="Le guide 365 Recettes pour Friteuse à Air — PDF de 146 pages, couverture réelle du livre">
+        </picture>
         <div class="rote"><b>PDF IMMÉDIAT</b></div>
       </div>
       <div class="txt">
