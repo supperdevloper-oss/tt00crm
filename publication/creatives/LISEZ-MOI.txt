@@ -1,0 +1,35 @@
+CREATIFS META ADS — 365 RECETTES / FRITEUSE FACILE
+===================================================
+
+15 visuels, 5 messages x 3 formats.
+
+FORMATS
+-------
+  1x1.jpg    1080 x 1080   fil d'actualite (secours)
+  4x5.jpg    1080 x 1350   *** LE FORMAT A UTILISER *** (le plus de surface sur mobile)
+  9x16.jpg   1080 x 1920   Stories / Reels
+
+
+LES 5 MESSAGES
+--------------
+  01-erreurs   "3 erreurs qui rendent votre poulet sec"
+               -> meilleur pour une audience froide (probleme -> solution)
+  02-365       "365 recettes, une par jour"
+               -> le plus simple, le plus large
+  03-temps     "Four 45 min / Friteuse 12 min" (comparatif)
+               -> le plus visuel, tres fort en Stories
+  04-guide     le guide complet + les 3 bonus
+  05-bonus     les 3 bonus offerts (la valeur)
+
+  Recommandation de depart : 01-erreurs, 03-temps, 02-365 en 4x5.
+  Ne mets JAMAIS deux formats differents dans le meme ad set.
+
+
+IMPORTANT
+---------
+  - Ces visuels affichent 2,97 € : ton produit Gumroad doit etre en EUR
+    (Product > Edit > Pricing > devise EUR), sinon le prix ne correspond pas.
+  - Aucune photo de personne, aucun faux avis : les 4 visuels sont
+    conformes aux regles Meta et au droit francais.
+  - Les textes des annonces sont dans ads/copy-fr.md
+    et le plan complet dans ads/LANCEMENT-PREMIERE-VENTE.md
