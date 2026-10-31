@@ -257,6 +257,53 @@ https://gumroad.com/settings/profile
 
 ---
 
+## 6 ter. الأفاتار و البيو (Profile picture + Bio)
+
+بعد ما تبدل الاسم، نفس الصفحة فيها **صورة** و**bio**. جوجهم كيبانو فصفحة البائع
+وفالإيصال، وكيأثرو على الثقة وعلى **موافقة Meta** على الإعلان.
+
+### 6 ter.1 الأفاتار — الملفات واجدة
+```
+assets/img/brand/avatar-500.png    500×500   14,8 Ko   ← هادي اللي كتحمّل فـGumroad
+assets/img/brand/avatar-1000.png   1000×1000 30,7 Ko   ← للاستعمال الكبير فقط
+```
+> مصمّم بخط Oswald الحقيقي ديال الموقع، أخضر `#0F3D2A` + برتقالي `#D95A1E`.
+> القص دائري: كلشي داخل الدائرة، حتى حرف ما كيتقطّع.
+
+**فين تحمّلها:**
+```
+https://gumroad.com/settings/profile   →  Profile picture  →  Upload
+```
+إلا ما بغاتش تطلع، ولا ما لقيتيش الصفحة: كليكي على **الصورة/الاسم** فأسفل الشريط
+الأيسر → **Profile** → **Edit profile** → الأفاتار.
+
+**⚠️ ما تحطش صورة ديال شي حد آخر** (حتى شي «Chef Emma» مولّدة بالـAI). فـFrance
+هادي «fausse qualité de commerçant» وMeta كترفض الإعلان. شعار ولا مونوغرام = آمن
+وقانوني 100%.
+
+### 6 ter.2 الـBio — الصق واحدة من هادو
+
+**A — الكاملة (186 حرف، موصى بها):**
+```
+Des recettes testées pour votre friteuse à air : temps, températures et quantités exactes, sans chercher sur internet. Le guide 365 recettes, les menus sur 4 semaines et les 50 desserts.
+```
+
+**B — القصيرة (109 حرف):**
+```
+365 recettes pour friteuse à air. Temps, températures et quantités exactes — pour arrêter de rater ses plats.
+```
+
+**C — بصيغة العلامة (134 حرف):**
+```
+Friteuse Facile édite des guides de cuisine pour friteuse à air. Des recettes testées, des temps et températures exacts, aucun blabla.
+```
+
+**علاش هاد البيو:** كتوصف **شنو كتاخد** بالضبط (temps/températures/quantités) بلا وعود
+مبالغ فيها، وكتمنشن الأرقام الحقيقية (365 · 4 semaines · 50 desserts). كل رقم كاين
+فالمنتج فعلاً ⇒ ما كاين حتى شي ادعاء كيحتاج دليل.
+
+---
+
 ## 7. الأبسيل 19 € — 🔴 هذا اللي كيخلّص الإعلانات
 
 بـ2,97 €، Gumroad كتاخذ **36 %** (1,07 €). الفايدة الحقيقية كتجي من الأبسيل:
