@@ -188,13 +188,16 @@ def creative_book_badge():
     lines = ["146 pages mises en page",
              "42 aliments : temps & températures",
              "3 bonus offerts (valeur 47 €)"]
+    gap = 18
     y = 1130
     for t in lines:
-        tw = d.textlength(t, font=f_b)
-        box_w = tw + 46 * SCALE
-        cx = W / 2 * SCALE
-        d.text((cx, y * SCALE), "•", font=f_b, fill=ORANGE, anchor="rm")
-        d.text((cx - 14 * SCALE, y * SCALE), t, font=f_b, fill=INK, anchor="lm")
+        tw = d.textlength(t, font=f_b) / SCALE
+        bw = 10
+        total = bw + gap + tw
+        x = (W - total) / 2
+        d.ellipse([x * SCALE, (y - bw / 2) * SCALE,
+                   (x + bw) * SCALE, (y + bw / 2) * SCALE], fill=ORANGE)
+        d.text(((x + bw + gap) * SCALE, y * SCALE), t, font=f_b, fill=INK, anchor="lm")
         y += 46
 
     # barre CTA
