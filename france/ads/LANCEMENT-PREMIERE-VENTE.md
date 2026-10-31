@@ -151,12 +151,12 @@ Puis **Ctrl+F « 30 jours »** sur l'accueil : plus rien ne doit sortir.
 ## 0.4 — Pixel Meta : 2 endroits, 1 seul ID · 5 min
 
 ```
-Pixel ID : ____________________   (Events Manager → Sources → ton pixel)
+Pixel ID : 28976191782041006     ✅ déjà installé dans index.html (L735)
 ```
 
 | Où | Chemin exact | Ce que ça trace |
 |---|---|---|
-| **Landing** (HostGator) | `index.html` → `CONFIG.pixelId : ""` | `PageView`, `ViewContent`, `CTAClick` — **après consentement** |
+| **Landing** (HostGator) | ✅ `CONFIG.pixelId = 28976191782041006` | `PageView`, `ViewContent`, `CTAClick` — **après consentement** |
 | **Gumroad** | Settings → **Advanced** → Third-Party Analytics → *Facebook Pixel* | `ViewContent`, `InitiateCheckout`, **`Purchase`** |
 
 🔴 **Sans le pixel côté Gumroad, il n'y a AUCUN `Purchase`.** La landing ne peut pas savoir
