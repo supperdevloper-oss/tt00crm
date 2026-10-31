@@ -130,6 +130,40 @@ of the first cover»*. إلا حطيت صورة 1280×720 وصورة 1400×2089�
 
 ---
 
+## 4 ter. أسفل تبويب Product — الـ6 مفاتيح
+
+| الخيار | الحالة | علاش |
+|---|---|---|
+| **Versions** (Add version) | ⏭️ **خليه خالي دابا** | كيبدّل زر الشراء لـ«Choose an option» وكيحيّر. إلا بغيت باكيت 19 €، ديرو من بعد |
+| Limit product sales | ⚪ OFF | منتج رقمي بلا حد |
+| Allow customers to choose a quantity | ⚪ OFF | ما عندو معنى لملف PDF |
+| Let people join a waitlist | ⚪ OFF | ما عندكش stock |
+| Publicly show the number of sales | ⚪ OFF فالبداية | **0 بيعة كتقتل الثقة**. شعّلو من بعد 20-30 بيعة |
+| **Mark product as e-publication for VAT purposes** | 🟢 **ON** ⭐ | **مهم بزاف — شوف تحت** |
+| **Specify a refund policy** | 🟢 **ON** | ضمانة 14 يوم = ثقة = بيوع أكثر |
+| Custom domain | ⏭️ خليه خالي | ماشي ضروري |
+
+### ⭐ علاش «e-publication for VAT purposes» مهم
+
+هاد المنتج **كتاب (PDF)** — يعني داخل فتعريف الـEU لـ«e-publication».
+ملي كتشعل هاد المفتاح، Gumroad كتطبّق **TVA مخفّضة** على الزبون الأوروبي
+(ففرنسا **5,5 %** عوض **20 %**)، وفـUK كتنزل لـ**0 %**.
+
+**النتيجة:** الزبون الفرنسي كيخلّص أقل → التحويل كيتحسّن بلا ما تنقص نتا حتى سنتيم.
+
+> ⚠️ إلا كنتي شاكك، Gumroad كتقول: «استشر محاسب». ولكن كتاب وصفات PDF
+> داخل بوضوح فتعريف «Books… supplied electronically».
+
+Gumroad كتزيد الـTVA **فوق** الثمن فـcheckout، ماشي كتقتطعها من 2,97 €.
+بهاد المفتاح مطفي، الزبون كيشوف **3,56 €** (2,97 + 20 %). مشعّل: **3,13 €**.
+
+### ضمانة 14 يوم
+
+`Specify a refund policy` → ON → اختار **14 days** (ولا كتب النص):
+«Remboursement sous 14 jours, sans justification. Répondez à l'email de confirmation.»
+
+---
+
 ## 5. الرابط والربط باللاندينغ
 
 كياخذ الرابط من Gumroad: `https://اسمك.gumroad.com/l/365-recettes-friteuse-air`
