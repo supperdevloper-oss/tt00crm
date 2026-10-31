@@ -1,17 +1,36 @@
 MISE A JOUR DU SITE - 365 RECETTES / FRITEUSE FACILE
 ====================================================
+Version du 31 octobre 2026 - corrige la garantie a 30 jours
 
-CE DOSSIER CONTIENT UNIQUEMENT LES FICHIERS A REMPLACER.
-Les images et les polices sont DEJA en ligne : ne les re-uploadez pas.
 
-  5 pages HTML  +  assets/css/legal.css
+CE DOSSIER CONTIENT 6 FICHIERS
+------------------------------
+  index.html
+  merci.html
+  mentions-legales.html        <- NOUVEAU (n'existe pas encore en ligne)
+  cgv.html                     <- NOUVEAU
+  confidentialite.html         <- NOUVEAU
+  assets/css/legal.css         <- NOUVEAU
+
+
+CE QUI EST CORRIGE DANS CETTE VERSION
+-------------------------------------
+  1. Le sceau disait "14 JOURS" juste au-dessus d'un texte qui disait
+     "dans les 30 jours". Les deux disent maintenant 30 JOURS.
+     (Gumroad affiche "30-day money back guarantee" : tout est aligne)
+
+  2. Les 3 pages legales manquaient a l'appel : les liens du bas de page
+     renvoyaient une erreur 404. Elles sont dans ce dossier.
+
+  3. Rappel : les "14 jours" de la page "mentions legales" sont le delai
+     LEGAL de retractation (Code de la consommation). On n'y touche pas.
 
 
 OU UPLOADER (HostGator : cPanel > Gestionnaire de fichiers)
 -----------------------------------------------------------
 Allez dans : public_html/Guide/
 
-Puis uploadez ces 6 fichiers en respectant l'arborescence :
+Uploadez ces 6 fichiers en respectant l'arborescence :
 
     public_html/Guide/index.html
     public_html/Guide/merci.html
@@ -20,32 +39,23 @@ Puis uploadez ces 6 fichiers en respectant l'arborescence :
     public_html/Guide/confidentialite.html
     public_html/Guide/assets/css/legal.css
 
-Quand cPanel demande "ecraser les fichiers existants" : OUI
-(seuls index.html et merci.html existent deja ; les 4 autres sont nouveaux)
+Quand cPanel demande d'ecraser : OUI
+(seuls index.html et merci.html existent deja)
 
 
-CE QUI CHANGE DANS CETTE VERSION
---------------------------------
-  - pixel Meta installe (28976191782041006), charge APRES "Accepter"
-  - bandeau cookies RGPD
-  - 3 pages legales : mentions, CGV, confidentialite
-  - les faux avis ont ete supprimes
-  - garantie 14 jours partout (plus de "30 jours")
-  - lien Gumroad corrige : easymeatrecipe.gumroad.com
-
-
-APRES L'UPLOAD - VERIFIER CES 4 URL
------------------------------------
+APRES L'UPLOAD - TESTER CES 4 URL
+---------------------------------
   https://www.easymeatrecipe.com/Guide/
   https://www.easymeatrecipe.com/Guide/mentions-legales.html
   https://www.easymeatrecipe.com/Guide/cgv.html
   https://www.easymeatrecipe.com/Guide/confidentialite.html
 
-Puis sur la page d'accueil : Ctrl+F "30 jours" -> ne doit plus rien trouver.
+Si une de ces 3 pages legales affiche "Page Not Found",
+c'est que le fichier n'a pas ete mis dans le bon dossier.
 
 
-IL RESTE A REMPLIR (dans les 5 pages : Ctrl+F "VOTRE")
--------------------------------------------------------
+IL RESTE A REMPLIR (dans les 4 pages : Ctrl+F "VOTRE")
+------------------------------------------------------
   [VOTRE NOM COMPLET]     votre vrai nom
   [VOTRE ADRESSE]         votre adresse reelle
   [VOTRE EMAIL]           votre email de contact
