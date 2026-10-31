@@ -1,29 +1,32 @@
 MISE A JOUR DU SITE - 365 RECETTES / FRITEUSE FACILE
 ====================================================
-Version du 31 octobre 2026 - corrige la garantie a 30 jours
+Version du 31 octobre 2026
 
 
 CE DOSSIER CONTIENT 6 FICHIERS
 ------------------------------
-  index.html
+  index.html                   <- CORRIGE : le sceau dit 30 JOURS
   merci.html
-  mentions-legales.html        <- NOUVEAU (n'existe pas encore en ligne)
-  cgv.html                     <- NOUVEAU
+  mentions-legales.html        <- NOUVEAU
+  cgv.html                     <- NOUVEAU  (absent du serveur : renvoie 404)
   confidentialite.html         <- NOUVEAU
   assets/css/legal.css         <- NOUVEAU
 
 
-CE QUI EST CORRIGE DANS CETTE VERSION
--------------------------------------
-  1. Le sceau disait "14 JOURS" juste au-dessus d'un texte qui disait
+CE QUI EST CORRIGE
+------------------
+  1. Le sceau affichait "14 JOURS" au-dessus d'un texte qui disait
      "dans les 30 jours". Les deux disent maintenant 30 JOURS.
-     (Gumroad affiche "30-day money back guarantee" : tout est aligne)
 
-  2. Les 3 pages legales manquaient a l'appel : les liens du bas de page
-     renvoyaient une erreur 404. Elles sont dans ce dossier.
+  2. Les 3 pages legales sont dans ce dossier. Aujourd'hui
+     /Guide/mentions-legales.html et /Guide/confidentialite.html
+     fonctionnent, mais /Guide/cgv.html renvoie "Page Not Found".
 
-  3. Rappel : les "14 jours" de la page "mentions legales" sont le delai
-     LEGAL de retractation (Code de la consommation). On n'y touche pas.
+  3. Le cadre jaune "A remplir avant publication" a ete supprime :
+     c'etait une note interne, elle n'a rien a faire sur un site public.
+
+  4. Les "14 jours" de la page "mentions legales" sont le delai LEGAL
+     de retractation (Code de la consommation). On n'y touche pas.
 
 
 OU UPLOADER (HostGator : cPanel > Gestionnaire de fichiers)
@@ -40,7 +43,6 @@ Uploadez ces 6 fichiers en respectant l'arborescence :
     public_html/Guide/assets/css/legal.css
 
 Quand cPanel demande d'ecraser : OUI
-(seuls index.html et merci.html existent deja)
 
 
 APRES L'UPLOAD - TESTER CES 4 URL
@@ -50,12 +52,13 @@ APRES L'UPLOAD - TESTER CES 4 URL
   https://www.easymeatrecipe.com/Guide/cgv.html
   https://www.easymeatrecipe.com/Guide/confidentialite.html
 
-Si une de ces 3 pages legales affiche "Page Not Found",
-c'est que le fichier n'a pas ete mis dans le bon dossier.
+Sur la page d'accueil, le sceau doit afficher 30 JOURS.
+Si une page affiche "Page Not Found", c'est que le fichier
+n'est pas dans le bon dossier.
 
 
-IL RESTE A REMPLIR (dans les 4 pages : Ctrl+F "VOTRE")
-------------------------------------------------------
+IL RESTE A REMPLIR (4 pages : Ctrl+F "VOTRE")
+---------------------------------------------
   [VOTRE NOM COMPLET]     votre vrai nom
   [VOTRE ADRESSE]         votre adresse reelle
   [VOTRE EMAIL]           votre email de contact
