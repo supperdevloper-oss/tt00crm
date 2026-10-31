@@ -111,7 +111,12 @@ of the first cover»*. إلا حطيت صورة 1280×720 وصورة 1400×2089�
 
 **كيفاش:** كليك **+ Add detail** → كتب فوق الحروف الرمادية → عاود.
 
-| Detail (الاسم) | القيمة |
+> 🔴 **الترتيب مهم**: الخانة **اليسرى = الاسم** (Format)، والخانة **اليمنى = القيمة**.
+> هادا مؤكد من الكود المصدري ديال Gumroad (`AttributesEditor.tsx`):
+> `<Input value={attribute.name} />` كيجي **قبل** `<Input value={attribute.value} />`.
+> إلا قلبتهم، الصفحة كتقرا: «PDF — 4 fichiers : Format» — معكوسة ومشي مهنية.
+
+| اليسار (الاسم) | اليمين (القيمة) |
 |---|---|
 | `Format` | `PDF — 4 fichiers` |
 | `Pages` | `146 pages + 3 bonus` |
