@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>365 Recettes pour Friteuse à Air — Le guide pratique | 2,97 €</title>
+<meta name="description" content="365 recettes testées pour votre friteuse à air : temps et températures exacts, ingrédients simples, zéro huile. PDF téléchargeable immédiatement. 2,97 €, garantie 14 jours.">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="product">
+<meta property="og:title" content="365 Recettes pour Friteuse à Air — 2,97 €">
+<meta property="og:description" content="Croustillant dehors, juteux dedans. Le temps et la température exacts pour ne plus jamais rater un plat.">
+<meta property="og:image" content="assets/img/hero-flatlay.jpg">
+<link rel="preload" href="assets/fonts/web/oswald-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/web/playfair-700i.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" as="image" href="assets/img/hero-flatlay.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230f3d2a'/%3E%3Ctext x='50' y='70' font-size='52' text-anchor='middle' fill='%23fff' font-family='sans-serif' font-weight='bold'%3E365%3C/text%3E%3C/svg%3E">
+
+<!--
+╔══════════════════════════════════════════════════════════════════════╗
+║  ✅ DÉJÀ CONFIGURÉ — NE PAS TOUCHER                                  ║
+║     · CONFIG.checkout → votre lien Gumroad                           ║
+║     · CONFIG.price    → 2,97 €                                       ║
+║     · CONFIG.brand    → Friteuse Facile                              ║
+║                                                                      ║
+║  ⚠️  IL RESTE 2 CHOSES (Ctrl+F / Cmd+F)
+║  1. Chercher « pixelId » → coller votre Meta Pixel ID entre les       ║
+║     guillemets : pixelId : "1234567890123456".                        ║
+║     Vide = aucun pixel, et le bandeau cookies reste affiché.          ║
+║  2. Chercher « VOTRE NOM COMPLET » → remplacer dans les 4 fichiers :  ║
+║     index.html · mentions-legales.html · cgv.html · confidentialite   ║
+║     3 champs : [VOTRE NOM COMPLET] · [VOTRE ADRESSE] · [VOTRE EMAIL]    ║
+║                                                                      ║
+║  Pages légales déjà rédigées (aucun autre texte à écrire) :           ║
+║     mentions-legales.html · cgv.html · confidentialite.html           ║
+╚══════════════════════════════════════════════════════════════════════╝
+-->
+
+<style>
+@font-face{font-family:'Oswald';src:url('assets/fonts/web/oswald-400.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Oswald';src:url('assets/fonts/web/oswald-500.woff2') format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'Oswald';src:url('assets/fonts/web/oswald-700.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'Playfair';src:url('assets/fonts/web/playfair-700.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'Playfair';src:url('assets/fonts/web/playfair-700i.woff2') format('woff2');font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:'Playfair';src:url('assets/fonts/web/playfair-400i.woff2') format('woff2');font-weight:400;font-style:italic;font-display:swap}
+
+:root{
+  --green:#0f3d2a; --green-2:#14563a; --green-lt:#1f7a52;
+  --cream:#f6f2e9; --paper:#fffdf7; --line:#e3dccd;
+  --orange:#d95a1e; --orange-lt:#f0a04b;
+  --ink:#1b1a17; --muted:#6f685c; --ok:#1f7a4f;
+  --shadow:0 10px 30px rgba(20,40,30,.09);
+  --r:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--cream);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased;
+}
+img{max-width:100%;display:block;height:auto}
+a{color:inherit}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+.narrow{max-width:640px;margin:0 auto}
+h1,h2,h3,h4{font-family:'Oswald',Impact,'Arial Narrow',sans-serif;font-weight:700;line-height:1.12;letter-spacing:.4px;margin:0}
+h1{font-size:clamp(30px,8.2vw,50px);text-transform:uppercase}
+h2{font-size:clamp(25px,6.4vw,38px);text-transform:uppercase}
+h3{font-size:clamp(19px,4.6vw,23px);text-transform:uppercase}
+p{margin:0 0 14px}
+.serif{font-family:'Playfair',Georgia,serif;font-style:italic;font-weight:700;text-transform:none;letter-spacing:0}
+.eyebrow{
+  font-family:'Oswald',sans-serif;font-weight:500;font-size:13px;letter-spacing:3.2px;
+  text-transform:uppercase;color:var(--orange);margin:0 0 10px
+}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.small{font-size:14px;line-height:1.55}
+
+/* ---------- top bar ---------- */
+.topbar{
+  background:var(--green);color:#e8f3ec;text-align:center;
+  font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:1.4px;text-transform:uppercase;
+  padding:9px 12px;
+}
+.topbar b{color:var(--orange-lt)}
+
+/* ---------- header ---------- */
+header.site{background:var(--cream);border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;height:62px}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Oswald',sans-serif;font-weight:700;letter-spacing:1.6px;font-size:15px;text-transform:uppercase}
+.brand .mark{
+  width:32px;height:32px;border-radius:9px;background:var(--green);color:#fff;
+  display:grid;place-items:center;font-size:12px;letter-spacing:0
+}
+header.site .head-cta{
+  font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:1.2px;text-transform:uppercase;
+  background:var(--green);color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;
+}
+@media(max-width:600px){header.site .head-cta{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:26px 0 0;background:linear-gradient(180deg,#fbf8f0,var(--cream))}
+.hero .hero-img{
+  border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);position:relative;margin-top:22px;
+  border:1px solid #d9d1bf
+}
+.hero .hero-img img{aspect-ratio:16/11;object-fit:cover;width:100%}
+.hero .badge{
+  position:absolute;top:14px;right:14px;background:var(--orange);color:#fff;border-radius:16px;
+  font-family:'Oswald',sans-serif;padding:10px 16px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.28);
+  border:2px solid rgba(255,255,255,.55)
+}
+.hero .badge b{display:block;font-size:26px;line-height:1}
+.hero .badge span{font-size:10px;letter-spacing:1.6px}
+.hero .badge i{display:block;font-style:normal;font-size:10px;letter-spacing:1.6px;opacity:.9}
+
+.trustline{display:flex;align-items:center;gap:10px;justify-content:center;margin:16px 0 4px;flex-wrap:wrap}
+.stars{color:#e8a33d;letter-spacing:2px;font-size:15px}
+.trustline span{font-size:14px;color:var(--muted)}
+
+/* ---------- boutons ---------- */
+.btn{
+  display:block;width:100%;max-width:520px;margin:0 auto;text-align:center;text-decoration:none;
+  background:linear-gradient(180deg,#187a4e,#0f5132);color:#fff;border:0;cursor:pointer;
+  font-family:'Oswald',sans-serif;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+  font-size:clamp(16px,4.3vw,20px);padding:18px 22px;border-radius:14px;
+  box-shadow:0 10px 24px rgba(15,61,42,.28),inset 0 1px 0 rgba(255,255,255,.18);
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 14px 28px rgba(15,61,42,.32),inset 0 1px 0 rgba(255,255,255,.18)}
+.btn:active{transform:translateY(1px)}
+.btn small{display:block;font-size:11.5px;letter-spacing:1.5px;font-weight:500;color:#cde9d8;margin-top:5px}
+.btn-sub{text-align:center;font-size:13px;color:var(--muted);margin:10px 0 0}
+
+/* ---------- sections ---------- */
+section{padding:44px 0}
+#offre{scroll-margin-top:16px}
+section.alt{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+section.dark{background:var(--green);color:#eaf4ee}
+section.dark .eyebrow{color:var(--orange-lt)}
+section.dark .muted{color:#b9cfc2}
+
+/* ---------- erreurs ---------- */
+.err{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:12px}
+.err li{
+  display:flex;gap:14px;align-items:flex-start;background:var(--paper);border:1px solid var(--line);
+  border-radius:14px;padding:16px 18px
+}
+.err .x{
+  flex:0 0 30px;height:30px;border-radius:50%;background:#fdeae6;color:#c0392b;
+  display:grid;place-items:center;font-weight:700;font-size:16px;margin-top:2px
+}
+.err b{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.6px;font-size:16px;display:block;margin-bottom:2px}
+.err p{margin:0;font-size:15px;color:var(--muted)}
+
+/* ---------- grid cartes ---------- */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:24px}
+@media(max-width:560px){.cards{grid-template-columns:1fr}}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.card img{aspect-ratio:4/3;object-fit:cover;width:100%}
+.card .body{padding:14px 16px 18px}
+.card h4{font-size:17px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.card p{font-size:14.5px;color:var(--muted);margin:0}
+
+/* ---------- liste incluse ---------- */
+.include{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:10px}
+.include li{display:flex;gap:12px;align-items:flex-start;font-size:16px}
+.include .ck{
+  flex:0 0 24px;height:24px;border-radius:50%;background:#e4f2e9;color:var(--ok);
+  display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:3px
+}
+
+/* ---------- bénéfices ---------- */
+.benefits{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:24px;text-align:center}
+@media(max-width:640px){.benefits{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:420px){.benefits{grid-template-columns:repeat(2,1fr)}}
+.benefits div{padding:10px 4px}
+.benefits .ic{font-size:24px;line-height:1}
+.benefits b{display:block;font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.8px;margin-top:6px}
+.benefits span{display:block;font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:2px}
+
+/* ---------- bonus ---------- */
+.bonus{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+@media(max-width:640px){.bonus{grid-template-columns:1fr}}
+.bcard{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:16px;overflow:hidden}
+.bcard img{aspect-ratio:16/10;object-fit:cover}
+.bcard .body{padding:14px 16px 16px}
+.bcard .tag{
+  display:inline-block;background:var(--orange);color:#fff;font-family:'Oswald',sans-serif;
+  font-size:11px;letter-spacing:1.6px;padding:4px 10px;border-radius:999px;margin-bottom:8px
+}
+.bcard h4{font-size:16px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.bcard p{font-size:13.5px;color:#bdd4c6;margin:0 0 8px}
+.bcard .val{font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:.6px;color:#9fbdab}
+.bcard .val s{color:#d98a6a}
+.bcard .val b{color:#eafff2;margin-left:6px}
+
+/* ---------- prix ---------- */
+.pricebox{
+  background:var(--paper);border:2px solid var(--green);border-radius:22px;padding:26px 22px;
+  box-shadow:var(--shadow);text-align:center;margin-top:8px
+}
+.pricebox .stack{list-style:none;padding:0;margin:0 auto 18px;max-width:430px;text-align:left;display:grid;gap:8px}
+.pricebox .stack li{display:flex;justify-content:space-between;font-size:15px;border-bottom:1px dashed var(--line);padding-bottom:8px}
+.pricebox .stack li span:last-child{font-family:'Oswald',sans-serif;color:var(--muted)}
+.pricebox .stack li.total{border:0;padding-top:4px;font-weight:700}
+.pricebox .stack li.total span:last-child{color:var(--ink);font-size:17px}
+.pricebox .stack li.total span:last-child s{color:#c0392b;margin-right:8px;font-size:15px}
+.pricebox .price{font-family:'Oswald',sans-serif;font-size:clamp(48px,13vw,66px);line-height:1;color:var(--green);margin:4px 0 2px}
+.pricebox .price small{font-size:18px;letter-spacing:1px;color:var(--muted);display:block;margin-top:6px;font-weight:400}
+.pricebox .pay{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:16px 0 0;opacity:.85}
+.pricebox .pay span{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--muted);letter-spacing:.6px}
+
+/* ---------- produit (mockup du livre) ---------- */
+.product{display:grid;grid-template-columns:300px 1fr;gap:34px;align-items:center;margin-top:8px}
+@media(max-width:680px){.product{grid-template-columns:1fr;gap:18px;justify-items:center}}
+.product .shot{position:relative;display:grid;place-items:center}
+.product .shot picture{display:block;width:100%;max-width:300px}
+.product .shot img{width:100%;max-width:300px;height:auto;filter:drop-shadow(0 22px 34px rgba(20,15,8,.22))}
+.product .shot .rote{position:absolute;top:6px;right:-6px;transform:rotate(-8deg)}
+@media(max-width:680px){.product .shot .rote{right:0}}
+.product .shot .rote b{display:block;background:var(--orange);color:#fff;font-family:'Oswald',sans-serif;
+  font-size:14px;letter-spacing:1px;padding:8px 12px;border-radius:10px;box-shadow:0 6px 16px rgba(0,0,0,.22)}
+.product .txt h3{font-size:clamp(22px,5vw,28px);margin:0 0 6px}
+.product .txt .sub{color:var(--muted);font-size:15px;margin:0 0 14px}
+.product .txt ul{list-style:none;padding:0;margin:0;display:grid;gap:9px}
+.product .txt li{display:flex;gap:10px;font-size:15px;align-items:flex-start}
+.product .txt li .ck{flex:0 0 20px;height:20px;border-radius:50%;background:#e7f3ec;color:var(--green);
+  display:grid;place-items:center;font-size:12px;font-weight:700;margin-top:1px}
+.product .txt .files{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
+.product .txt .files span{font-size:11.5px;border:1px solid var(--line);border-radius:7px;padding:5px 9px;
+  color:var(--muted);letter-spacing:.4px;background:var(--paper)}
+
+/* ---------- aperçus du livre ---------- */
+.peeks{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
+@media(max-width:700px){.peeks{grid-template-columns:repeat(2,1fr)}}
+.peek{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper);box-shadow:0 8px 18px rgba(20,15,8,.07)}
+.peek img{width:100%;height:auto;display:block}
+.peek .cap{padding:9px 11px 11px;font-size:11.5px;line-height:1.35;color:var(--muted)}
+.peek .cap b{display:block;font-family:'Oswald',sans-serif;font-size:12.5px;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--ink);margin-bottom:2px}
+.peeks-note{text-align:center;font-size:12.5px;color:var(--muted);margin-top:14px}
+
+/* ---------- garantie ---------- */
+.guarantee{display:flex;gap:18px;align-items:center;background:#eef6f1;border:1px solid #cfe6d8;border-radius:18px;padding:20px 22px;margin-top:26px}
+.guarantee .seal{
+  flex:0 0 74px;height:74px;border-radius:50%;border:3px dashed #7fb999;display:grid;place-items:center;
+  text-align:center;font-family:'Oswald',sans-serif;color:var(--ok);line-height:1.05
+}
+.guarantee .seal b{font-size:22px;display:block}
+.guarantee .seal span{font-size:9.5px;letter-spacing:.8px}
+.guarantee p{margin:0;font-size:14.5px;color:#2c5541}
+.guarantee b{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:4px;font-size:16px;color:var(--green)}
+
+/* ---------- avis ---------- */
+.reviews{display:grid;gap:14px;margin-top:22px}
+@media(min-width:720px){.reviews{grid-template-columns:1fr 1fr}}
+.review{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px}
+.review.stat{display:flex;align-items:center;gap:16px}
+.review.stat .num{font-family:'Oswald',sans-serif;font-size:38px;line-height:1;color:var(--orange);min-width:84px}
+.review.stat p{margin:0;font-size:14.5px;color:var(--muted)}
+.review .who{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.review .av{
+  width:42px;height:42px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;
+  font-family:'Oswald',sans-serif;font-size:15px
+}
+.review .who b{display:block;font-size:15px}
+.review .who span{font-size:12.5px;color:var(--muted)}
+.review p{font-size:15px;margin:0}
+.review .stars{margin-bottom:6px}
+
+/* ---------- faq ---------- */
+details.faq{background:var(--paper);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+details.faq summary{
+  cursor:pointer;list-style:none;padding:16px 48px 16px 18px;position:relative;
+  font-family:'Oswald',sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.5px
+}
+details.faq summary::-webkit-details-marker{display:none}
+details.faq summary::after{
+  content:'+';position:absolute;right:18px;top:50%;transform:translateY(-50%);
+  font-size:24px;color:var(--orange);line-height:1
+}
+details.faq[open] summary::after{content:'–'}
+details.faq .ans{padding:0 18px 16px;font-size:15px;color:var(--muted)}
+details.faq .ans p:last-child{margin:0}
+
+/* ---------- bandeau cookies ---------- */
+.consent{
+  position:fixed;left:0;right:0;bottom:0;z-index:90;background:var(--paper);
+  border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(20,40,30,.14);
+  padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+}
+.consent[hidden]{display:none}
+.consent-in{max-width:760px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.consent p{margin:0;flex:1 1 320px;font-size:12.5px;line-height:1.5;color:var(--muted)}
+.consent p b{color:var(--ink)}
+.consent a{color:var(--green-lt)}
+.consent-btns{display:flex;gap:8px;flex:0 0 auto}
+.consent button{
+  font:inherit;font-size:13px;font-weight:600;border-radius:9px;padding:9px 16px;
+  cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink);
+  transition:border-color .15s ease
+}
+.consent button:hover{border-color:var(--green-lt)}
+.consent .c-yes{background:var(--green);border-color:var(--green);color:#fff}
+.consent .c-yes:hover{background:var(--green-2);border-color:var(--green-2)}
+body.cookie-open .stickybar{display:none}
+
+/* ---------- footer ---------- */
+footer.site{background:#0b2a1d;color:#a9c3b4;padding:34px 0 110px;font-size:13px}
+footer.site a{color:#cfe3d7;text-decoration:underline;text-underline-offset:2px}
+footer.site .links{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+footer.site p{margin:0 0 8px}
+
+/* ---------- barre collante mobile ---------- */
+.stickybar{
+  position:fixed;left:0;right:0;bottom:0;z-index:70;background:rgba(255,253,247,.97);
+  border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(20,40,30,.10);
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;gap:12px;transform:translateY(110%);transition:transform .25s ease;
+}
+.stickybar.on{transform:translateY(0)}
+.stickybar .p{font-family:'Oswald',sans-serif;line-height:1.1;flex:0 0 auto}
+.stickybar .p b{font-size:20px;color:var(--green);display:block}
+.stickybar .p span{font-size:10.5px;color:var(--muted);letter-spacing:.6px}
+.stickybar .btn{margin:0;padding:13px 14px;font-size:14px;max-width:none;flex:1}
+@media(min-width:820px){.stickybar{display:none}}
+
+/* ---------- divers ---------- */
+.divider{width:54px;height:4px;background:var(--orange);border-radius:2px;margin:14px auto 0}
+.note{
+  background:#fdf6e9;border:1px solid #f0dfbc;border-radius:12px;padding:12px 14px;
+  font-size:13.5px;color:#6b5426;margin-top:16px
+}
+.todo{display:none}
+.hero-shot{position:relative}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<div class="topbar">📥 Téléchargement immédiat · <b>Garantie 14 jours</b> · Paiement sécurisé</div>
+
+<header class="site">
+  <div class="wrap">
+    <div class="brand"><span class="mark">365</span> <span id="brandName">Friteuse Facile</span></div>
+    <a class="head-cta" href="#offre">Obtenir le guide — <span class="js-price">2,97</span> €</a>
+  </div>
+</header>
+
+<!-- ============================= HERO ============================= -->
+<div class="hero">
+  <div class="wrap">
+    <p class="eyebrow center">Le guide pratique de la friteuse à air</p>
+    <h1 class="center">Croustillant dehors.<br><span class="serif" style="color:var(--green);text-transform:none">Juteux dedans.</span></h1>
+    <p class="center narrow" style="font-size:18px;margin:16px auto 0;color:#3d3a33">
+      365 recettes testées, avec <b>le temps et la température exacts</b> — pour ne plus jamais
+      sortir un poulet sec de votre friteuse.
+    </p>
+
+    <div class="trustline">
+      <span id="preuve"><b>Édition 2026</b> · 365 recettes · 146 pages · 3 bonus inclus</span>
+    </div>
+
+    <a class="btn js-cta" href="#offre" style="margin-top:18px">Je veux les 365 recettes — <span class="js-price">2,97</span> €
+      <small>PDF · accès immédiat · paiement unique</small>
+    </a>
+    <p class="btn-sub">Aucun abonnement. Aucune application à installer.</p>
+
+    <div class="hero-img">
+      <img src="assets/img/hero-flatlay.jpg" width="1400" height="963" alt="Plats préparés à la friteuse à air : poulet croustillant, saumon, pommes de terre et brownies" fetchpriority="high">
+      <div class="badge"><span>SEULEMENT</span><b><span class="js-price">2,97</span> €</b><i>365 RECETTES</i></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= PROBLÈME ============================= -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Le vrai problème</p>
+    <h2>Pourquoi vos plats sortent secs</h2>
+    <div class="divider" style="margin:14px 0 0"></div>
+    <p class="muted" style="margin-top:16px">
+      Ce n'est presque jamais l'appareil. Dans 9 cas sur 10, c'est l'un de ces trois réglages —
+      et personne ne vous les a jamais expliqués.
+    </p>
+    <ul class="err">
+      <li><span class="x">✕</span><div><b>Le temps est faux</b><p>Une recette « 200 °C » sans durée précise, c'est une recette qui échoue. 4 minutes de trop suffisent à sécher une escalope.</p></div></li>
+      <li><span class="x">✕</span><div><b>La température est mal choisie</b><p>Trop fort dès le départ : l'extérieur brûle, l'intérieur reste cru. Puis on remet 10 minutes… et tout est sec.</p></div></li>
+      <li><span class="x">✕</span><div><b>Le panier est trop rempli</b><p>L'air chaud doit circuler. Trop d'aliments = cuisson à la vapeur au lieu d'une cuisson croustillante.</p></div></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================= SOLUTION ============================= -->
+<section class="alt">
+  <div class="wrap">
+    <p class="eyebrow">La solution</p>
+    <h2>Un guide, pas des recettes au hasard</h2>
+    <p class="muted" style="margin-top:14px">
+      Chaque recette indique <b>la quantité, le temps, la température et le geste</b>.
+      Vous ouvrez, vous suivez, ça réussit. C'est tout.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <img src="assets/img/dish-poulet.jpg" loading="lazy" alt="Poulet croustillant cuit à la friteuse à air">
+        <div class="body">
+          <h4>Viandes & volailles</h4>
+          <p>Poulet, bœuf, porc, agneau : le cœur du sujet. Juteux à l'intérieur, doré à l'extérieur.</p>
+        </div>
+      </div>
+      <div class="card">
+        <img src="assets/img/dish-saumon.jpg" loading="lazy" alt="Saumon et asperges cuits à la friteuse à air">
+        <div class="body">
+          <h4>Poissons & légumes</h4>
+          <p>Saumon, cabillaud, crevettes, légumes rôtis : des cuissons précises, sans dessèchement.</p>
+        </div>
+      </div>
+      <div class="card">
+        <img src="assets/img/dish-brownie.jpg" loading="lazy" alt="Brownies au chocolat cuits à la friteuse à air">
+        <div class="body">
+          <h4>Desserts & goûters</h4>
+          <p>Brownies, gâteaux, muffins : oui, on peut faire des desserts à la friteuse. Avec les bons réglages.</p>
+        </div>
+      </div>
+      <div class="card">
+        <img src="assets/img/four-plat.jpg" loading="lazy" alt="Comparaison avec une cuisson au four classique">
+        <div class="body">
+          <h4>Entrées rapides</h4>
+          <p>Frites maison, nuggets, snacks, apéros : croustillants, avec une cuillère d'huile au lieu d'un litre.</p>
+        </div>
+      </div>
+    </div>
+
+    <ul class="include" style="margin-top:26px">
+      <li><span class="ck">✓</span><div><b>365 recettes</b> classées par catégorie — une idée pour chaque jour de l'année.</div></li>
+      <li><span class="ck">✓</span><div><b>Le tableau temps &amp; température</b> : les réglages de base pour chaque aliment.</div></li>
+      <li><span class="ck">✓</span><div><b>Des ingrédients simples</b>, déjà dans vos placards, sans matériel spécial.</div></li>
+      <li><span class="ck">✓</span><div><b>Une astuce par recette</b> : le geste qui fait la différence, écrit par ceux qui l'ont raté avant vous.</div></li>
+      <li><span class="ck">✓</span><div><b>146 pages mises en page</b>, avec sommaire, index par ingrédient et numérotation — pas un document brut.</div></li>
+      <li><span class="ck">✓</span><div><b>Format PDF</b> : téléphone, tablette ou ordinateur — et imprimable si vous préférez le papier.</div></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================= BÉNÉFICES ============================= -->
+<section>
+  <div class="wrap center">
+    <p class="eyebrow">Ce que ça change</p>
+    <h2>Conçu pour la vraie vie</h2>
+    <div class="benefits">
+      <div><div class="ic">⏱</div><b>Rapide</b><span>Repas en 12–25 min</span></div>
+      <div><div class="ic">🫒</div><b>Moins d'huile</b><span>1 c. à soupe suffit</span></div>
+      <div><div class="ic">👨‍👩‍👧</div><b>Pour la famille</b><span>Portions simples</span></div>
+      <div><div class="ic">🛒</div><b>Budget léger</b><span>Ingrédients courants</span></div>
+      <div><div class="ic">🎯</div><b>Réussi à coup sûr</b><span>Temps exacts</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= BONUS ============================= -->
+<section class="dark">
+  <div class="wrap">
+    <p class="eyebrow center">Aujourd'hui seulement</p>
+    <h2 class="center">3 bonus offerts avec votre guide</h2>
+    <p class="center muted" style="margin-top:14px">Ils sont inclus dans le même téléchargement. Rien à payer en plus.</p>
+    <div class="bonus">
+      <div class="bcard">
+        <img src="assets/img/dish-poulet.jpg" loading="lazy" alt="Bonus 1 : le tableau temps et températures">
+        <div class="body">
+          <span class="tag">BONUS 1</span>
+          <h4>Tableau temps &amp; températures</h4>
+          <p>Les réglages de 42 aliments, sur une page à imprimer et à coller sur la porte de la friteuse.</p>
+          <div class="val"><s>15 €</s><b>OFFERT</b></div>
+        </div>
+      </div>
+      <div class="bcard">
+        <img src="assets/img/dish-plats.jpg" loading="lazy" alt="Bonus 2 : quatre semaines de menus">
+        <div class="body">
+          <span class="tag">BONUS 2</span>
+          <h4>4 semaines de menus</h4>
+          <p>28 dîners déjà choisis, avec la liste de courses de chaque semaine. Plus besoin de réfléchir.</p>
+          <div class="val"><s>15 €</s><b>OFFERT</b></div>
+        </div>
+      </div>
+      <div class="bcard">
+        <img src="assets/img/dish-brownie.jpg" loading="lazy" alt="Bonus 3 : 50 desserts à la friteuse">
+        <div class="body">
+          <span class="tag">BONUS 3</span>
+          <h4>50 desserts à la friteuse</h4>
+          <p>Gâteaux, fondants, muffins, cookies : la cuisson douce qui garde la mie moelleuse.</p>
+          <div class="val"><s>17 €</s><b>OFFERT</b></div>
+        </div>
+      </div>
+    </div>
+    <p class="center small muted" style="margin-top:18px">
+      Valeur totale des bonus : <b style="color:#fff">47 €</b> — inclus, sans supplément.
+    </p>
+  </div>
+</section>
+
+<!-- ============================= OFFRE ============================= -->
+<section id="offre">
+  <div class="wrap">
+    <p class="eyebrow center">Votre guide</p>
+    <h2 class="center">Ce que vous recevez aujourd'hui</h2>
+    <div class="divider"></div>
+
+    <div class="product">
+      <div class="shot">
+        <picture>
+        <source srcset="assets/img/book/mockup-livre.webp" type="image/webp">
+        <img src="assets/img/book/mockup-livre@520.png"
+             sizes="300px"
+             width="718" height="856" loading="lazy" decoding="async"
+             alt="Le guide 365 Recettes pour Friteuse à Air — PDF de 146 pages, couverture réelle du livre">
+        </picture>
+        <div class="rote"><b>PDF IMMÉDIAT</b></div>
+      </div>
+      <div class="txt">
+        <h3>365 Recettes pour Friteuse à Air</h3>
+        <p class="sub">146 pages mises en page · édition 2026</p>
+        <ul>
+          <li><span class="ck">✓</span><div><b>365 recettes testées</b>, une pour chaque jour de l'année</div></li>
+          <li><span class="ck">✓</span><div><b>Temps et température exacts</b> sur chaque fiche — plus de ratés</div></li>
+          <li><span class="ck">✓</span><div><b>Index par ingrédient</b> : cuisinez avec ce que vous avez déjà</div></li>
+          <li><span class="ck">✓</span><div><b>9 chapitres</b> : viandes, poissons, légumes, entrées, plats, petit-déj, desserts, monde, surgelés</div></li>
+        </ul>
+        <div class="files">
+          <span>📘 Guide 146 pages</span><span>📊 Tableau T°</span><span>🗓 4 semaines de menus</span><span>🍫 50 desserts</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pricebox" style="margin-top:26px">
+      <ul class="stack">
+        <li><span>Guide 365 recettes pour friteuse à air — 146 pages (PDF)</span><span>38 €</span></li>
+        <li><span>Bonus 1 — Tableau temps &amp; températures</span><span>15 €</span></li>
+        <li><span>Bonus 2 — 4 semaines de menus</span><span>15 €</span></li>
+        <li><span>Bonus 3 — 50 desserts à la friteuse</span><span>17 €</span></li>
+        <li class="total"><span>Valeur totale</span><span><s>85 €</s> &nbsp;2,97 €</span></li>
+      </ul>
+
+      <div class="price"><span class="js-price">2,97</span> €<small>Paiement unique · accès à vie</small></div>
+
+      <a class="btn js-cta" href="#" style="margin-top:18px">Oui, je veux mes 365 recettes
+        <small>Téléchargement immédiat par email</small>
+      </a>
+      <p class="btn-sub">🔒 Paiement sécurisé · 📥 PDF envoyé en 1 minute · ↩️ Garantie 14 jours</p>
+
+      <div class="pay">
+        <span>VISA</span><span>MASTERCARD</span><span>PAYPAL</span><span>PAIEMENT SÉCURISÉ</span>
+      </div>
+    </div>
+
+    <div class="guarantee">
+      <div class="seal"><div><b>14</b><span>JOURS</span></div></div>
+      <p><b>Essai sans risque</b>
+        Si le guide ne vous plaît pas, écrivez-nous dans les 14 jours et nous vous remboursons
+        intégralement. Sans justification, sans discussion.</p>
+    </div>
+
+    <div class="note">
+      <b>À savoir :</b> ce produit est un <b>fichier PDF téléchargeable</b> — pas un livre papier.
+      Vous le recevez par email, immédiatement après le paiement.
+    </div>
+  </div>
+</section>
+
+<!-- ============================= APERÇUS ============================= -->
+<section id="apercu">
+  <div class="wrap">
+    <p class="eyebrow center">À l'intérieur</p>
+    <h2 class="center">Regardez avant d'acheter</h2>
+    <div class="divider"></div>
+    <p class="muted center" style="margin-top:14px">
+      Pas de promesse floue : voilà les vraies pages du livre, telles que vous les recevrez.
+    </p>
+
+    <div class="peeks">
+      <div class="peek">
+        <img src="assets/img/book/apercu-1.jpg" loading="lazy" decoding="async" width="1400" height="2089"
+             alt="Sommaire du guide 365 recettes avec les numéros de page">
+        <div class="cap"><b>Sommaire</b>9 chapitres, chaque recette numérotée.</div>
+      </div>
+      <div class="peek">
+        <img src="assets/img/book/apercu-2.jpg" loading="lazy" decoding="async" width="1400" height="2089"
+             alt="Une fiche recette avec portions, temps, température, ingrédients et astuce">
+        <div class="cap"><b>Une fiche recette</b>Portions, temps, °C, étapes, astuce.</div>
+      </div>
+      <div class="peek">
+        <img src="assets/img/book/apercu-3.jpg" loading="lazy" decoding="async" width="1400" height="2089"
+             alt="Tableau des temps et températures de cuisson pour 42 aliments">
+        <div class="cap"><b>Tableau T° &amp; temps</b>42 aliments, à imprimer.</div>
+      </div>
+      <div class="peek">
+        <img src="assets/img/book/apercu-4.jpg" loading="lazy" decoding="async" width="1400" height="2089"
+             alt="Les 4 semaines de menus avec la liste de courses">
+        <div class="cap"><b>4 semaines de menus</b>28 dîners + la liste de courses.</div>
+      </div>
+    </div>
+    <p class="peeks-note">146 pages au total · index par ingrédient inclus · PDF lisible sur téléphone, tablette et ordinateur</p>
+  </div>
+</section>
+
+<!-- ============================= EN CHIFFRES ============================= -->
+<section class="alt">
+  <div class="wrap">
+    <p class="eyebrow">Le guide en chiffres</p>
+    <h2>Ce qu'il y a vraiment dedans</h2>
+    <p class="small muted" style="margin-top:8px">Des chiffres vérifiables — pas des promesses.</p>
+
+    <div class="reviews">
+      <div class="review stat">
+        <div class="num">365</div>
+        <p>recettes, une pour chaque jour de l'année</p>
+      </div>
+      <div class="review stat">
+        <div class="num">146</div>
+        <p>pages mises en page, avec sommaire et index par ingrédient</p>
+      </div>
+      <div class="review stat">
+        <div class="num">42</div>
+        <p>aliments dans le tableau temps &amp; températures</p>
+      </div>
+      <div class="review stat">
+        <div class="num">28</div>
+        <p>dîners déjà choisis sur 4 semaines, listes de courses incluses</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= FAQ ============================= -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Questions fréquentes</p>
+    <h2>Tout ce qu'il faut savoir</h2>
+
+    <div style="margin-top:22px">
+      <details class="faq" open>
+        <summary>Est-ce un livre papier ou un fichier ?</summary>
+        <div class="ans"><p>C'est un <b>fichier PDF</b>, téléchargeable immédiatement après le paiement. Vous pouvez le lire sur téléphone, tablette ou ordinateur, et l'imprimer si vous le souhaitez. Aucun envoi postal.</p></div>
+      </details>
+      <details class="faq">
+        <summary>Quand vais-je recevoir le guide ?</summary>
+        <div class="ans"><p>Dans la minute qui suit votre paiement : un email vous est envoyé avec le lien de téléchargement. Pensez à vérifier vos spams. En cas de problème, le support répond sous 24 h.</p></div>
+      </details>
+      <details class="faq">
+        <summary>Je débute : est-ce adapté ?</summary>
+        <div class="ans"><p>Oui. Le guide commence par les bases (quantités, temps, température, remplissage du panier) puis propose des recettes du plus simple au plus complet.</p></div>
+      </details>
+      <details class="faq">
+        <summary>Les ingrédients sont-ils faciles à trouver ?</summary>
+        <div class="ans"><p>Oui : des ingrédients de supermarché, courants et économiques. Aucun ingrédient « spécial » obligatoire, et des variantes sont proposées.</p></div>
+      </details>
+      <details class="faq">
+        <summary>Cela fonctionne avec ma friteuse ?</summary>
+        <div class="ans"><p>Oui, quel que soit le modèle. Le guide indique les réglages de base et les adaptations pour les friteuses plus petites ou plus grandes.</p></div>
+      </details>
+      <details class="faq">
+        <summary>Y a-t-il un abonnement ?</summary>
+        <div class="ans"><p>Non. Vous payez une fois, et le guide reste accessible sans limite de durée. Aucun prélèvement mensuel, aucune surprise.</p></div>
+      </details>
+      <details class="faq">
+        <summary>Et si ça ne me plaît pas ?</summary>
+        <div class="ans"><p>Vous avez 14 jours pour demander un remboursement intégral, sans justification. Il suffit d'écrire au support.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= CTA FINAL ============================= -->
+<section class="dark center">
+  <div class="wrap">
+    <p class="eyebrow">Dernière étape</p>
+    <h2>Votre friteuse peut faire<br>bien plus que des frites</h2>
+    <p class="muted" style="margin:16px auto 24px;max-width:560px">
+      365 recettes, le temps et la température exacts, 3 bonus offerts.
+      Le tout pour le prix d'un café.
+    </p>
+    <a class="btn js-cta" href="#">Je veux le guide — <span class="js-price">2,97</span> €
+      <small>PDF immédiat · garantie 14 jours</small>
+    </a>
+    <p class="small" style="margin-top:14px;color:#a9c3b4">Paiement unique · aucun abonnement</p>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="links">
+      <a href="mentions-legales.html">Mentions légales</a>
+      <a href="cgv.html">CGV</a>
+      <a href="confidentialite.html">Politique de confidentialité</a>
+      <a href="#" id="manageCookies">Gérer mes cookies</a>
+      <a href="mailto:[VOTRE EMAIL]">Contact / Support</a>
+    </div>
+    <p><b id="brandFoot">Friteuse Facile</b> — guide numérique édité par [VOTRE NOM COMPLET], [VOTRE ADRESSE].
+       Contact : [VOTRE EMAIL]. Ventes opérées par Gumroad, Inc. (merchant of record) — TVA incluse, collectée et reversée par Gumroad.</p>
+    <p>Ce produit ne garantit pas de résultats spécifiques. Les résultats peuvent varier selon les modèles de friteuse et les ingrédients utilisés. Les photos sont illustratives. Ce site n'est pas affilié à Facebook, Instagram ou Meta Platforms, Inc.</p>
+    <p style="opacity:.65">© <span id="year">2026</span> — Tous droits réservés.</p>
+  </div>
+</footer>
+
+<!-- bandeau cookies (le pixel ne charge qu'après "Accepter") -->
+<div class="consent" id="consent" hidden>
+  <div class="consent-in">
+    <p><b>Cookies de mesure</b> — Le pixel Meta sert uniquement à mesurer l'efficacité de nos
+      publicités. Il n'est pas chargé sans votre accord. <a href="confidentialite.html">En savoir plus</a></p>
+    <div class="consent-btns">
+      <button type="button" class="c-no" id="cNo">Refuser</button>
+      <button type="button" class="c-yes" id="cYes">Accepter</button>
+    </div>
+  </div>
+</div>
+
+<!-- barre collante (mobile) -->
+<div class="stickybar" id="stickybar">
+  <div class="p"><b><span class="js-price">2,97</span> €</b><span>AUJOURD'HUI</span></div>
+  <a class="btn js-cta" href="#">Obtenir le guide</a>
+</div>
+
+<script>
+/* ============================================================
+   1) CONFIGURATION — MODIFIEZ CES 4 LIGNES UNIQUEMENT
+   ============================================================ */
+const CONFIG = {
+  // Lien Gumroad du produit (deja publie) : https://isabelkemp.gumroad.com/l/airfryer
+  // « wanted=true » ouvre directement le paiement (1 clic de moins = plus de ventes).
+  checkout : "https://isabelkemp.gumroad.com/l/airfryer?wanted=true",
+  price    : "2,97",                                            // ← prix affiché (doit être identique au checkout)
+  brand    : "Friteuse Facile",                                 // ← nom de votre marque
+  currency : "EUR",
+  pixelId  : ""            // ← collez votre Meta Pixel ID ici (ex. "1234567890123456")
+};
+
+/* 2) Prix + marque injectés partout */
+document.querySelectorAll('.js-price').forEach(function(el){ el.textContent = CONFIG.price; });
+var bn = document.getElementById('brandName'); if (bn) bn.textContent = CONFIG.brand;
+var bf = document.getElementById('brandFoot'); if (bf) bf.textContent = CONFIG.brand;
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* 3) Lien de paiement Gumroad + UTM transmis (attribution)
+   Gumroad : « wanted=true » ouvre directement le checkout, « referrer » force la
+   source affichée dans la fiche de vente, les utm_* restent dans le lien. */
+(function(){
+  var params = new URLSearchParams(location.search);
+  var passthrough = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid'];
+  function buildUrl(){
+    try{
+      var u = new URL(CONFIG.checkout);
+      if (!u.searchParams.has('wanted')) u.searchParams.set('wanted','true');
+      // source lisible dans Gumroad → Ventes → « Referrer »
+      var tag = [params.get('utm_source'), params.get('utm_medium'), params.get('utm_campaign')]
+                .filter(Boolean).join('_');
+      if (tag && !u.searchParams.has('referrer')) u.searchParams.set('referrer', tag);
+      passthrough.forEach(function(k){
+        if (params.get(k) && !u.searchParams.has(k)) u.searchParams.set(k, params.get(k));
+      });
+      return u.toString();
+    }catch(e){ return CONFIG.checkout; }
+  }
+  var url = buildUrl();
+  document.querySelectorAll('.js-cta').forEach(function(a){ a.href = url; });
+
+  /* 4) Le suivi du clic CTA est géré dans le bloc pixel (section 6),
+        après consentement cookies. Ne rien ajouter ici. */
+})();
+
+/* 5) Barre collante après 1 écran */
+(function(){
+  var bar = document.getElementById('stickybar'), off = document.getElementById('offre');
+  window.addEventListener('scroll', function(){
+    var past = window.scrollY > window.innerHeight * 0.7;
+    var inOffer = off && off.getBoundingClientRect().top < window.innerHeight * 0.55 &&
+                  off.getBoundingClientRect().bottom > 0;
+    bar.classList.toggle('on', past && !inOffer);
+  }, {passive:true});
+})();
+
+/* 6) Meta Pixel — chargé UNIQUEMENT après accord cookies (RGPD / CNIL).
+   L'ID se règle dans CONFIG.pixelId (une seule ligne). Vide = rien ne charge. */
+(function () {
+  var KEY = 'ff_cookie_consent';
+  var banner = document.getElementById('consent');
+  var loaded = false;
+
+  function getChoice(){
+    try { return localStorage.getItem(KEY); } catch (e) { return null; }
+  }
+  function setChoice(v){
+    try { localStorage.setItem(KEY, v); localStorage.setItem(KEY + '_at', String(Date.now())); } catch (e) {}
+  }
+
+  function loadPixel(){
+    if (loaded || !CONFIG.pixelId) return;
+    loaded = true;
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', CONFIG.pixelId);
+    fbq('track', 'PageView');
+    fbq('track', 'ViewContent', {
+      content_name: '365 Recettes Friteuse',
+      value: parseFloat(CONFIG.price.replace(',', '.')) || 2.97,
+      currency: 'EUR'
+    });
+  }
+
+  /* un clic CTA déjà enregistré avant le pixel est rejoué après le consentement */
+  var pendingCTA = [];
+  document.querySelectorAll('.js-cta').forEach(function(a){
+    a.addEventListener('click', function(){
+      var pos = a.closest('section') ? a.closest('section').id : 'top';
+      if (window.fbq) fbq('trackCustom', 'CTAClick', { position: pos });
+      else pendingCTA.push(pos);
+    });
+  });
+
+  function afterConsent(){
+    loadPixel();
+    pendingCTA.forEach(function(pos){ if (window.fbq) fbq('trackCustom', 'CTAClick', { position: pos }); });
+    pendingCTA = [];
+  }
+
+  function hideBanner(){
+    if (banner) banner.hidden = true;
+    document.body.classList.remove('cookie-open');
+  }
+  function showBanner(){
+    if (!banner) return;
+    banner.hidden = false;
+    document.body.classList.add('cookie-open');
+  }
+
+  var yes = document.getElementById('cYes');
+  var no  = document.getElementById('cNo');
+  if (yes) yes.addEventListener('click', function(){ setChoice('yes'); hideBanner(); afterConsent(); });
+  if (no)  no.addEventListener('click',  function(){ setChoice('no');  hideBanner(); });
+
+  var manage = document.getElementById('manageCookies');
+  if (manage) manage.addEventListener('click', function(e){
+    e.preventDefault(); showBanner();
+  });
+  var reset = document.getElementById('resetConsent');
+  if (reset) reset.addEventListener('click', function(e){
+    e.preventDefault(); showBanner();
+  });
+
+  var askAgain = /(?:^|[?&])cookies=1/.test(location.search);
+  var choice = getChoice();
+  if (askAgain) { showBanner(); }
+  else if (choice === 'yes') { afterConsent(); }
+  else if (choice === null) { showBanner(); }
+
+  /* expiration du choix : 6 mois (recommandation CNIL) */
+  try {
+    var when = parseInt(localStorage.getItem(KEY + '_at') || '0', 10);
+    if (when && Date.now() - when > 15552000000) {
+      localStorage.removeItem(KEY); localStorage.removeItem(KEY + '_at');
+      hideBanner(); showBanner();
+    }
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
