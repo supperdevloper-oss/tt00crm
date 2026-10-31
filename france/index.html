@@ -22,14 +22,16 @@
 ║     · CONFIG.price    → 2,97 €                                       ║
 ║     · CONFIG.brand    → Friteuse Facile                              ║
 ║                                                                      ║
-║  ⚠️  IL RESTE 3 CHOSES À FAIRE (Ctrl+F / Cmd+F)                       ║
+║  ⚠️  IL RESTE 2 CHOSES (Ctrl+F / Cmd+F)
 ║  1. Chercher « pixelId » → coller votre Meta Pixel ID entre les       ║
 ║     guillemets : pixelId : "1234567890123456".                        ║
-║     Laissé vide = aucun pixel chargé, aucune erreur.                  ║
-║  2. Chercher « VOTRE RAISON SOCIALE » (footer) → remplacer les 4      ║
-║     champs : raison sociale, adresse, SIRET/TVA, email de support.    ║
-║  3. (optionnel) Remplacer les visuels de assets/img/ par les vôtres,  ║
-║     en gardant les mêmes noms de fichiers.                            ║
+║     Vide = aucun pixel, et le bandeau cookies reste affiché.          ║
+║  2. Chercher « VOTRE NOM COMPLET » → remplacer dans les 4 fichiers :  ║
+║     index.html · mentions-legales.html · cgv.html · confidentialite   ║
+║     3 champs : [VOTRE NOM COMPLET] · [VOTRE ADRESSE] · [VOTRE EMAIL]    ║
+║                                                                      ║
+║  Pages légales déjà rédigées (aucun autre texte à écrire) :           ║
+║     mentions-legales.html · cgv.html · confidentialite.html           ║
 ╚══════════════════════════════════════════════════════════════════════╝
 -->
 
@@ -281,6 +283,28 @@ details.faq summary::after{
 details.faq[open] summary::after{content:'–'}
 details.faq .ans{padding:0 18px 16px;font-size:15px;color:var(--muted)}
 details.faq .ans p:last-child{margin:0}
+
+/* ---------- bandeau cookies ---------- */
+.consent{
+  position:fixed;left:0;right:0;bottom:0;z-index:90;background:var(--paper);
+  border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(20,40,30,.14);
+  padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+}
+.consent[hidden]{display:none}
+.consent-in{max-width:760px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.consent p{margin:0;flex:1 1 320px;font-size:12.5px;line-height:1.5;color:var(--muted)}
+.consent p b{color:var(--ink)}
+.consent a{color:var(--green-lt)}
+.consent-btns{display:flex;gap:8px;flex:0 0 auto}
+.consent button{
+  font:inherit;font-size:13px;font-weight:600;border-radius:9px;padding:9px 16px;
+  cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink);
+  transition:border-color .15s ease
+}
+.consent button:hover{border-color:var(--green-lt)}
+.consent .c-yes{background:var(--green);border-color:var(--green);color:#fff}
+.consent .c-yes:hover{background:var(--green-2);border-color:var(--green-2)}
+body.cookie-open .stickybar{display:none}
 
 /* ---------- footer ---------- */
 footer.site{background:#0b2a1d;color:#a9c3b4;padding:34px 0 110px;font-size:13px}
@@ -666,16 +690,30 @@ footer.site p{margin:0 0 8px}
 <footer class="site">
   <div class="wrap">
     <div class="links">
-      <a href="#">Mentions légales</a>
-      <a href="#">CGV</a>
-      <a href="#">Politique de confidentialité</a>
-      <a href="#">Contact / Support</a>
+      <a href="mentions-legales.html">Mentions légales</a>
+      <a href="cgv.html">CGV</a>
+      <a href="confidentialite.html">Politique de confidentialité</a>
+      <a href="#" id="manageCookies">Gérer mes cookies</a>
+      <a href="mailto:[VOTRE EMAIL]">Contact / Support</a>
     </div>
-    <p><b id="brandFoot">Friteuse Facile</b> — produit numérique édité par [VOTRE RAISON SOCIALE], [ADRESSE], [SIRET/TVA]. Contact : [EMAIL SUPPORT].</p>
+    <p><b id="brandFoot">Friteuse Facile</b> — guide numérique édité par [VOTRE NOM COMPLET], [VOTRE ADRESSE].
+       Contact : [VOTRE EMAIL]. Ventes opérées par Gumroad, Inc. (merchant of record) — TVA incluse, collectée et reversée par Gumroad.</p>
     <p>Ce produit ne garantit pas de résultats spécifiques. Les résultats peuvent varier selon les modèles de friteuse et les ingrédients utilisés. Les photos sont illustratives. Ce site n'est pas affilié à Facebook, Instagram ou Meta Platforms, Inc.</p>
     <p style="opacity:.65">© <span id="year">2026</span> — Tous droits réservés.</p>
   </div>
 </footer>
+
+<!-- bandeau cookies (le pixel ne charge qu'après "Accepter") -->
+<div class="consent" id="consent" hidden>
+  <div class="consent-in">
+    <p><b>Cookies de mesure</b> — Le pixel Meta sert uniquement à mesurer l'efficacité de nos
+      publicités. Il n'est pas chargé sans votre accord. <a href="confidentialite.html">En savoir plus</a></p>
+    <div class="consent-btns">
+      <button type="button" class="c-no" id="cNo">Refuser</button>
+      <button type="button" class="c-yes" id="cYes">Accepter</button>
+    </div>
+  </div>
+</div>
 
 <!-- barre collante (mobile) -->
 <div class="stickybar" id="stickybar">
@@ -726,12 +764,8 @@ document.getElementById('year').textContent = new Date().getFullYear();
   var url = buildUrl();
   document.querySelectorAll('.js-cta').forEach(function(a){ a.href = url; });
 
-  /* 4) Suivi : ViewContent + clic CTA (le Purchase se fait côté checkout) */
-  document.querySelectorAll('.js-cta').forEach(function(a){
-    a.addEventListener('click', function(){
-      if (window.fbq) fbq('trackCustom', 'CTAClick', { position: a.closest('section') ? a.closest('section').id : 'top' });
-    });
-  });
+  /* 4) Le suivi du clic CTA est géré dans le bloc pixel (section 6),
+        après consentement cookies. Ne rien ajouter ici. */
 })();
 
 /* 5) Barre collante après 1 écran */
@@ -745,23 +779,91 @@ document.getElementById('year').textContent = new Date().getFullYear();
   }, {passive:true});
 })();
 
-/* 6) Meta Pixel — collez votre ID dans CONFIG.pixelId (une seule ligne a changer)
-   Si pixelId est vide, rien n'est charge : aucune requete, aucune erreur.
-   Le "Purchase" n'est PAS ici : c'est Gumroad qui l'envoie depuis sa fiche produit. */
+/* 6) Meta Pixel — chargé UNIQUEMENT après accord cookies (RGPD / CNIL).
+   L'ID se règle dans CONFIG.pixelId (une seule ligne). Vide = rien ne charge. */
 (function () {
-  if (!CONFIG.pixelId) return;
-  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-  document,'script','https://connect.facebook.net/en_US/fbevents.js');
-  fbq('init', CONFIG.pixelId);
-  fbq('track', 'PageView');
-  fbq('track', 'ViewContent', {
-    content_name: '365 Recettes Friteuse',
-    value: parseFloat(CONFIG.price.replace(',', '.')) || 2.97,
-    currency: 'EUR'
+  var KEY = 'ff_cookie_consent';
+  var banner = document.getElementById('consent');
+  var loaded = false;
+
+  function getChoice(){
+    try { return localStorage.getItem(KEY); } catch (e) { return null; }
+  }
+  function setChoice(v){
+    try { localStorage.setItem(KEY, v); localStorage.setItem(KEY + '_at', String(Date.now())); } catch (e) {}
+  }
+
+  function loadPixel(){
+    if (loaded || !CONFIG.pixelId) return;
+    loaded = true;
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', CONFIG.pixelId);
+    fbq('track', 'PageView');
+    fbq('track', 'ViewContent', {
+      content_name: '365 Recettes Friteuse',
+      value: parseFloat(CONFIG.price.replace(',', '.')) || 2.97,
+      currency: 'EUR'
+    });
+  }
+
+  /* un clic CTA déjà enregistré avant le pixel est rejoué après le consentement */
+  var pendingCTA = [];
+  document.querySelectorAll('.js-cta').forEach(function(a){
+    a.addEventListener('click', function(){
+      var pos = a.closest('section') ? a.closest('section').id : 'top';
+      if (window.fbq) fbq('trackCustom', 'CTAClick', { position: pos });
+      else pendingCTA.push(pos);
+    });
   });
+
+  function afterConsent(){
+    loadPixel();
+    pendingCTA.forEach(function(pos){ if (window.fbq) fbq('trackCustom', 'CTAClick', { position: pos }); });
+    pendingCTA = [];
+  }
+
+  function hideBanner(){
+    if (banner) banner.hidden = true;
+    document.body.classList.remove('cookie-open');
+  }
+  function showBanner(){
+    if (!banner) return;
+    banner.hidden = false;
+    document.body.classList.add('cookie-open');
+  }
+
+  var yes = document.getElementById('cYes');
+  var no  = document.getElementById('cNo');
+  if (yes) yes.addEventListener('click', function(){ setChoice('yes'); hideBanner(); afterConsent(); });
+  if (no)  no.addEventListener('click',  function(){ setChoice('no');  hideBanner(); });
+
+  var manage = document.getElementById('manageCookies');
+  if (manage) manage.addEventListener('click', function(e){
+    e.preventDefault(); showBanner();
+  });
+  var reset = document.getElementById('resetConsent');
+  if (reset) reset.addEventListener('click', function(e){
+    e.preventDefault(); showBanner();
+  });
+
+  var askAgain = /(?:^|[?&])cookies=1/.test(location.search);
+  var choice = getChoice();
+  if (askAgain) { showBanner(); }
+  else if (choice === 'yes') { afterConsent(); }
+  else if (choice === null) { showBanner(); }
+
+  /* expiration du choix : 6 mois (recommandation CNIL) */
+  try {
+    var when = parseInt(localStorage.getItem(KEY + '_at') || '0', 10);
+    if (when && Date.now() - when > 15552000000) {
+      localStorage.removeItem(KEY); localStorage.removeItem(KEY + '_at');
+      hideBanner(); showBanner();
+    }
+  } catch (e) {}
 })();
 </script>
 </body>
