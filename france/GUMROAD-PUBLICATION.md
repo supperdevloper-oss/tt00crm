@@ -179,18 +179,63 @@ checkout : "https://اسمك.gumroad.com/l/365-recettes-friteuse-air?wanted=true
 
 ---
 
-## 6. الإيميل اللي كيمشي للزبون (Receipt message)
+## 6. تبويب **Receipt** — 3 خانات، و1 منهم ما كتحتاجوش
 
-Gumroad → Settings → **Receipt** → «Message to buyers»:
+التبويب Receipt كيخص **غير** الإيميل اللي كيوصل للزبون من بعد الشراء.
+فيه 3 خانات:
 
+| الخانة | واجبة؟ | علاش |
+|---|---|---|
+| **Button text** (26 حرف) | ✅ **إيّه** | الافتراضي هو «View content» — غامض، كيبان بحال شي رابط. بدّلو |
+| **Custom message** (500 حرف) | ✅ **إيّه** | هادي الفرصة الوحيدة باش تهضر مع الزبون بعد الشراء. كتقلل الـrefunds |
+| **Failed payment message** | ❌ **لا** | كتخدم غير مع الاشتراكات (recurring). المنتج ديالك خلاص واحد (paiement unique) — خليها خاوية |
+
+### 6.1 Button text — الصقها (20/26 حرف)
+```
+Télécharger le guide
+```
+> «View content» كتعني «شوف المحتوى». الزبون شرا، بغى **يحمّل**. الكلمة «Télécharger» كتحيّد أي تردد.
+
+### 6.2 Custom message — الصقها (409/500 حرف)
 ```
 Merci pour votre achat !
 
-Vos 4 fichiers sont juste au-dessus : le guide de 146 pages et les 3 bonus.
-Commencez par la page 4 (« 12 règles d'or ») — c'est 5 minutes et ça change tout.
+Votre guide est prêt : cliquez sur le bouton pour télécharger les 4 PDF (146 pages + 3 bonus).
 
-Un souci ? Répondez directement à cet email, je réponds personnellement.
+Commencez par le tableau Temps & Températures : c'est la page qui fait réussir toutes les autres recettes.
+
+Un souci de téléchargement ? Répondez à cet email, réponse sous 48h.
+
+Garantie 14 jours : si le guide ne vous convient pas, répondez à cet email, remboursement sans justification.
 ```
+
+**علاش هاد النص بالضبط:**
+- « cliquez sur le bouton » — كيشرح للزبون فين كيحمّل (بزاف كيتلخبطو)
+- « tableau Temps & Températures » — كيعطيه **نجاح سريع** فأول 5 دقايق ⇒ ما كيطلبش refund
+- « Remarque sous 48h » — كيخلي باب التواصل محلول قبل ما يمشي يشكي فـ Facebook
+- « Garantie 14 jours » — كيريحو، وكيقلل الشكاوى
+
+### 6.3 Failed payment message
+خليها **خاوية**. ما عندكش اشتراك، هاد الرسالة ما غادي تتبعت حتى مرة.
+
+---
+
+## 6 bis. 🔴 سميتك و إيميلك بانو فالإيصال — بدّلهم دابا
+
+فـpreview الإيصال كيبان:
+> From **pablo monika** &lt;noreply@customers.gumroad.com&gt;
+> Contact **pablo monika** at **airfryer@admin.com**
+
+هادو **جوج** ما كيتصلحوش من تبويب Receipt. كيتبدلو من **Settings**:
+
+| شنو | فين | علاش مهم |
+|---|---|---|
+| **Profile name** → `Friteuse Facile` | Settings → **Profile** → Profile name | كيبان فالإيصال **وفكشف الحساب البنكي** ديال الزبون. «pablo monika» فكشف بنكي = الزبون كيظنها fraud وكيطّلب chargeback |
+| **Support email** → إيميل حقيقي | Settings → **Support email** | كيبان فالفوتر ديال الإيصال. `airfryer@admin.com` كيبان مزيف ⇒ صفر ثقة |
+
+> إذا خليتي **Support email** خاوي، Gumroad كيستعمل الإيميل ديال الحساب. حط إيميل خدام ومقروء (مثلاً `contact@easymeatrecipe.com`).
+
+**ملاحظة على subject:** «You bought …» بالإنجليزية وكتبقى هكاك — Gumroad ما كيخليكش تبدل السؤال ديال الإيصال. ماشي مشكل: الجسم كامل بالفرنسية.
 
 ---
 
