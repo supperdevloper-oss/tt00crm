@@ -6,6 +6,20 @@
 
 ---
 
+## 0. 🔴 الرابط الجديد — username تبدل
+
+| الرابط | الحالة |
+|---|---|
+| `isabelkemp.gumroad.com/l/airfryer` | ❌ **Page not found** (username تبدل) |
+| **`easymeatrecipe.gumroad.com/l/airfryer`** | ✅ خدام |
+| `easymeatrecipe.gumroad.com/l/airfryer?wanted=true` | ✅ كيدخل مباشرة للـcheckout |
+
+**مالقيتيش الصفحة حيت هادا السبب.** الـ`index.html` فالدليل تحدّث (L731).
+
+> 🛑 ما تعاودش تبدل الـusername. كل تبديل كيقتل كل الروابط المنشورة.
+
+---
+
 ## 1. المعلومات الأساسية (نسخ/لصق)
 
 | الخانة فـGumroad | القيمة |
@@ -238,10 +252,10 @@ https://gumroad.com/settings/profile
 
 ### الطريقة 3 — من خانة Username
 فـ**Settings** (التبويب اللول) كاينة خانة **Username** فوق. الاسم و الـusername جوج حوايج مختالفين:
-- **Username** = الرابط: `isabelkemp.gumroad.com`
+- **Username** = الرابط: `easymeatrecipe.gumroad.com`
 - **Profile name** = الاسم اللي كيبان فالإيصال وفكشف البنك ← هادا اللي كتحتاج تبدل
 
-> ⚠️ إلى بدّلتي الـusername، **الرابط ديال المنتج كيتبدل معاه** ومولّي `isabelkemp.gumroad.com/l/airfryer` كيموت ⇒ اللاندينغ كلها كتحيل على 404. **ما تبدلوش.** بدّل غير الـ**Profile name**.
+> ⚠️ إلى بدّلتي الـusername، **الرابط ديال المنتج كيتبدل معاه** ومولّي `easymeatrecipe.gumroad.com/l/airfryer` كيموت ⇒ اللاندينغ كلها كتحيل على 404. **ما تبدلوش.** بدّل غير الـ**Profile name**.
 
 ### Support email — ماشي فـTeam، ماشي فـProfile
 فـ**Settings** (التبويب اللول، فوق) كاينة خانة **Support email**. هي اللي كتعطي `airfryer@admin.com` فالإيصال. حط: `contact@easymeatrecipe.com`

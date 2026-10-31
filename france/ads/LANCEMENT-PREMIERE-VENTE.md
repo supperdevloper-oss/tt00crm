@@ -11,60 +11,140 @@ Landing : `https://www.easymeatrecipe.com/Guide/`
 
 # 0. 🔴 CE QUI BLOQUE LE LANCEMENT (à faire dans cet ordre)
 
-## 0.1 — La page en ligne n'est PAS à jour · 5 min · BLOQUANT
+## 0.0 — ✅ Le bon lien : `easymeatrecipe.gumroad.com` (username changé)
 
-`fetch_page` sur `https://www.easymeatrecipe.com/Guide/` renvoie encore :
+Vérifié le 31/10 :
 
-| Ce qui est en ligne | Ce qui doit l'être |
+| URL testée | Résultat |
 |---|---|
-| « 30 jours » (FAQ + bouton final) | « 14 jours » |
-| aucune bannière cookies | bannière + pixel conditionné |
-| 0 page légale | `mentions-legales.html`, `cgv.html`, `confidentialite.html` |
+| `isabelkemp.gumroad.com/l/airfryer` | ❌ **Page not found** |
+| `easymeatrecipe.gumroad.com/l/airfryer` | ✅ 200 — prix 2,97, 5 visuels, 6 détails, vendeur « Friteuse Facile » |
+| `…l/airfryer?wanted=true` | ✅ ouvre directement le checkout |
 
-⇒ **La version corrigée n'a pas été uploadée.** Sur HostGator, cPanel → Gestionnaire de fichiers →
-`public_html/Guide/` → uploader le contenu de `LANDING-SOUS-DOSSIER.zip` (dossier `365/`):
-les 5 fichiers `.html` + `assets/css/legal.css`.
+⇒ **Le username Gumroad a été changé en `easymeatrecipe`.** Tous les anciens liens
+`isabelkemp` sont morts. Le `index.html` du dépôt est déjà corrigé (L731) :
 
-**Contrôle après upload** — ouvrir ces 4 URL, chacune doit répondre :
+```js
+checkout : "https://easymeatrecipe.gumroad.com/l/airfryer?wanted=true",
 ```
-https://www.easymeatrecipe.com/Guide/
-https://www.easymeatrecipe.com/Guide/merci.html
-https://www.easymeatrecipe.com/Guide/mentions-legales.html
-https://www.easymeatrecipe.com/Guide/cgv.html
-https://www.easymeatrecipe.com/Guide/confidentialite.html
-```
-Puis **Ctrl+F « 30 jours »** sur la page d'accueil : il ne doit plus rien trouver.
 
-Téléchargement : `https://github.com/supperdevloper-oss/tt00crm/raw/arena/5faa1edd-tt00crm/france/LANDING-SOUS-DOSSIER.zip`
+> 🛑 **Ne rechange plus jamais le username.** Chaque changement casse tous les liens
+> déjà publiés, les emails envoyés et les pubs en cours.
+
+---
+
+## 0.1 — Ta copie locale de `index.html` est une VIEILLE version · 3 min
+
+Ta capture VS Code montre, aux lignes 669-674 :
+
+```html
+<a href="#">Mentions légales</a>            ← ancien
+<a href="#">CGV</a>
+<p>… édité par [Friteuse Facile], . Contact : [contact@easymeatrecipe.com].</p>
+        ↑ nom de marque au lieu de la raison sociale, adresse vide, email entre crochets
+```
+
+La version à jour contient :
+
+```html
+<a href="mentions-legales.html">Mentions légales</a>
+<a href="cgv.html">CGV</a>
+<a href="confidentialite.html">Politique de confidentialité</a>
+<a href="#" id="manageCookies">Gérer mes cookies</a>
+<a href="mailto:[VOTRE EMAIL]">Contact / Support</a>
+<p><b id="brandFoot">Friteuse Facile</b> — guide numérique édité par [VOTRE NOM COMPLET],
+   [VOTRE ADRESSE]. Contact : [VOTRE EMAIL]. Ventes opérées par Gumroad, Inc. …</p>
+```
+
+⇒ **Ne corrige pas ta vieille copie à la main : re-télécharge le fichier.**
+
+```
+https://github.com/supperdevloper-oss/tt00crm/raw/arena/5faa1edd-tt00crm/france/index.html
+```
+
+Puis dans ce fichier, seules **2 choses** restent à faire (Ctrl+F) :
+`pixelId` (ligne 697) et les 3 champs `[VOTRE …]` (footer + 3 pages légales).
+
+> ⚠️ Le footer ne doit **jamais** contenir le nom de marque à la place de la raison sociale :
+> la loi française exige l'**identité réelle** de l'éditeur.
 
 ---
 
 ## 0.2 — Passer le produit Gumroad en EUR · 3 min · BLOQUANT
 
-Aujourd'hui le checkout affiche **$2.97**. La pub annonce **2,97 €**. En France, un prix
-qui ne correspond pas = `prix trompeur` (DGCCRF) **et** motif de refus Meta.
+Test réel du checkout (`gumroad.com/checkout?product=kidcfk`) :
 
-Gumroad : **Product → Edit → Price → devise = EUR**.
-> Gumroad le permet : « *Pour la plupart des produits, vous pouvez changer la devise d'affichage
-> après création* » (Help 46). Un ebook n'est ni un abonnement ni un bundle → autorisé.
+```
+Sous-total : US$2.97
+Devise     : $ (US Dollars) — detected
+             £ · ¥ · ₹ · A$ · CAD$ · HK$ · SGD$ · NT$ · NZ$ · R$ · ZAR · CHF …
+             ⚠️ PAS d'EUR dans la liste
+```
 
-**Vérification** : ouvrir `https://isabelkemp.gumroad.com/l/airfryer` en navigation privée.
-Le prix doit afficher **2,97 €**. S'il affiche encore `$2.97`, ne lance pas la pub.
+⇒ Un acheteur français paie **2,97 $ (~2,70 €)**, pas 2,97 €. La pub annonce « 2,97 € ».
+
+**Correctif :** Product → Edit → section **Pricing** → clique sur le symbole **`$`**
+à gauche du montant `2.97` → choisis **EUR / €** → Save.
+Le montant devient `2,97 €` et le checkout facture en euros.
+
+**Contrôle :** recharge `https://easymeatrecipe.gumroad.com/l/airfryer` en navigation privée.
+Tu dois lire **2,97 €** (et non `$2.97`).
+
+> Si le sélecteur de devise n'apparaît pas ou si EUR est absent, écris à
+> `support@gumroad.com` : « *Please change the display currency of my product
+> (permalink: airfryer) from USD to EUR.* » — c'est fait en 24 h.
 
 ---
 
-## 0.3 — Uniformiser la garantie : 14 jours partout · déjà écrit
+## 0.3 — La garantie dit 30 jours à 3 endroits sur Gumroad · 4 min · BLOQUANT
 
-| Endroit | Valeur | État |
+Ta fiche produit affiche :
+
+| Endroit sur Gumroad | Ce qui est écrit | À mettre |
 |---|---|---|
-| Landing (CTA, encadré, FAQ) | 14 jours | ✅ |
-| `cgv.html` art. 7 + `mentions-legales.html` art. 6 | 14 jours | ✅ |
-| Gumroad · Product → Refund policy | **à régler sur 14** | ⬜ |
-| Gumroad · réglage par défaut du compte | 30 jours → **14** | ⬜ |
+| Champ **Description**, section `GARANTIE` | « **30 jours.** Si le guide… » | **14 jours** |
+| Section **Settings → Refund period** | `30-day money back guarantee` | **14 days** (si l'option existe) |
+| Champ **Additional details → Garantie** | « 14 jours » ✅ | déjà bon |
 
-> Gumroad affiche un badge « 30-day money back guarantee » sur toute fiche produit.
-> Ce badge est **plus favorable** que ta garantie : ce n'est pas une contradiction, c'est un bonus.
-> Mais s'il est réglable, mets 14 pour que la promesse soit identique partout.
+Et la landing (version à jour) dit **14 jours** partout.
+
+> ⚠️ Une garantie annoncée à 30 jours dans la description **engage juridiquement** :
+> un client pourra réclamer un remboursement au jour 25 et tu devras l'accepter.
+> Aligne tout sur **14 jours** avant de dépenser un euro en publicité.
+
+**Texte corrigé à coller dans Description** (remplace le bloc `GARANTIE` seul) :
+```
+GARANTIE
+14 jours. Si le guide ne vous sert pas, répondez à l'email de confirmation : remboursement,
+sans justification.
+```
+
+---
+
+## 0.3 bis — La page en ligne n'est pas la bonne version · 5 min · BLOQUANT
+
+`fetch_page` sur `https://www.easymeatrecipe.com/Guide/` renvoie encore :
+
+| En ligne aujourd'hui | Attendu |
+|---|---|
+| « 30 jours » (FAQ + bouton final) | « 14 jours » |
+| aucune bannière cookies | bandeau + pixel conditionné |
+| liens légaux `href="#"` | 3 pages réelles |
+| prix 2,97 € | ✅ déjà bon |
+
+⇒ La version corrigée **n'est pas en ligne**. cPanel → `public_html/Guide/` →
+uploader le contenu du pack (5 fichiers `.html` + `assets/css/legal.css`).
+
+**4 URL à tester après upload** (toutes doivent répondre) :
+```
+https://www.easymeatrecipe.com/Guide/
+https://www.easymeatrecipe.com/Guide/mentions-legales.html
+https://www.easymeatrecipe.com/Guide/cgv.html
+https://www.easymeatrecipe.com/Guide/confidentialite.html
+```
+Puis **Ctrl+F « 30 jours »** sur l'accueil : plus rien ne doit sortir.
+
+> Sans HTTPS valide sur ces pages, Meta refuse la pub (et le pixel ne part pas).
 
 ---
 
@@ -287,15 +367,17 @@ Sans lui, tu ne pourras jamais dépasser ~10 $/jour de budget, quel que soit le 
 ## Récapitulatif en une page
 
 ```
-[ ] 1. Uploader la landing corrigée (HostGator)        5 min
-[ ] 2. Passer Gumroad en EUR (2,97 €)                  3 min
-[ ] 3. Refund policy = 14 jours                        2 min
-[ ] 4. Pixel ID dans index.html + Settings Gumroad     5 min
-[ ] 5. Vérifier les 4 PDF dans Content                 2 min
-[ ] 6. Achat test avec code 100 %                      5 min
-[ ] 7. Vérifier « Purchase » dans Events Manager       2 min
-[ ] 8. Créer la campagne (Ventes, 15 $/j, FR 25-65 F)  10 min
-[ ] 9. Publier et NE PLUS TOUCHER pendant 72 h
+[ ] 1. Re-télécharger index.html (version à jour)       2 min
+[ ] 2. Gumroad : devise -> EUR (2,97 €)                 3 min
+[ ] 3. Gumroad : Description -> GARANTIE 14 jours       3 min
+[ ] 4. Gumroad : Refund period -> 14 days               1 min
+[ ] 5. Pixel ID dans index.html + Settings Gumroad      5 min
+[ ] 6. Uploader la landing sur HostGator                5 min
+[ ] 7. Vérifier les 4 PDF dans Content                  2 min
+[ ] 8. Achat test avec code 100 %                       5 min
+[ ] 9. Vérifier « Purchase » dans Events Manager        2 min
+[ ] 10. Créer la campagne (Ventes, 15 $/j, FR 25-65 F)  10 min
+[ ] 11. Publier et NE PLUS TOUCHER pendant 72 h
 ```
 
-**Total : ~35 minutes. Puis 3 jours d'attente.**
+**Total : ~40 minutes. Puis 3 jours d'attente.**
