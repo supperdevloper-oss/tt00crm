@@ -17,19 +17,19 @@
 
 <!--
 ╔══════════════════════════════════════════════════════════════════════╗
-║  ⚠️  À PERSONNALISER AVANT MISE EN LIGNE (11 éléments)               ║
+║  ✅ DÉJÀ CONFIGURÉ — NE PAS TOUCHER                                  ║
+║     · CONFIG.checkout → votre lien Gumroad                           ║
+║     · CONFIG.price    → 2,97 €                                       ║
+║     · CONFIG.brand    → Friteuse Facile                              ║
 ║                                                                      ║
-║  1. « CONFIG.checkout » → votre lien Gumroad (produit publié)         ║
-║  2. « CONFIG.price »    → votre prix (2,97 par défaut)                   ║
-║  3. « CONFIG.brand »    → nom de votre marque                         ║
-║  4. Chercher « TODO-PIXEL » → coller votre Meta Pixel                 ║
-║  5. Chercher « TODO-PREUVE » → remplacer par votre chiffre réel       ║
-║  6. Chercher « TODO-AVIS »  → remplacer par de vrais avis clients     ║
-║  7. assets/img/*  → remplacer par VOS photos (mêmes noms de fichiers) ║
-║  8. Supprimer la ligne « Exemples de mise en page » après les avis    ║
-║  9. Mettre à jour les mentions légales (footer)                       ║
-║ 10. Vérifier le prix affiché = prix réel dans le checkout             ║
-║ 11. Héberger en HTTPS (obligatoire pour le pixel et la confiance)     ║
+║  ⚠️  IL RESTE 3 CHOSES À FAIRE (Ctrl+F / Cmd+F)                       ║
+║  1. Chercher « pixelId » → coller votre Meta Pixel ID entre les       ║
+║     guillemets : pixelId : "1234567890123456".                        ║
+║     Laissé vide = aucun pixel chargé, aucune erreur.                  ║
+║  2. Chercher « VOTRE RAISON SOCIALE » (footer) → remplacer les 4      ║
+║     champs : raison sociale, adresse, SIRET/TVA, email de support.    ║
+║  3. (optionnel) Remplacer les visuels de assets/img/ par les vôtres,  ║
+║     en gardant les mêmes noms de fichiers.                            ║
 ╚══════════════════════════════════════════════════════════════════════╝
 -->
 
@@ -253,6 +253,9 @@ section.dark .muted{color:#b9cfc2}
 /* ---------- avis ---------- */
 .reviews{display:grid;gap:14px;margin-top:22px}
 .review{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px}
+.review.stat{display:flex;align-items:center;gap:16px}
+.review.stat .num{font-family:'Oswald',sans-serif;font-size:38px;line-height:1;color:var(--orange);min-width:84px}
+.review.stat p{margin:0;font-size:14.5px;color:var(--muted)}
 .review .who{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .review .av{
   width:42px;height:42px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;
@@ -331,8 +334,7 @@ footer.site p{margin:0 0 8px}
     </p>
 
     <div class="trustline">
-      <span class="stars">★★★★★</span>
-      <span id="preuve">Déjà <b>des milliers</b> de cuisiniers amateurs l'utilisent chaque semaine<!-- TODO-PREUVE : remplacez par votre chiffre réel et vérifiable --></span>
+      <span id="preuve"><b>Édition 2026</b> · 365 recettes · 146 pages · 3 bonus inclus</span>
     </div>
 
     <a class="btn js-cta" href="#offre" style="margin-top:18px">Je veux les 365 recettes — <span class="js-price">2,97</span> €
@@ -444,7 +446,7 @@ footer.site p{margin:0 0 8px}
         <div class="body">
           <span class="tag">BONUS 1</span>
           <h4>Tableau temps &amp; températures</h4>
-          <p>Les réglages de 40 aliments, sur une page à imprimer et à coller sur la porte de la friteuse.</p>
+          <p>Les réglages de 42 aliments, sur une page à imprimer et à coller sur la porte de la friteuse.</p>
           <div class="val"><s>15 €</s><b>OFFERT</b></div>
         </div>
       </div>
@@ -577,28 +579,29 @@ footer.site p{margin:0 0 8px}
   </div>
 </section>
 
-<!-- ============================= AVIS ============================= -->
+<!-- ============================= EN CHIFFRES ============================= -->
 <section class="alt">
   <div class="wrap">
-    <p class="eyebrow">Ils l'utilisent</p>
-    <h2>Ce qu'en disent nos lecteurs</h2>
-    <p class="small muted" style="margin-top:8px">Exemples de mise en page — remplacez par de vrais avis clients avant publication.</p>
+    <p class="eyebrow">Le guide en chiffres</p>
+    <h2>Ce qu'il y a vraiment dedans</h2>
+    <p class="small muted" style="margin-top:8px">Des chiffres vérifiables — pas des promesses.</p>
 
     <div class="reviews">
-      <div class="review">
-        <div class="who"><div class="av">SL</div><div><b>Sophie L.</b><span>Lyon · cliente vérifiée</span></div></div>
-        <div class="stars">★★★★★</div>
-        <p>« J'avais arrêté la friteuse parce que tout sortait sec. Depuis le tableau des températures, je m'en sers tous les jours. Le poulet est enfin juteux. »</p>
+      <div class="review stat">
+        <div class="num">365</div>
+        <p>recettes, une pour chaque jour de l'année</p>
       </div>
-      <div class="review">
-        <div class="who"><div class="av">MB</div><div><b>Marc B.</b><span>Nantes · client vérifié</span></div></div>
-        <div class="stars">★★★★★</div>
-        <p>« Les recettes expliquent tout : quantité, temps, température. Plus besoin de chercher pendant 20 minutes sur internet. »</p>
+      <div class="review stat">
+        <div class="num">146</div>
+        <p>pages mises en page, avec sommaire et index par ingrédient</p>
       </div>
-      <div class="review">
-        <div class="who"><div class="av">AD</div><div><b>Amina D.</b><span>Lille · cliente vérifiée</span></div></div>
-        <div class="stars">★★★★☆</div>
-        <p>« Trés bien fait, j'aurais aimé encore plus de desserts. Mais les 3 bonus sont un vrai plus, surtout celui des soupes. »</p>
+      <div class="review stat">
+        <div class="num">42</div>
+        <p>aliments dans le tableau temps &amp; températures</p>
+      </div>
+      <div class="review stat">
+        <div class="num">28</div>
+        <p>dîners déjà choisis sur 4 semaines, listes de courses incluses</p>
       </div>
     </div>
   </div>
@@ -689,7 +692,8 @@ const CONFIG = {
   checkout : "https://isabelkemp.gumroad.com/l/airfryer?wanted=true",
   price    : "2,97",                                            // ← prix affiché (doit être identique au checkout)
   brand    : "Friteuse Facile",                                 // ← nom de votre marque
-  currency : "EUR"
+  currency : "EUR",
+  pixelId  : ""            // ← collez votre Meta Pixel ID ici (ex. "1234567890123456")
 };
 
 /* 2) Prix + marque injectés partout */
@@ -740,18 +744,24 @@ document.getElementById('year').textContent = new Date().getFullYear();
   }, {passive:true});
 })();
 
-/* 6) Meta Pixel — TODO-PIXEL : collez votre ID et décommentez
-   (ou collez le snippet complet fourni par Meta à cet endroit)
-------------------------------------------------------------------------
-!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', 'VOTRE_PIXEL_ID');            // ← ID du pixel
-fbq('track', 'PageView');
-fbq('track', 'ViewContent', { content_name: '365 Recettes Friteuse', value: 9.00, currency: 'EUR' });
------------------------------------------------------------------------- */
+/* 6) Meta Pixel — collez votre ID dans CONFIG.pixelId (une seule ligne a changer)
+   Si pixelId est vide, rien n'est charge : aucune requete, aucune erreur.
+   Le "Purchase" n'est PAS ici : c'est Gumroad qui l'envoie depuis sa fiche produit. */
+(function () {
+  if (!CONFIG.pixelId) return;
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', CONFIG.pixelId);
+  fbq('track', 'PageView');
+  fbq('track', 'ViewContent', {
+    content_name: '365 Recettes Friteuse',
+    value: parseFloat(CONFIG.price.replace(',', '.')) || 2.97,
+    currency: 'EUR'
+  });
+})();
 </script>
 </body>
 </html>
