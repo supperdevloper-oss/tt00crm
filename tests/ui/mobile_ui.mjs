@@ -21,7 +21,7 @@ try {
   ({createRoot} = await import("react-dom/client"));
   ({act} = await import("react-dom/test-utils"));
   ({JSDOM} = await import("jsdom"));
-  jsxRuntime = {jsx: (...a) => React.createElement(...a)};
+  jsxRuntime = await import("react/jsx-runtime");
 } catch (e) {
   console.log("SKIP  mobile UI test (run: cd tests/ui && npm i)");
   process.exit(0);
@@ -74,7 +74,12 @@ const er = v => String(v || "").trim().toLowerCase();
 const Ap = {};
 function wo(e, n) { const a = er(e); if (!a) return null; const i = Ap[a] || a; const c = (n || []).find(f => er(f.nom) === i); return c ? c.prix : null; }
 const Ll = () => CITIES;
-const usePvCatalog = () => [{nom: "Slimminge Patch"}, {nom: "Good-Fair"}, {nom: "ParaVida"}];
+const usePvCatalog = () => [{nom: "Slimminge Patch", prix: 350}, {nom: "Good-Fair", prix: 250}, {nom: "ParaVida", prix: 300}];
+function Pk({value, list, onChange, className}) {
+  const opts = (list || []).map(p => p.nom);
+  return jsx("select", {value: value || "", onChange: e => onChange && onChange(e.target.value), className: className || "",
+    children: [jsx("option", {key: "o0", value: "", children: "— اختار المنتوج —"})].concat(opts.map(n => jsx("option", {key: n, value: n, children: n})))});
+}
 const __pvAdminMobile = () => true;
 const ORDER_STATE = {orders: ${JSON.stringify(orders)}};
 const CALLS = {add: [], upd: [], publish: []};
@@ -90,7 +95,7 @@ const kr = () => USER;
 
 const modFile = path.join(HERE, "_mobile_component.mjs");
 fs.writeFileSync(modFile,
-  'import React from "react";\nconst jsx = React.createElement, jsxs = React.createElement, Fragment = React.Fragment;\n'
+  'import React from "react";\nimport {jsx, jsxs, Fragment} from "react/jsx-runtime";\n'
   + stub + comp + "\nexport {__PvMobileApp, __pvMobileOn, __pvMobileToggle, CALLS};\n");
 
 const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>",
