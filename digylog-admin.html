@@ -261,6 +261,7 @@
         var st=j.status, last=st.lastRun||{};
         var lines=[];
         lines.push('نسخة السيرفر: '+(st.apiVersion||'?')+' (جيل المرسل '+(st.senderGen||'?')+')');
+        lines.push('نسخة الصفحة index.html: '+(st.indexVersion||'?')+' — بصمة البناء: '+(st.indexBuild||'?'));
         lines.push('token: '+(st.hasToken?'✅ موجود':'❌ ما كاينش — بلا توكن ما يمكنرش نرسلو'));
         lines.push('autoSend: '+(st.autoSend?'✅ مفعّل':'❌ موقوف'));
         lines.push('طلبيات مستعدة (Confirmé + Suivie خاوية): '+st.eligible);

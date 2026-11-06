@@ -52,10 +52,30 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '3.96');
+define('CRM_API_VERSION', '4.00');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
+
+/* --------------------------------------------------------------
+ * بصمة index.html لي خدام فـ السيرفر دابا.
+ *   كاينة باش نعرفو بالضبط أشمن ملف كاينة حيت التلفون كيبقى
+ *   كيخزن (cache) صفحة قديمة — هاد المعلومة كتقولنا واش الملف
+ *   الحي هو v4.00 ولا لا. ما كتكسرش والو وبما فيها بيانات زبائن.
+ * -------------------------------------------------------------- */
+function crm_index_marker() {
+  $out = array('indexVersion'=>'', 'indexBuild'=>'', 'indexHash'=>'', 'indexSize'=>0, 'indexMtime'=>0);
+  $f = __DIR__ . '/index.html';
+  if (!is_file($f)) return $out;
+  $out['indexSize']  = (int)@filesize($f);
+  $out['indexMtime'] = (int)@filemtime($f);
+  $s = @file_get_contents($f);
+  if ($s === false || $s === '') return $out;
+  $out['indexHash'] = substr(sha1($s), 0, 12);
+  if (preg_match("/EXPECTED\\s*=\\s*'([^']+)'/", $s, $m)) $out['indexVersion'] = $m[1];
+  if (preg_match("/PV_BUILD\\s*=\\s*'([^']+)'/", $s, $m)) $out['indexBuild']   = $m[1];
+  return $out;
+}
 
 /* v3.67: deterministic data dir + mirror.
  * قبل: كان كيبدل المجلد بصمت إلا كان !is_writable → جوج ملفات بيانات مفروشين =
@@ -2008,6 +2028,7 @@ function crm_dl_diag_build($extra) {
     'pendingCount' => count($pending),
     'lastRun'      => crm_dl_auto_state()
   );
+  $out = array_merge($out, crm_index_marker());
   if (is_array($extra)) foreach ($extra as $k=>$v) $out[$k] = $v;
   return $out;
 }
@@ -2557,7 +2578,10 @@ if ($m === 'GET') {
     $__d    = crm_read_raw();
     if ($__what === 'version') {
       /* نسخة السيرفر + تشخيص المرسل. بلا بيانات زبائن وبلا توكنات. */
-      crm_out(array('ok'=>true,'apiVersion'=>CRM_API_VERSION,'senderGen'=>CRM_DL_SENDER_GEN,'built'=>'2026-10-29','diag'=>crm_dl_diag_build(array())));
+      crm_out(array_merge(
+        array('ok'=>true,'apiVersion'=>CRM_API_VERSION,'senderGen'=>CRM_DL_SENDER_GEN,'built'=>'2026-11-06','diag'=>crm_dl_diag_build(array())),
+        crm_index_marker()
+      ));
     }
     $__ads  = isset($__d['paraveda_adspend_v1']['d']) ? crm_unwrap($__d['paraveda_adspend_v1']['d']) : array();
     if (!is_array($__ads)) $__ads = array();

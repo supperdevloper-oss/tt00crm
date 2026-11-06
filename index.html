@@ -997,28 +997,57 @@ function __PvWaitingCmd({onOpen:e}) {
   ]})});
 }
 function Vj(){
-const{agentNames:e,addAgent:n,renameAgent:a,removeAgent:i,orders:__pvOrders}=Xt(),__pvWaiting=ee.useMemo(()=>__pvOrders.filter(o=>o&&o._d&&!o._del).length,[__pvOrders]),{currentUser:c,logout:f,users:u,updateUser:d}=kr(),m=c?.role==="admin",[h,g]=ee.useState(()=>{try{const C=localStorage.getItem(pd);if(C){const P=JSON.parse(C);if(Array.isArray(P))return __pvTabsPlus(P.filter(x=>!__pvHidden.includes(x)));return P}}catch{}return __pvTabsPlus(zj.filter(x=>!__pvHidden.includes(x)))}),[b,y]=ee.useState(()=>{try{const C=localStorage.getItem(gd);if(C)return JSON.parse(C)}catch{}return{}}),[w,N]=ee.useState("COMONDES"),__pvPgFx=ee.useEffect(()=>{__pvPage=w},[w]),[v,A]=ee.useState(null),[Db,Vb]=ee.useState(null),[Bq,Bk]=ee.useState(null),D=ee.useRef(null);ee.useEffect(()=>{const C=c?.username||null;if(C&&D.current!==C){A({name:c.role==="admin"?c.username.split("@")[0]||"Admin":c.agent||c.username,isAdmin:c.role==="admin"});const L=setTimeout(()=>A(null),3400);return D.current=C,()=>clearTimeout(L)}D.current=C},[c]),ee.useEffect(()=>{!m&&c?.agent&&N(c.agent)},[m,c]),ee.useEffect(()=>{try{localStorage.setItem(pd,JSON.stringify(h))}catch(e){}aa(pd)},[h]),ee.useEffect(()=>{try{localStorage.setItem(gd,JSON.stringify(b))}catch(e){}aa(gd)},[b]),ee.useEffect(()=>{Ms(pd,()=>{try{const C=localStorage.getItem(pd);if(C){const P=JSON.parse(C);g(q=>{const F2=__pvTabsPlus(P);return JSON.stringify(q)===JSON.stringify(F2)?q:F2})}}catch{}}),Ms(gd,()=>{try{const C=localStorage.getItem(gd);if(C){const P=JSON.parse(C);y(q=>JSON.stringify(q)===JSON.stringify(P)?q:P)}}catch{}})},[]),ee.useEffect(()=>{g(C=>{const L=new Set(["Imane","SANAE","Work Team",...e]),F=C.filter(Y=>!L.has(Y));return F.length===C.length?C:F})},[e]),ee.useEffect(()=>{g(C=>C.includes("Les villes")?C:[...C,"Les villes"]),g(C=>C.includes("Work Times")?C:[...C,"Work Times"]),g(C=>C.includes("LIVRAISON")?C:[...C,"LIVRAISON"])},[]),ee.useEffect(()=>{if(!c)return;hp(c.username);const C=setInterval(()=>hp(c.username),6e4);return()=>clearInterval(C)},[c]);const T=()=>{const C=prompt("اسم البنت الجديدة:");if(C){if(!n(C)){alert("الاسم موجود أو غير صالح");return}N("Work Team")}},k=()=>{const C=prompt("اسم الصفحة الجديدة:");if(!C||h.includes(C)){C&&alert("الاسم موجود بالفعل");return}g(L=>[...L,C]),y(L=>({...L,[C]:{headers:["A","B","C","D","E","F"],rows:[Array(6).fill("")]}})),N(C)},M=C=>{if(tg.includes(C)){alert("هاد الصفحة ما يمكنش تمسح");return}if(e.includes(C)){if(!confirm(`مسح البنت "${C}" والصفحة ديالها؟ الطلبيات ديالها غاتبقى محفوظة ولكن بلا وكيلة.`))return;u.filter(L=>L.role==="user"&&L.agent===C).forEach(L=>d(L.id,{agent:""})),i(C),g(L=>L.filter(F=>F!==C)),w===C&&N("COMONDES");return}confirm(`مسح الصفحة "${C}"؟`)&&(g(L=>L.filter(F=>F!==C)),y(L=>{const F={...L};return delete F[C],F}),localStorage.removeItem(`sheet_${C}`),w===C&&N("COMONDES"))},R=px[w]||b[w];if(!c)return s.jsx(S_,{});const _=v?s.jsx(Hj,{name:v.name,isAdmin:v.isAdmin}):null,S=()=>null,E=()=>s.jsxs("div",{className:"flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pe-1 ps-2 shadow-sm",children:[s.jsx("span",{className:"grid h-6 w-6 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-[11px] font-bold text-white",children:c.photo?s.jsx("img",{src:c.photo,alt:"",className:"h-full w-full object-cover"}):(c.username||"?").charAt(0).toUpperCase()}),s.jsx("span",{className:"hidden max-w-[140px] truncate text-[11px] font-semibold text-slate-600 sm:block",children:c.username}),m&&s.jsx("span",{className:"rounded-full bg-indigo-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-600",children:"Admin"}),m?null:s.jsxs("button",{onClick:f,title:"تسجيل الخروج من الحساب",className:"flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-l from-rose-500 to-red-600 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-md shadow-rose-300/60 transition-all duration-150 hover:from-rose-600 hover:to-red-700 hover:shadow-lg hover:scale-[1.03] active:scale-[0.95]",children:[s.jsx(eg,{className:"h-4 w-4"}),"تسجيل الخروج"]})]});if(!m&&__pvMobileOn())return s.jsx(__PvMobileApp,{agent:(c&&c.agent)||""});return m?s.jsxs("div",{className:"flex h-dvh flex-col bg-slate-100",children:[s.jsxs("header",{className:"shrink-0 border-b border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]",children:[s.jsxs("div",{className:"pv-admin-top flex items-center gap-3 px-4 pt-2.5",children:[s.jsx("button",{onClick:f,title:"تسجيل الخروج",className:"grid h-9 w-9 shrink-0 place-items-center rounded-xl border-2 border-red-300 bg-white text-red-600 shadow-sm transition-all duration-150 hover:border-red-400 hover:bg-red-50 hover:shadow hover:scale-105 active:scale-[0.94]",children:s.jsx(eg,{className:"h-4.5 w-4.5"})}),s.jsxs("div",{className:"hidden min-w-0 items-center gap-1.5 text-[11px] md:flex",dir:"ltr",children:[s.jsx("span",{className:"text-slate-300",children:"/"}),s.jsxs("span",{className:"truncate font-bold text-slate-700",children:[ag[w]||(e.includes(w)?"👤":"📑")," ",w]})]}),s.jsxs("div",{className:"pv-admin-tools ms-auto flex items-center gap-3",children:[s.jsx("div",{dir:"rtl",className:"pv-admin-period flex shrink-0 items-center gap-2",children:s.jsx(yp,{})}),s.jsx(E,{})]})]}),s.jsxs("nav",{dir:"ltr",className:"relative mt-1",children:[s.jsx("div",{className:"pv-main-nav mx-3 mb-2.5 flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 px-2.5 py-2 shadow-lg shadow-slate-900/25 ring-1 ring-white/5",style:{scrollbarWidth:"none",msOverflowStyle:"none"},children:[(C=>[C[0],C[C.length-6],C[C.length-5],C[C.length-4],C[C.length-3],C[C.length-2],C[C.length-1],...C.slice(1,-6)])([...h.filter(C=>!Gk.includes(C)).map(C=>{const L=w===C,F=Pj.includes(C),Y=ag[C]||(e.includes(C)?"👤":"📑"),oe=Gj[C]||(e.includes(C)?"violet":"slate"),K=Ao[oe]??Ao.slate;return s.jsxs("div",{onClick:()=>{if(C==="Suivi des Retours"&&window.matchMedia("(max-width:1050px)").matches){window.location.href="retours.html?v=6";return}if(C==="COMONDES"&&w===C&&__pvActs&&__pvActs.reset)__pvActs.reset();N(C)},title:C==="COMONDES"?"كليكي باش ترجع لكل الطلبيات":C,className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${C==="Waiting CMD"&&__pvWaiting>0?"pv-wait-tab ":""}${L?`${K.on}`:`${K.base}`}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:Y}),s.jsx("span",{children:C}),C==="Waiting CMD"&&__pvWaiting>0&&s.jsx("span",{className:"pv-wait-count",children:__pvWaiting}),F&&s.jsx("span",{className:"text-[9px] opacity-80",title:"مقفولة",children:"🔒"}),!tg.includes(C)&&s.jsx("button",{onClick:V=>{V.stopPropagation(),M(C)},className:"ml-0.5 hidden h-4 w-4 place-items-center rounded-full bg-black/20 text-[9px] font-bold text-white transition hover:bg-black/40 group-hover:grid",title:"مسح",children:"✕"})]},C)}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="Bilan"?null:"Bilan")},title:"Bilan",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="Bilan"||Gz.Bilan.includes(w)?Ao.indigo.on:Ao.indigo.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"📊"}),s.jsx("span",{children:"Bilan"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="Bilan"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="Articles"?null:"Articles")},title:"Articles",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="Articles"||Gz.Articles.includes(w)?Ao.blue.on:Ao.blue.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"📦"}),s.jsx("span",{children:"Articles"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="Articles"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="SHIPING"?null:"SHIPING")},title:"SHIPING",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="SHIPING"||Gz.SHIPING.includes(w)?Ao.orange.on:Ao.orange.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"🚚"}),s.jsx("span",{children:"SHIPING"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="SHIPING"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="TEAM"?null:"TEAM")},title:"TEAM",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="TEAM"||Gz.TEAM.includes(w)?Ao.emerald.on:Ao.emerald.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"👥"}),s.jsx("span",{children:"TEAM"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="TEAM"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="ADS"?null:"ADS")},title:"ADS",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="ADS"||Gz.ADS.includes(w)?Ao.violet.on:Ao.violet.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"💸"}),s.jsx("span",{children:"ADS"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="ADS"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="Users Info"?null:"Users Info")},title:"Users Info",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="Users Info"||Gz["Users Info"].includes(w)?Ao.red.on:Ao.red.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"🔐"}),s.jsx("span",{children:"Users Info"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="Users Info"?"▲":"▼"})]})]),s.jsx(__pvNavActs,{tab:w})]}),Db&&s.jsx("div",{className:"fixed inset-0 z-40",onClick:()=>Vb(null)}),Db&&Bq&&s.jsxs("div",{style:{position:"fixed",top:Bq.top,left:Bq.left},className:"z-50 w-56 rounded-xl border border-slate-200 bg-white p-1 shadow-lg",children:[s.jsx("div",{className:"px-2 pb-1 pt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400",children:Db}),...((Gz[Db]||[]).map(C=>{const K2=Ao[Gj[C]]??Ao.slate;return s.jsxs("button",{onClick:()=>{C==="بنت +"?T():C==="صفحة +"?k():N(C);Vb(null)},className:`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-bold text-white transition-all duration-150 active:scale-[0.96] ${w===C?K2.on:K2.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:ag[C]}),s.jsx("span",{className:"flex-1 text-left",children:Gsq[C]||C}),w===C&&s.jsx("span",{className:"text-[9px]",children:"✓"})]},C)}))]}),null]})]}),s.jsxs("div",{className:"flex-1 overflow-hidden",children:[w==="Suivi des Retours"&&s.jsx("iframe",{src:"retours.html?embed=1&v=6",title:"Suivi des Retours",className:"w-full border-0",allow:"camera",style:{display:"block",width:"100%",height:"calc(100dvh - 172px)",minHeight:"620px",border:"0"}}),w==="Duplicate Client"&&s.jsx(__pvDupClients,{}),w==="Waiting CMD"&&s.jsx(__PvWaitingCmd,{onOpen:C=>N(C)}),w==="COMONDES"&&s.jsx(t_,{}),w==="CMD Annuler"&&s.jsx(t_,{cancelledOnly:!0}),w==="PRODUITS"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(c_,{})}),w==="Les villes"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx($_,{})}),w==="Work Times"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(W_,{})}),w==="Sheet129"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(o_,{name:"Sheet129"})}),w==="suivi confirmation"&&s.jsx(m_,{}),w==="Dashboard performance"&&s.jsx(Fj,{}),w==="statistique"&&s.jsx(Ij,{}),w==="إدارة المستخدمين"&&s.jsx(E_,{}),w==="CRM Ads"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(oj,{})}),w==="Salaire"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(gj,{})}),w==="LIVRAISON"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(Liv,{})}),w==="Historique"&&s.jsx(Wv,{}),w==="Work Team"&&s.jsx(C_,{onOpen:C=>N(C),onRanking:()=>N("Ranking"),onLive:()=>N("Live Activity")}),w==="Ranking"&&s.jsx(M_,{}),w==="Live Activity"&&s.jsx(P_,{}),w==="Heatmap"&&s.jsx(X_,{}),e.includes(w)&&s.jsxs("div",{className:"flex h-full flex-col",children:[s.jsxs("div",{dir:"ltr",className:"flex shrink-0 items-center gap-2 border-b border-indigo-100 bg-indigo-50 px-3 py-1.5",children:[s.jsx("button",{onClick:()=>N("Work Team"),className:"rounded-lg bg-white px-3 py-1 text-xs font-bold text-indigo-700 shadow-sm hover:bg-indigo-100",children:"← 👥 Work Team"}),s.jsxs("span",{className:"text-xs text-indigo-900/70",children:["Page de ",s.jsx("b",{children:w})]})]}),s.jsx("div",{className:"flex-1 overflow-hidden",children:s.jsx(I2,{agent:w})})]}),w!=="Dashboard performance"&&w!=="statistique"&&!Uj.includes(w)&&!e.includes(w)&&R&&(w==="pièce"?s.jsx(__PvPiecePage,{data:R},"pièce"):s.jsx(n_,{name:w,data:R}))]}),s.jsxs("footer",{dir:"ltr",className:"flex shrink-0 items-center gap-1 overflow-x-auto border-t border-slate-200 bg-white px-3 py-2 shadow-[0_-2px_8px_rgba(15,23,42,0.05)]",style:{scrollbarWidth:"thin"},children:[s.jsx("span",{className:"shrink-0 px-1 text-[9px] font-bold text-slate-300",title:"نسخة التطبيق",children:"v3.96"})]}),s.jsx($2,{}),_]}):s.jsxs("div",{className:"flex h-dvh flex-col bg-white",children:[s.jsx("div",{className:"shrink-0 border-b border-slate-200 bg-white shadow-sm",children:s.jsxs("div",{dir:"rtl",className:"flex flex-wrap items-center gap-3 px-3 py-2 text-sm",children:[s.jsx(S,{}),s.jsx("div",{className:"h-6 w-px bg-slate-200"}),s.jsxs("b",{className:"text-xs text-slate-700",children:[c.username," · ",c.agent]}),s.jsxs("div",{className:"flex min-w-0 flex-wrap items-center justify-end gap-2 sm:ms-auto sm:flex-nowrap",children:[s.jsx(yp,{compact:!0}),s.jsx(E,{})]})]})}),s.jsx("div",{className:"flex-1 overflow-hidden",children:s.jsx(I2,{agent:c.agent})}),s.jsx($2,{}),_]})}function Yj(){return s.jsx(D4,{children:s.jsx(B4,{children:s.jsx(H4,{children:s.jsx(Vj,{})})})})}/* ==========================================================================
-   النسخة ديال الموبايل (mobile first) — للبنات لي كيخدمو من الموبايل
-   - نفس الداتا ديال الـCRM (نفس الـAPI ونفس localStorage)
-   - ما كايبدلش والو فCRM ديال الديسكطوب
+const{agentNames:e,addAgent:n,renameAgent:a,removeAgent:i,orders:__pvOrders}=Xt(),__pvWaiting=ee.useMemo(()=>__pvOrders.filter(o=>o&&o._d&&!o._del).length,[__pvOrders]),{currentUser:c,logout:f,users:u,updateUser:d}=kr(),m=c?.role==="admin",[h,g]=ee.useState(()=>{try{const C=localStorage.getItem(pd);if(C){const P=JSON.parse(C);if(Array.isArray(P))return __pvTabsPlus(P.filter(x=>!__pvHidden.includes(x)));return P}}catch{}return __pvTabsPlus(zj.filter(x=>!__pvHidden.includes(x)))}),[b,y]=ee.useState(()=>{try{const C=localStorage.getItem(gd);if(C)return JSON.parse(C)}catch{}return{}}),[w,N]=ee.useState("COMONDES"),__pvPgFx=ee.useEffect(()=>{__pvPage=w},[w]),[v,A]=ee.useState(null),[Db,Vb]=ee.useState(null),[Bq,Bk]=ee.useState(null),D=ee.useRef(null);ee.useEffect(()=>{const C=c?.username||null;if(C&&D.current!==C){A({name:c.role==="admin"?c.username.split("@")[0]||"Admin":c.agent||c.username,isAdmin:c.role==="admin"});const L=setTimeout(()=>A(null),3400);return D.current=C,()=>clearTimeout(L)}D.current=C},[c]),ee.useEffect(()=>{!m&&c?.agent&&N(c.agent)},[m,c]),ee.useEffect(()=>{try{localStorage.setItem(pd,JSON.stringify(h))}catch(e){}aa(pd)},[h]),ee.useEffect(()=>{try{localStorage.setItem(gd,JSON.stringify(b))}catch(e){}aa(gd)},[b]),ee.useEffect(()=>{Ms(pd,()=>{try{const C=localStorage.getItem(pd);if(C){const P=JSON.parse(C);g(q=>{const F2=__pvTabsPlus(P);return JSON.stringify(q)===JSON.stringify(F2)?q:F2})}}catch{}}),Ms(gd,()=>{try{const C=localStorage.getItem(gd);if(C){const P=JSON.parse(C);y(q=>JSON.stringify(q)===JSON.stringify(P)?q:P)}}catch{}})},[]),ee.useEffect(()=>{g(C=>{const L=new Set(["Imane","SANAE","Work Team",...e]),F=C.filter(Y=>!L.has(Y));return F.length===C.length?C:F})},[e]),ee.useEffect(()=>{g(C=>C.includes("Les villes")?C:[...C,"Les villes"]),g(C=>C.includes("Work Times")?C:[...C,"Work Times"]),g(C=>C.includes("LIVRAISON")?C:[...C,"LIVRAISON"])},[]),ee.useEffect(()=>{if(!c)return;hp(c.username);const C=setInterval(()=>hp(c.username),6e4);return()=>clearInterval(C)},[c]);const T=()=>{const C=prompt("اسم البنت الجديدة:");if(C){if(!n(C)){alert("الاسم موجود أو غير صالح");return}N("Work Team")}},k=()=>{const C=prompt("اسم الصفحة الجديدة:");if(!C||h.includes(C)){C&&alert("الاسم موجود بالفعل");return}g(L=>[...L,C]),y(L=>({...L,[C]:{headers:["A","B","C","D","E","F"],rows:[Array(6).fill("")]}})),N(C)},M=C=>{if(tg.includes(C)){alert("هاد الصفحة ما يمكنش تمسح");return}if(e.includes(C)){if(!confirm(`مسح البنت "${C}" والصفحة ديالها؟ الطلبيات ديالها غاتبقى محفوظة ولكن بلا وكيلة.`))return;u.filter(L=>L.role==="user"&&L.agent===C).forEach(L=>d(L.id,{agent:""})),i(C),g(L=>L.filter(F=>F!==C)),w===C&&N("COMONDES");return}confirm(`مسح الصفحة "${C}"؟`)&&(g(L=>L.filter(F=>F!==C)),y(L=>{const F={...L};return delete F[C],F}),localStorage.removeItem(`sheet_${C}`),w===C&&N("COMONDES"))},R=px[w]||b[w];if(!c)return s.jsx(S_,{});const _=v?s.jsx(Hj,{name:v.name,isAdmin:v.isAdmin}):null,S=()=>null,E=()=>s.jsxs("div",{className:"flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pe-1 ps-2 shadow-sm",children:[s.jsx("span",{className:"grid h-6 w-6 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-[11px] font-bold text-white",children:c.photo?s.jsx("img",{src:c.photo,alt:"",className:"h-full w-full object-cover"}):(c.username||"?").charAt(0).toUpperCase()}),s.jsx("span",{className:"hidden max-w-[140px] truncate text-[11px] font-semibold text-slate-600 sm:block",children:c.username}),m&&s.jsx("span",{className:"rounded-full bg-indigo-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-600",children:"Admin"}),m?null:s.jsxs("button",{onClick:f,title:"تسجيل الخروج من الحساب",className:"flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-l from-rose-500 to-red-600 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-md shadow-rose-300/60 transition-all duration-150 hover:from-rose-600 hover:to-red-700 hover:shadow-lg hover:scale-[1.03] active:scale-[0.95]",children:[s.jsx(eg,{className:"h-4 w-4"}),"تسجيل الخروج"]})]});if(!m&&__pvMobileOn())return s.jsx(__PvMobileApp,{agent:(c&&c.agent)||""});return m?s.jsxs("div",{className:"flex h-dvh flex-col bg-slate-100",children:[s.jsxs("header",{className:"shrink-0 border-b border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]",children:[s.jsxs("div",{className:"pv-admin-top flex items-center gap-3 px-4 pt-2.5",children:[s.jsx("button",{onClick:f,title:"تسجيل الخروج",className:"grid h-9 w-9 shrink-0 place-items-center rounded-xl border-2 border-red-300 bg-white text-red-600 shadow-sm transition-all duration-150 hover:border-red-400 hover:bg-red-50 hover:shadow hover:scale-105 active:scale-[0.94]",children:s.jsx(eg,{className:"h-4.5 w-4.5"})}),s.jsxs("div",{className:"hidden min-w-0 items-center gap-1.5 text-[11px] md:flex",dir:"ltr",children:[s.jsx("span",{className:"text-slate-300",children:"/"}),s.jsxs("span",{className:"truncate font-bold text-slate-700",children:[ag[w]||(e.includes(w)?"👤":"📑")," ",w]})]}),s.jsxs("div",{className:"pv-admin-tools ms-auto flex items-center gap-3",children:[s.jsx("div",{dir:"rtl",className:"pv-admin-period flex shrink-0 items-center gap-2",children:s.jsx(yp,{})}),s.jsx(E,{})]})]}),s.jsxs("nav",{dir:"ltr",className:"relative mt-1",children:[s.jsx("div",{className:"pv-main-nav mx-3 mb-2.5 flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 px-2.5 py-2 shadow-lg shadow-slate-900/25 ring-1 ring-white/5",style:{scrollbarWidth:"none",msOverflowStyle:"none"},children:[(C=>[C[0],C[C.length-6],C[C.length-5],C[C.length-4],C[C.length-3],C[C.length-2],C[C.length-1],...C.slice(1,-6)])([...h.filter(C=>!Gk.includes(C)).map(C=>{const L=w===C,F=Pj.includes(C),Y=ag[C]||(e.includes(C)?"👤":"📑"),oe=Gj[C]||(e.includes(C)?"violet":"slate"),K=Ao[oe]??Ao.slate;return s.jsxs("div",{onClick:()=>{if(C==="Suivi des Retours"&&window.matchMedia("(max-width:1050px)").matches){window.location.href="retours.html?v=6";return}if(C==="COMONDES"&&w===C&&__pvActs&&__pvActs.reset)__pvActs.reset();N(C)},title:C==="COMONDES"?"كليكي باش ترجع لكل الطلبيات":C,className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${C==="Waiting CMD"&&__pvWaiting>0?"pv-wait-tab ":""}${L?`${K.on}`:`${K.base}`}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:Y}),s.jsx("span",{children:C}),C==="Waiting CMD"&&__pvWaiting>0&&s.jsx("span",{className:"pv-wait-count",children:__pvWaiting}),F&&s.jsx("span",{className:"text-[9px] opacity-80",title:"مقفولة",children:"🔒"}),!tg.includes(C)&&s.jsx("button",{onClick:V=>{V.stopPropagation(),M(C)},className:"ml-0.5 hidden h-4 w-4 place-items-center rounded-full bg-black/20 text-[9px] font-bold text-white transition hover:bg-black/40 group-hover:grid",title:"مسح",children:"✕"})]},C)}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="Bilan"?null:"Bilan")},title:"Bilan",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="Bilan"||Gz.Bilan.includes(w)?Ao.indigo.on:Ao.indigo.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"📊"}),s.jsx("span",{children:"Bilan"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="Bilan"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="Articles"?null:"Articles")},title:"Articles",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="Articles"||Gz.Articles.includes(w)?Ao.blue.on:Ao.blue.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"📦"}),s.jsx("span",{children:"Articles"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="Articles"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="SHIPING"?null:"SHIPING")},title:"SHIPING",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="SHIPING"||Gz.SHIPING.includes(w)?Ao.orange.on:Ao.orange.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"🚚"}),s.jsx("span",{children:"SHIPING"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="SHIPING"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="TEAM"?null:"TEAM")},title:"TEAM",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="TEAM"||Gz.TEAM.includes(w)?Ao.emerald.on:Ao.emerald.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"👥"}),s.jsx("span",{children:"TEAM"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="TEAM"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="ADS"?null:"ADS")},title:"ADS",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="ADS"||Gz.ADS.includes(w)?Ao.violet.on:Ao.violet.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"💸"}),s.jsx("span",{children:"ADS"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="ADS"?"▲":"▼"})]}),s.jsxs("div",{onClick:V=>{const R=V.currentTarget.getBoundingClientRect();Bk({top:R.bottom+4,left:R.left});Vb(Db==="Users Info"?null:"Users Info")},title:"Users Info",className:`group relative flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-[12px] font-bold text-white transition-all duration-150 hover:-translate-y-px active:scale-[0.96] active:translate-y-0 ${Db==="Users Info"||Gz["Users Info"].includes(w)?Ao.red.on:Ao.red.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:"🔐"}),s.jsx("span",{children:"Users Info"}),s.jsx("span",{className:"text-[9px] opacity-80",children:Db==="Users Info"?"▲":"▼"})]})]),s.jsx(__pvNavActs,{tab:w})]}),Db&&s.jsx("div",{className:"fixed inset-0 z-40",onClick:()=>Vb(null)}),Db&&Bq&&s.jsxs("div",{style:{position:"fixed",top:Bq.top,left:Bq.left},className:"z-50 w-56 rounded-xl border border-slate-200 bg-white p-1 shadow-lg",children:[s.jsx("div",{className:"px-2 pb-1 pt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400",children:Db}),...((Gz[Db]||[]).map(C=>{const K2=Ao[Gj[C]]??Ao.slate;return s.jsxs("button",{onClick:()=>{C==="بنت +"?T():C==="صفحة +"?k():N(C);Vb(null)},className:`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-bold text-white transition-all duration-150 active:scale-[0.96] ${w===C?K2.on:K2.base}`,children:[s.jsx("span",{className:"text-[13px] leading-none",children:ag[C]}),s.jsx("span",{className:"flex-1 text-left",children:Gsq[C]||C}),w===C&&s.jsx("span",{className:"text-[9px]",children:"✓"})]},C)}))]}),null]})]}),s.jsxs("div",{className:"flex-1 overflow-hidden",children:[w==="Suivi des Retours"&&s.jsx("iframe",{src:"retours.html?embed=1&v=6",title:"Suivi des Retours",className:"w-full border-0",allow:"camera",style:{display:"block",width:"100%",height:"calc(100dvh - 172px)",minHeight:"620px",border:"0"}}),w==="Duplicate Client"&&s.jsx(__pvDupClients,{}),w==="Waiting CMD"&&s.jsx(__PvWaitingCmd,{onOpen:C=>N(C)}),w==="COMONDES"&&s.jsx(t_,{}),w==="CMD Annuler"&&s.jsx(t_,{cancelledOnly:!0}),w==="PRODUITS"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(c_,{})}),w==="Les villes"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx($_,{})}),w==="Work Times"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(W_,{})}),w==="Sheet129"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(o_,{name:"Sheet129"})}),w==="suivi confirmation"&&s.jsx(m_,{}),w==="Dashboard performance"&&s.jsx(Fj,{}),w==="statistique"&&s.jsx(Ij,{}),w==="إدارة المستخدمين"&&s.jsx(E_,{}),w==="CRM Ads"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(oj,{})}),w==="Salaire"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(gj,{})}),w==="LIVRAISON"&&s.jsx("div",{className:"h-full overflow-auto",children:s.jsx(Liv,{})}),w==="Historique"&&s.jsx(Wv,{}),w==="Work Team"&&s.jsx(C_,{onOpen:C=>N(C),onRanking:()=>N("Ranking"),onLive:()=>N("Live Activity")}),w==="Ranking"&&s.jsx(M_,{}),w==="Live Activity"&&s.jsx(P_,{}),w==="Heatmap"&&s.jsx(X_,{}),e.includes(w)&&s.jsxs("div",{className:"flex h-full flex-col",children:[s.jsxs("div",{dir:"ltr",className:"flex shrink-0 items-center gap-2 border-b border-indigo-100 bg-indigo-50 px-3 py-1.5",children:[s.jsx("button",{onClick:()=>N("Work Team"),className:"rounded-lg bg-white px-3 py-1 text-xs font-bold text-indigo-700 shadow-sm hover:bg-indigo-100",children:"← 👥 Work Team"}),s.jsxs("span",{className:"text-xs text-indigo-900/70",children:["Page de ",s.jsx("b",{children:w})]})]}),s.jsx("div",{className:"flex-1 overflow-hidden",children:s.jsx(I2,{agent:w})})]}),w!=="Dashboard performance"&&w!=="statistique"&&!Uj.includes(w)&&!e.includes(w)&&R&&(w==="pièce"?s.jsx(__PvPiecePage,{data:R},"pièce"):s.jsx(n_,{name:w,data:R}))]}),s.jsxs("footer",{dir:"ltr",className:"flex shrink-0 items-center gap-1 overflow-x-auto border-t border-slate-200 bg-white px-3 py-2 shadow-[0_-2px_8px_rgba(15,23,42,0.05)]",style:{scrollbarWidth:"thin"},children:[s.jsx("span",{className:"shrink-0 px-1 text-[9px] font-bold text-slate-300",title:"نسخة التطبيق",children:"v4.00"})]}),s.jsx($2,{}),_]}):s.jsxs("div",{className:"flex h-dvh flex-col bg-white",children:[s.jsx("div",{className:"shrink-0 border-b border-slate-200 bg-white shadow-sm",children:s.jsxs("div",{dir:"rtl",className:"flex flex-wrap items-center gap-3 px-3 py-2 text-sm",children:[s.jsx(S,{}),s.jsx("div",{className:"h-6 w-px bg-slate-200"}),s.jsxs("b",{className:"text-xs text-slate-700",children:[c.username," · ",c.agent]}),s.jsx("span",{className:"pv-ver-badge",title:"نسخة التطبيق",children:"v4.00"}),s.jsxs("div",{className:"flex min-w-0 flex-wrap items-center justify-end gap-2 sm:ms-auto sm:flex-nowrap",children:[s.jsx("button",{onClick:()=>__pvSetMobile(true),className:"pv-mob-switch",title:"نسخة الموبايل",children:"📱 نسخة الموبايل"}),s.jsx(yp,{compact:!0}),s.jsx(E,{})]})]})}),s.jsx("div",{className:"flex-1 overflow-hidden",children:s.jsx(I2,{agent:c.agent})}),s.jsx($2,{}),_]})}function Yj(){return s.jsx(D4,{children:s.jsx(B4,{children:s.jsx(H4,{children:s.jsx(Vj,{})})})})}/* ==========================================================================
+   Paraveda CRM — نسخة الموبايل الاحترافية (v4.00)
+   ------------------------------------------------------------------
+   هاد الكود كيتحط داخل index.html (قبل function __pvRepairStorage).
+   IMPORTANT: الملف مبني بـ automatic runtime ديال React:
+      s.jsx(type, props)  /  s.jsxs(type, props)   → children كاينة فـ props.children
+      key كاينة فـ props (ماشي فالـ3rd argument)
    ========================================================================== */
-function __pvMobileOn() {
+
+/* --- تفعيل/تعطيل نسخة الموبايل ---------------------------------------- */
+function __pvMobileQuery() {
   try {
-    const v = localStorage.getItem("paraveda_mobile_mode");
-    if (v === "1") return true;
-    if (v === "0") return false;
-  } catch (e) { }
+    const s = (typeof location !== "undefined" && location.search) || "";
+    const m = /[?&]mobile=([^&#]*)/.exec(s);
+    return m ? decodeURIComponent(m[1] || "") : "";
+  } catch (e) { return ""; }
+}
+function __pvMobileSmallScreen() {
+  /* نسخة الموبايل ما كاينةش إلا فـ شاشة صغيرة — الديسكطوب كيفضل الجدول */
   try {
-    if (typeof __pvAdminMobile === "function" && __pvAdminMobile()) return true;
-    if (typeof window !== "undefined" && window.innerWidth < 1024) return true;
+    if (typeof window !== "undefined" && typeof window.innerWidth === "number" && window.innerWidth < 1024) return true;
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width:1023px)").matches) return true;
   } catch (e) { }
   return false;
 }
-function __pvMobileToggle() {
-  try { localStorage.setItem("paraveda_mobile_mode", __pvMobileOn() ? "0" : "1"); } catch (e) { }
+function __pvMobileOn() {
+  const small = __pvMobileSmallScreen();
+  /* 1) ?mobile=1 ولا ?mobile=0 — قوة مطلقة (URL جديد = بلا كاش) */
+  const q = __pvMobileQuery();
+  if (q === "1" || q === "0") {
+    try { localStorage.setItem("paraveda_mobile_mode", q); } catch (e) { }
+    return q === "1" && small;
+  }
+  /* 2) الاختيار المحفوظ (الزر اليدوي) */
+  try {
+    const v = localStorage.getItem("paraveda_mobile_mode");
+    if (v === "1") return small;
+    if (v === "0") return false;
+  } catch (e) { }
+  /* 3) الكشف التلقائي: الهاتف دايما */
+  return small;
+}
+function __pvSetMobile(on) {
+  try { localStorage.setItem("paraveda_mobile_mode", on ? "1" : "0"); } catch (e) { }
   try { location.reload(); } catch (e) { }
 }
+function __pvMobileToggle() {
+  __pvSetMobile(!__pvMobileOn());
+}
 
+/* --- التطبيق ديال الموبايل --------------------------------------------- */
 function __PvMobileApp({ agent: e }) {
   const { orders: a, add: i, upd: c, publish: pubF } = Xt();
   const { currentUser: h, logout: lgOut } = kr();
@@ -1029,8 +1058,18 @@ function __PvMobileApp({ agent: e }) {
   const [kpi, setKpi] = ee.useState("call");
   const [period, setPeriod] = ee.useState("all");
   const [msg, setMsg] = ee.useState("");
+  const [bad, setBad] = ee.useState(false);
+  const [sheet, setSheet] = ee.useState(false);
+  const [open, setOpen] = ee.useState(0);
   const [form, setForm] = ee.useState({ nom: "", telephone: "", ville: "", adresse: "", produit: "", qte: 1, prix: 0, commission: 35 });
   const today = __pvLocalDate(new Date());
+  const tmr = ee.useRef(null);
+
+  const toast = (t, isBad) => {
+    setMsg(t); setBad(!!isBad);
+    try { if (tmr.current) clearTimeout(tmr.current); } catch (e) { }
+    try { tmr.current = setTimeout(() => setMsg(""), 4200); } catch (e) { }
+  };
 
   const mine = ee.useMemo(() => a.filter(o => o && !o._del && String(o.agent || "").toLowerCase() === String(e || "").toLowerCase()), [a, e]);
   const drafts = ee.useMemo(() => mine.filter(o => o._d), [mine]);
@@ -1043,44 +1082,50 @@ function __PvMobileApp({ agent: e }) {
     return () => true;
   }, [period, today]);
 
-  const follow = ee.useMemo(() => {
-    const f = __pvKpiF(kpi) || (() => false);
-    const needle = q.trim().toLowerCase();
-    return live.filter(f).filter(o => inPeriod(o)).filter(o => !needle || [o.nom, o.telephone, o.ville, o.produit, o.remarques, o.tracking, o.statut].join(" ").toLowerCase().includes(needle));
-  }, [live, kpi, q, inPeriod]);
+  const needle = q.trim().toLowerCase();
+  const matches = (o) => !needle || [o.nom, o.telephone, o.ville, o.produit, o.adresse, o.remarques, o.tracking, o.statut, o.livraison].join(" ").toLowerCase().includes(needle);
 
-  const list = ee.useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return live.filter(inPeriod).filter(o => !needle || [o.nom, o.telephone, o.ville, o.produit, o.adresse, o.remarques, o.statut, o.livraison, o.tracking].join(" ").toLowerCase().includes(needle));
-  }, [live, q, inPeriod]);
+  const scoped = ee.useMemo(() => live.filter(inPeriod), [live, inPeriod]);
+  const follow = ee.useMemo(() => {
+    if (needle) return scoped.filter(matches);
+    const f = __pvKpiF(kpi) || (() => false);
+    return scoped.filter(f);
+  }, [scoped, kpi, needle]);
+  const list = ee.useMemo(() => scoped.filter(matches), [scoped, needle]);
+
+  const counts = ee.useMemo(() => {
+    const r = {};
+    ["call", "suivi", "ship", "risk"].forEach(k => {
+      const f = __pvKpiF(k);
+      r[k] = f ? scoped.filter(f).length : 0;
+    });
+    return r;
+  }, [scoped]);
 
   const stats = ee.useMemo(() => {
-    const l = live.filter(inPeriod);
-    const conf = l.filter(o => String(o.statut || "").trim() === "Confirmé");
-    const sold = l.filter(o => __pvSold(o));
-    const back = l.filter(o => __pvBack(o));
-    const wait = l.filter(o => String(o.livraison || "").trim() === "" && String(o.statut || "").trim() === "Confirmé");
-    const ca = l.reduce((s, o) => s + (Number(o.prix) || 0), 0);
-    return { total: l.length, conf: conf.length, sold: sold.length, back: back.length, wait: wait.length, ca: ca, today: l.filter(o => String(o.dateCreation || "") === today).length };
-  }, [live, inPeriod, today]);
+    const conf = scoped.filter(o => String(o.statut || "").trim() === "Confirmé");
+    const sold = scoped.filter(o => __pvSold(o));
+    const back = scoped.filter(o => __pvBack(o));
+    const wait = scoped.filter(o => String(o.livraison || "").trim() === "" && String(o.statut || "").trim() === "Confirmé");
+    const ca = scoped.reduce((s, o) => s + (Number(o.prix) || 0), 0);
+    return { total: scoped.length, conf: conf.length, sold: sold.length, back: back.length, wait: wait.length, ca: ca, today: scoped.filter(o => String(o.dateCreation || "") === today).length };
+  }, [scoped, today]);
 
+  /* --- الطلبية الجديدة ------------------------------------------------- */
   const pickVille = (v) => {
     const c0 = wo(v, cities);
     setForm(f => ({ ...f, ville: v, commission: c0 != null ? c0 : f.commission }));
   };
-
-  // the product fills the selling price (like the catalogue of the desktop)
   const pickProduit = (p) => {
     const prod = catalog.find(x => String(x && x.nom || "").toLowerCase() === String(p || "").toLowerCase());
     const pr = prod ? Number(prod.prix != null ? prod.prix : (prod.price != null ? prod.price : prod.p)) : NaN;
     setForm(f => ({ ...f, produit: p, prix: !isNaN(pr) && pr > 0 ? pr : f.prix }));
   };
-
   const submit = () => {
     const v = form;
-    if (!String(v.nom || "").trim()) { setMsg("❌ الاسم خاصو"); return; }
-    if (!String(v.telephone || "").trim()) { setMsg("❌ الهاتف خاصو"); return; }
-    if (!String(v.ville || "").trim()) { setMsg("❌ المدينة خاصها"); return; }
+    if (!String(v.nom || "").trim()) { toast("❌ الاسم خاصو", true); return; }
+    if (!String(v.telephone || "").trim()) { toast("❌ الهاتف خاصو", true); return; }
+    if (!String(v.ville || "").trim()) { toast("❌ المدينة خاصها", true); return; }
     const d = today;
     i({
       dateCreation: d, dateConfirmation: d, statut: "", remarques: "", idCmd: "1",
@@ -1090,55 +1135,69 @@ function __PvMobileApp({ agent: e }) {
       commission: Number(v.commission) > 0 ? Number(v.commission) : 35, fees: "", _d: 1
     });
     setForm({ nom: "", telephone: "", ville: v.ville, adresse: "", produit: v.produit, qte: 1, prix: v.prix, commission: v.commission });
-    setMsg("✅ تحفظت. بعتها للأدمين من «المسودات».");
+    setSheet(false);
     setTab("drafts");
+    toast("✅ تحفظت كمسودة — بعيتيها للأدمين من «المسودات»");
   };
-
   const publishAll = () => {
     if (!drafts.length) return;
     const ids = new Set(drafts.map(o => o.id));
     const n = pubF(ids);
-    setMsg(n ? ("✅ بعثنا " + n + " طلبية للأدمين") : "❌ ما بعثناش");
+    toast(n ? "✅ بعثنا " + n + " طلبية للأدمين" : "❌ ما بعثناش", !n);
   };
 
+  /* --- القطع الصغيرة ---------------------------------------------------- */
   const chip = (txt, kind, k) => s.jsx("span", { key: k || txt, className: "mv-chip " + (kind || ""), children: txt });
 
   const card = (o) => {
     const st = String(o.statut || "").trim();
     const liv = String(o.livraison || "").trim();
     const tel = String(o.telephone || "").replace(/\s+/g, "");
-    return s.jsxs("div", { key: o.id, className: "mv-card", children: [
-      s.jsxs("div", { key: "h", className: "mv-head", children: [
-        s.jsx("b", { key: "n", className: "mv-name", children: o.nom || "(بلا اسم)" }),
-        s.jsx("span", { key: "p", className: "mv-price", children: (Number(o.prix) || 0) + " DH" })
+    const wa = tel.replace(/^\+/, "");
+    const isOpen = open === o.id;
+    const tone = st === "Confirmé" ? "ok" : (st === "Annulé" ? "bad" : (st === "Rappel" ? "warn" : "new"));
+    const kids = [];
+    kids.push(s.jsxs("div", { key: "h", className: "mv-card-top", children: [
+      s.jsxs("div", { key: "n", className: "mv-card-name", children: [
+        s.jsx("b", { key: "t", children: o.nom || "(بلا اسم)" }),
+        s.jsx("span", { key: "p", className: "mv-phone", children: "📞 " + (o.telephone || "—") })
       ]}),
-      s.jsxs("div", { key: "l", className: "mv-line", children: [
-        s.jsx("span", { key: "t", children: "📞 " + (o.telephone || "—") }),
-        s.jsx("span", { key: "v", children: "📍 " + (o.ville || "—") }),
-        o.dateCreation ? s.jsx("span", { key: "dt", children: "🗓️ " + o.dateCreation }) : null,
-        Number(o.qte) > 1 ? s.jsx("span", { key: "q", children: "×" + o.qte }) : null
-      ]}),
-      (o.produit || o.tracking || o.adresse) ? s.jsxs("div", { key: "d", className: "mv-line dim", children: [
-        o.produit ? s.jsx("span", { key: "pr", children: "📦 " + o.produit }) : null,
-        o.adresse ? s.jsx("span", { key: "ad", children: "🏠 " + o.adresse }) : null,
-        o.tracking ? s.jsx("span", { key: "tr", className: "mv-track", children: "Tracking " + o.tracking }) : null
-      ]}) : null,
-      s.jsxs("div", { key: "c", className: "mv-chips", children: [
-        chip(st || "جديد", st === "Confirmé" ? "ok" : (st === "Annulé" ? "bad" : ""), "s"),
-        liv ? chip(liv, "gray", "l") : null,
-        o._d ? chip("مسودة", "draft", "d") : null
-      ]}),
-      s.jsxs("div", { key: "a", className: "mv-actions", children: [
-        tel ? s.jsx("a", { key: "call", href: "tel:" + tel, className: "mv-btn call", children: "📞 اتصال" }) : null,
-        s.jsx("button", { key: "ok", onClick: () => c(o.id, { statut: "Confirmé" }), className: "mv-btn ok", children: "✅ تأكيد" }),
-        s.jsx("button", { key: "rl", onClick: () => c(o.id, { statut: "Rappel" }), className: "mv-btn", children: "⏰ رappel" }),
-        s.jsx("button", {
-          key: "no",
-          onClick: () => { if (window.confirm("نلغيو هاد الطلبية؟")) c(o.id, { statut: "Annulé" }); },
-          className: "mv-btn danger", children: "✖ إلغاء"
-        })
+      s.jsxs("div", { key: "v", className: "mv-card-side", children: [
+        s.jsx("b", { key: "pr", className: "mv-price", children: (Number(o.prix) || 0) + " DH" }),
+        o.dateCreation ? s.jsx("span", { key: "dt", className: "mv-date", children: "🗓️ " + o.dateCreation }) : null
       ]})
-    ]});
+    ]}));
+    const line = [];
+    line.push(s.jsx("span", { key: "v", children: "📍 " + (o.ville || "—") }));
+    if (o.produit) line.push(s.jsx("span", { key: "pr", children: "📦 " + o.produit }));
+    if (Number(o.qte) > 1) line.push(s.jsx("span", { key: "q", children: "×" + o.qte }));
+    if (o.tracking) line.push(s.jsx("span", { key: "tr", className: "mv-track", children: "Tracking " + o.tracking }));
+    kids.push(s.jsxs("div", { key: "l", className: "mv-line", children: line }));
+    if (isOpen) {
+      const extra = [];
+      if (o.adresse) extra.push(s.jsx("span", { key: "ad", children: "🏠 " + o.adresse }));
+      if (o.remarques) extra.push(s.jsx("span", { key: "rm", children: "📝 " + o.remarques }));
+      if (o.livraison) extra.push(s.jsx("span", { key: "lv", children: "🚚 " + o.livraison }));
+      if (extra.length) kids.push(s.jsxs("div", { key: "x", className: "mv-line dim", children: extra }));
+    }
+    kids.push(s.jsxs("div", { key: "c", className: "mv-chips", children: [
+      chip(st || "جديد", st === "Confirmé" ? "ok" : (st === "Annulé" ? "bad" : (st === "Rappel" ? "warn" : "")), "s"),
+      liv ? chip(liv, "gray", "l") : null,
+      o._d ? chip("مسودة", "draft", "d") : null
+    ]}));
+    kids.push(s.jsxs("div", { key: "a", className: "mv-actions", children: [
+      tel ? s.jsx("a", { key: "call", href: "tel:" + tel, className: "mv-btn call", children: "📞 اتصال" }) : null,
+      s.jsx("button", { key: "ok", onClick: () => { c(o.id, { statut: "Confirmé" }); toast("✅ تأكدات " + (o.nom || "الطلبية")); }, className: "mv-btn ok", children: "✅ تأكيد" }),
+      s.jsx("button", { key: "rl", onClick: () => { c(o.id, { statut: "Rappel" }); toast("⏰ تسجلت للمتابعة"); }, className: "mv-btn", children: "⏰ متابعة" }),
+      wa ? s.jsx("a", { key: "wa", href: "https://wa.me/" + wa, target: "_blank", rel: "noopener", className: "mv-btn wa", children: "💬 واتساب" }) : null,
+      s.jsx("button", {
+        key: "no",
+        onClick: () => { if (window.confirm("نلغيو هاد الطلبية؟")) { c(o.id, { statut: "Annulé" }); toast("✖ تلغات الطلبية"); } },
+        className: "mv-btn danger", children: "✖ إلغاء"
+      }),
+      s.jsx("button", { key: "mo", onClick: () => setOpen(isOpen ? 0 : o.id), className: "mv-btn ghost", children: isOpen ? "⌃ أقل" : "⌄ تفاصيل" })
+    ]}));
+    return s.jsxs("div", { key: o.id, className: "mv-card tone-" + tone, children: kids });
   };
 
   const navBtn = (key, icon, label, badge) => s.jsxs("button", {
@@ -1152,51 +1211,31 @@ function __PvMobileApp({ agent: e }) {
     className: "mv-seg" + (period === key ? " on" : ""), children: label
   });
 
-  const kpiChip = (key, label) => s.jsx("button", {
-    key: key, onClick: () => setKpi(key),
-    className: "mv-seg" + (kpi === key ? " on" : ""), children: label
+  const tile = (key, label, n, tone) => s.jsx("button", {
+    key: key, onClick: () => { setKpi(key); setTab("suivi"); },
+    className: "mv-tile " + (tone || "") + (kpi === key && !needle ? " on" : ""),
+    children: [s.jsx("b", { key: "v", children: String(n) }), s.jsx("span", { key: "l", children: label })]
   });
 
+  /* --- الصفحة ------------------------------------------------------------ */
   let body = null;
   if (tab === "suivi") {
     body = s.jsxs("div", { key: "bd", className: "mv-body", children: [
-      s.jsxs("div", { key: "k", className: "mv-segs", children: [
-        kpiChip("call", "📞 للاتصال"),
-        kpiChip("suivi", "⏰ متابعة"),
-        kpiChip("ship", "🚚 جاهزة"),
-        kpiChip("risk", "⚠️ خطر")
+      s.jsxs("div", { key: "st", className: "mv-strip", children: [
+        tile("call", "📞 للاتصال", counts.call, "red"),
+        tile("suivi", "⏰ متابعة", counts.suivi, "amber"),
+        tile("ship", "🚚 جاهزة", counts.ship, "blue"),
+        tile("risk", "⚠️ خطر", counts.risk, "violet")
       ]}),
       s.jsxs("div", { key: "p", className: "mv-segs", children: [periodBtn("today", "اليوم"), periodBtn("week", "7 أيام"), periodBtn("month", "هاد الشهر"), periodBtn("all", "الكل")] }),
+      s.jsxs("div", { key: "n", className: "mv-count", children: (needle ? (list.length + " نتيجة للبحث") : (follow.length + " طلبية فالتبّع")) }),
       follow.length ? follow.map(card) : s.jsx("div", { key: "e", className: "mv-empty", children: "ما كاين حتى طلبية فهاد القائمة ✅" })
     ]});
   } else if (tab === "orders") {
     body = s.jsxs("div", { key: "bd", className: "mv-body", children: [
       s.jsxs("div", { key: "p", className: "mv-segs", children: [periodBtn("today", "اليوم"), periodBtn("week", "7 أيام"), periodBtn("month", "هاد الشهر"), periodBtn("all", "الكل")] }),
+      s.jsxs("div", { key: "n", className: "mv-count", children: list.length + " طلبية" }),
       list.length ? list.map(card) : s.jsx("div", { key: "e", className: "mv-empty", children: "ما كاين حتى طلبية" })
-    ]});
-  } else if (tab === "new") {
-    const f = form;
-    const set = (k) => (ev) => setForm(x => ({ ...x, [k]: ev.target.value }));
-    body = s.jsxs("div", { key: "bd", className: "mv-body", children: [
-      s.jsx("label", { key: "l1", className: "mv-lbl", children: "الاسم الكامل" }),
-      s.jsx("input", { key: "i1", className: "mv-in", value: f.nom, onChange: set("nom"), placeholder: "مثال: فاطمة الزهراء", autoComplete: "name" }),
-      s.jsx("label", { key: "l2", className: "mv-lbl", children: "الهاتف" }),
-      s.jsx("input", { key: "i2", className: "mv-in", value: f.telephone, onChange: set("telephone"), placeholder: "06XXXXXXXX", inputMode: "tel", autoComplete: "tel", dir: "ltr" }),
-      s.jsx("label", { key: "l3", className: "mv-lbl", children: "المدينة" }),
-      s.jsx("select", {
-        key: "i3", className: "mv-in", value: f.ville, onChange: ev => pickVille(ev.target.value),
-        children: [s.jsx("option", { key: "o0", value: "", children: "اختار المدينة…" })].concat(cities.map(c2 => s.jsx("option", { key: c2.nom, value: c2.nom, children: c2.nom + " — " + c2.prix + " DH" })))
-      }),
-      s.jsx("div", { key: "l3h", className: "mv-hint", children: "ثمن التوصيل: " + (Number(f.commission) > 0 ? Number(f.commission) + " DH" : "—") }),
-      s.jsx("label", { key: "l4", className: "mv-lbl", children: "العنوان" }),
-      s.jsx("input", { key: "i4", className: "mv-in", value: f.adresse, onChange: set("adresse"), placeholder: "الحي، الزنقة…" }),
-      s.jsx("label", { key: "l5", className: "mv-lbl", children: "المنتج" }),
-      s.jsx(Pk, { key: "i5", value: f.produit, list: catalog, onChange: pickProduit, className: "mv-in" }),
-      s.jsxs("div", { key: "c2", className: "mv-2col", children: [
-        s.jsxs("div", { key: "cq", children: [s.jsx("label", { key: "lq", className: "mv-lbl", children: "الكمية" }), s.jsx("input", { key: "iq", className: "mv-in", value: f.qte, onChange: set("qte"), inputMode: "numeric", type: "number", min: 1 })] }),
-        s.jsxs("div", { key: "cp", children: [s.jsx("label", { key: "lp", className: "mv-lbl", children: "الثمن (DH)" }), s.jsx("input", { key: "ip", className: "mv-in", value: f.prix, onChange: set("prix"), inputMode: "numeric", type: "number", min: 0 })] })
-      ]}),
-      s.jsx("button", { key: "sub", onClick: submit, className: "mv-submit", children: "💾 حفظ الطلبية" })
     ]});
   } else if (tab === "drafts") {
     body = s.jsxs("div", { key: "bd", className: "mv-body", children: [
@@ -1213,35 +1252,83 @@ function __PvMobileApp({ agent: e }) {
         s.jsxs("div", { key: "s5", className: "mv-stat", children: [s.jsx("b", { key: "v", children: String(stats.sold) }), s.jsx("span", { key: "t", children: "مسلّمة" })] }),
         s.jsxs("div", { key: "s6", className: "mv-stat", children: [s.jsx("b", { key: "v", children: String(stats.back) }), s.jsx("span", { key: "t", children: "مرجّعة" })] })
       ]}),
-      s.jsxs("div", { key: "ca", className: "mv-card", children: [s.jsxs("div", { key: "h", className: "mv-head", children: [s.jsx("b", { key: "b", children: "المبيعات" }), s.jsx("span", { key: "p", className: "mv-price", children: j2(Math.round(stats.ca)) + " DH" })] })] }),
-      s.jsx("div", { key: "me", className: "mv-empty", children: "الحساب ديالك: " + (h ? (h.username + " · " + (h.agent || "")) : "") })
+      s.jsxs("div", { key: "ca", className: "mv-card", children: [s.jsxs("div", { key: "h", className: "mv-card-top", children: [
+        s.jsx("b", { key: "b", children: "💰 المبيعات" }),
+        s.jsx("b", { key: "p", className: "mv-price", children: j2(Math.round(stats.ca)) + " DH" })
+      ]})] }),
+      s.jsxs("div", { key: "me", className: "mv-card", children: [s.jsxs("div", { key: "h", className: "mv-card-top", children: [
+        s.jsxs("div", { key: "n", className: "mv-card-name", children: [
+          s.jsx("b", { key: "t", children: "👤 الحساب" }),
+          s.jsx("span", { key: "p", className: "mv-phone", children: h ? (h.username + " · " + (h.agent || "")) : "" })
+        ]}),
+        s.jsx("span", { key: "v", className: "mv-date", children: "نسخة الموبايل v4.00" })
+      ]})] })
     ]});
   }
 
+  /* --- ورقة الطلبية الجديدة --------------------------------------------- */
+  const f = form;
+  const set = (k) => (ev) => setForm(x => ({ ...x, [k]: ev.target.value }));
+  const sheetNode = s.jsxs("div", { key: "sh", className: "mv-sheet-wrap", children: [
+    s.jsx("div", { key: "bk", className: "mv-sheet-back", onClick: () => setSheet(false) }),
+    s.jsxs("div", { key: "pn", className: "mv-sheet", children: [
+      s.jsxs("div", { key: "hd", className: "mv-sheet-head", children: [
+        s.jsx("b", { key: "t", children: "➕ طلبية جديدة" }),
+        s.jsx("button", { key: "x", onClick: () => setSheet(false), className: "mv-sheet-close", title: "إغلاق", children: "✕" })
+      ]}),
+      s.jsxs("div", { key: "bd", className: "mv-sheet-body", children: [
+        s.jsx("label", { key: "l1", className: "mv-lbl", children: "الاسم الكامل" }),
+        s.jsx("input", { key: "i1", className: "mv-in", value: f.nom, onChange: set("nom"), placeholder: "مثال: فاطمة الزهراء", autoComplete: "name" }),
+        s.jsx("label", { key: "l2", className: "mv-lbl", children: "الهاتف" }),
+        s.jsx("input", { key: "i2", className: "mv-in", value: f.telephone, onChange: set("telephone"), placeholder: "06XXXXXXXX", inputMode: "tel", autoComplete: "tel", dir: "ltr" }),
+        s.jsx("label", { key: "l3", className: "mv-lbl", children: "المدينة" }),
+        s.jsx("select", {
+          key: "i3", className: "mv-in", value: f.ville, onChange: ev => pickVille(ev.target.value),
+          children: [s.jsx("option", { key: "o0", value: "", children: "اختار المدينة…" })].concat(cities.map(c2 => s.jsx("option", { key: c2.nom, value: c2.nom, children: c2.nom + " — " + c2.prix + " DH" })))
+        }),
+        s.jsx("div", { key: "l3h", className: "mv-hint", children: "ثمن التوصيل: " + (Number(f.commission) > 0 ? Number(f.commission) + " DH" : "—") }),
+        s.jsx("label", { key: "l4", className: "mv-lbl", children: "العنوان" }),
+        s.jsx("input", { key: "i4", className: "mv-in", value: f.adresse, onChange: set("adresse"), placeholder: "الحي، الزنقة…" }),
+        s.jsx("label", { key: "l5", className: "mv-lbl", children: "المنتج" }),
+        s.jsx(Pk, { key: "i5", value: f.produit, list: catalog, onChange: pickProduit, className: "mv-in" }),
+        s.jsxs("div", { key: "c2", className: "mv-2col", children: [
+          s.jsxs("div", { key: "cq", children: [s.jsx("label", { key: "lq", className: "mv-lbl", children: "الكمية" }), s.jsx("input", { key: "iq", className: "mv-in", value: f.qte, onChange: set("qte"), inputMode: "numeric", type: "number", min: 1 })] }),
+          s.jsxs("div", { key: "cp", children: [s.jsx("label", { key: "lp", className: "mv-lbl", children: "الثمن (DH)" }), s.jsx("input", { key: "ip", className: "mv-in", value: f.prix, onChange: set("prix"), inputMode: "numeric", type: "number", min: 0 })] })
+        ]}),
+        s.jsx("button", { key: "sub", onClick: submit, className: "mv-submit", children: "💾 حفظ الطلبية" })
+      ]})
+    ]})
+  ]});
+
+  const agentName = (h && (h.agent || h.username)) || e || "";
+
   return s.jsxs("div", { className: "mv-root", dir: "rtl", children: [
     s.jsxs("header", { key: "hd", className: "mv-head-bar", children: [
+      s.jsx("div", { key: "av", className: "mv-avatar", children: String(agentName || "?").trim().charAt(0).toUpperCase() }),
       s.jsxs("div", { key: "hl", className: "mv-head-l", children: [
-        s.jsx("b", { key: "u", children: (h && h.username) || e || "" }),
-        s.jsx("span", { key: "ag", className: "mv-head-sub", children: e || "" })
+        s.jsx("b", { key: "u", children: agentName }),
+        s.jsx("span", { key: "ag", className: "mv-head-sub", children: "نسخة الموبايل · " + stats.total + " طلبية" })
       ]}),
       s.jsxs("div", { key: "hr", className: "mv-head-r", children: [
+        s.jsx("span", { key: "vb", className: "mv-ver", title: "نسخة التطبيق", children: "v4.00" }),
         s.jsx("button", { key: "tb", onClick: __pvMobileToggle, className: "mv-hbtn", title: "النسخة ديال الجدول", children: "🖥️" }),
         s.jsx("button", { key: "lo", onClick: () => lgOut && lgOut(), className: "mv-hbtn", title: "تسجيل الخروج", children: "⏻" })
       ]})
     ]}),
-    s.jsx("div", { key: "sr", className: "mv-search", children: [
-      s.jsx("input", { key: "si", className: "mv-in", value: q, onChange: ev => setQ(ev.target.value), placeholder: "🔎 بحث (الاسم، الهاتف، المدينة…)" })
+    s.jsxs("div", { key: "sr", className: "mv-search", children: [
+      s.jsx("span", { key: "si", className: "mv-search-ic", children: "🔎" }),
+      s.jsx("input", { key: "sq", className: "mv-in mv-search-in", value: q, onChange: ev => setQ(ev.target.value), placeholder: "بحث بالاسم، الهاتف، المدينة، Tracking…" })
     ]}),
-    msg ? s.jsx("div", { key: "mg", className: "mv-msg", children: msg }) : null,
+    msg ? s.jsx("div", { key: "mg", className: "mv-toast" + (bad ? " bad" : ""), children: msg }) : null,
     body,
-    tab !== "new" ? s.jsx("button", { key: "fab", onClick: () => setTab("new"), className: "mv-fab", title: "طلبية جديدة", children: "+" }) : null,
     s.jsxs("nav", { key: "nv", className: "mv-nav", children: [
       navBtn("suivi", "📞", "التبّع", follow.length ? String(follow.length) : ""),
       navBtn("orders", "📦", "الطلبيات"),
-      navBtn("new", "➕", "جديد"),
+      s.jsx("button", { key: "new", onClick: () => setSheet(true), className: "mv-fab", title: "طلبية جديدة", children: "+" }),
       navBtn("drafts", "📤", "المسودات", drafts.length ? String(drafts.length) : ""),
       navBtn("stats", "📊", "الأرقام")
-    ]})
+    ]}),
+    sheet ? sheetNode : null
   ]});
 }
 
@@ -1627,7 +1714,8 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
 <script id="pv-digylog-send-auto">
 (function(){
   const token='8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
-  const EXPECTED='3.96';
+  const EXPECTED='4.00';
+  const PV_BUILD='16a598fd';
   let sending=false;
   function say(text){
     if(!document.body)return;
@@ -1670,7 +1758,7 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
   }
   async function checkVersion(){
     try{
-      const r=await fetch('api.php?export=version&token='+encodeURIComponent(token),{cache:'no-store'});
+      const r=await fetch('api.php?export=version&token='+encodeURIComponent(token)+'&_='+Date.now(),{cache:'no-store'});
       const j=await r.json().catch(function(){return null});
       if(!j||!j.apiVersion){
         say('⚠️ ما قدرناش نقراو api.php على السيرفر — رفع الحزمة كاملة (api.php + index.html + digylog-admin.html + .htaccess) فـ racine الموقع، ومن بعد دوز Ctrl+F5');
@@ -1678,8 +1766,44 @@ tr[data-ann="1"] input,tr[data-ann="1"] select,tr[data-ann="1"] textarea{text-de
       }
       if(j.apiVersion!==EXPECTED){
         say('⚠️ api.php على السيرفر ('+j.apiVersion+') ماشي بحال index.html ('+EXPECTED+') — رفع الحزمة كاملة (الملفات 4 مع بعض) فـ racine الموقع، ومن بعد دوز Ctrl+F5 باش يمسح الكاش');
+        return;
+      }
+      /* نسخة جديدة ديال index.html كاينة فـ السيرفر والمتصفح كايمسك نسخة قديمة */
+      if(j.indexBuild&&j.indexBuild!==PV_BUILD&&!sessionStorage.getItem('pv_newver_'+PV_BUILD)){
+        showNewVersion(j);
       }
     }catch(e){}
+  }
+  function showNewVersion(j){
+    let el=document.getElementById('pv-newver');
+    if(!el){
+      el=document.createElement('div');
+      el.id='pv-newver';
+      el.setAttribute('dir','rtl');
+      el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;display:flex;align-items:center;gap:10px;background:#b91c1c;color:#fff;padding:10px 14px;font:800 12.5px/1.5 system-ui,Tahoma,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.25)';
+      document.body.appendChild(el);
+    }
+    el.innerHTML='';
+    const s1=document.createElement('span');
+    s1.textContent='⚠️ نسخة جديدة متوفرة ('+(j.indexVersion||'')+') — اضغط باش تحدّث';
+    el.appendChild(s1);
+    const b=document.createElement('button');
+    b.textContent='تحديث الآن';
+    b.style.cssText='background:#fff;color:#b91c1c;border:0;border-radius:9px;padding:7px 12px;font:900 12px/1 system-ui,Tahoma,sans-serif;cursor:pointer;white-space:nowrap';
+    b.onclick=function(){
+      try{sessionStorage.setItem('pv_newver_'+PV_BUILD,'1')}catch(e){}
+      try{location.replace(location.pathname+'?_pv='+Date.now())}catch(e){location.reload()}
+    };
+    el.appendChild(b);
+    const x=document.createElement('button');
+    x.textContent='✕';
+    x.setAttribute('aria-label','close');
+    x.style.cssText='background:transparent;border:0;color:#fff;font-size:15px;font-weight:900;cursor:pointer;line-height:1';
+    x.onclick=function(){
+      try{sessionStorage.setItem('pv_newver_'+PV_BUILD,'1')}catch(e){}
+      el.style.display='none';
+    };
+    el.appendChild(x);
   }
   setTimeout(sendConfirmed,2000);setInterval(sendConfirmed,6000);
   setTimeout(checkVersion,2600);setInterval(checkVersion,300000);
@@ -1728,62 +1852,106 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
 </style>
 
 <style id="pv-mobile-style">
-.mv-root{position:fixed;inset:0;background:#f1f5f9;display:flex;flex-direction:column;z-index:60;-webkit-tap-highlight-color:transparent;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
-.mv-head-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;box-shadow:0 2px 12px rgba(15,118,110,.28)}
-.mv-head-l{display:flex;flex-direction:column;line-height:1.25;min-width:0}
-.mv-head-l b{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mv-head-sub{font-size:10.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mv-head-r{display:flex;gap:6px;flex:0 0 auto}
-.mv-hbtn{background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:11px;padding:0 11px;font-size:15px;line-height:1;min-width:40px;min-height:38px;display:grid;place-items:center;transition:transform .12s}
+/* ==========================================================================
+   Paraveda CRM — نسخة الموبايل الاحترافية (v4.00)
+   تصميم Mobile-first: header ثابت، بحث، فلاتر، كروت الطلبات، ورقة الطلبية
+   الجديدة (bottom sheet)، وشريط تبويب سفلي بزر + بارز.
+   ========================================================================== */
+.mv-root{position:fixed;inset:0;background:#eef2f7;display:flex;flex-direction:column;z-index:60;-webkit-tap-highlight-color:transparent;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;overscroll-behavior:none}
+.mv-head-bar{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top)) 12px 12px;background:linear-gradient(135deg,#0f766e 0%,#0d9488 55%,#0891b2 130%);color:#fff;box-shadow:0 6px 18px rgba(13,148,136,.3)}
+.mv-avatar{width:40px;height:40px;flex:none;border-radius:13px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;font-size:17px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.mv-head-l{display:flex;flex-direction:column;line-height:1.25;min-width:0;flex:1}
+.mv-head-l b{font-size:15.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mv-head-sub{font-size:10.5px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mv-head-r{display:flex;gap:6px;flex:0 0 auto;align-items:center}
+.mv-ver{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.32);border-radius:999px;padding:4px 8px;font-size:9.5px;font-weight:900;letter-spacing:.4px}
+.mv-hbtn{background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:12px;padding:0 11px;font-size:15px;line-height:1;min-width:40px;min-height:38px;display:grid;place-items:center;transition:transform .12s}
 .mv-hbtn:active{transform:scale(.93)}
-.mv-search{flex:0 0 auto;padding:9px 10px;background:#fff;border-bottom:1px solid #e2e8f0}
-.mv-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 10px 108px}
-.mv-msg{margin:8px 10px 0;padding:10px 12px;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:12px;font-weight:700;box-shadow:0 1px 3px rgba(16,185,129,.18)}
-.mv-segs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+.mv-search{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fff;border-bottom:1px solid #e2e8f0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.mv-search-ic{font-size:15px;opacity:.5;flex:0 0 auto}
+.mv-search-in{border:0;background:#f1f5f9;border-radius:12px;min-height:42px;font-size:15px;padding:10px 12px}
+.mv-search-in:focus{background:#fff;box-shadow:0 0 0 3px rgba(15,118,110,.14)}
+.mv-toast{margin:10px 12px 0;padding:11px 13px;border-radius:14px;background:#ecfdf5;color:#065f46;font-size:12.5px;font-weight:800;box-shadow:0 6px 16px rgba(16,185,129,.18);border:1px solid #a7f3d0}
+.mv-toast.bad{background:#fef2f2;color:#991b1b;border-color:#fecaca;box-shadow:0 6px 16px rgba(239,68,68,.16)}
+.mv-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 12px 120px}
+.mv-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}
+.mv-tile{border:1px solid #e2e8f0;background:#fff;border-radius:14px;padding:9px 4px;text-align:center;box-shadow:0 1px 2px rgba(15,23,42,.05);transition:transform .12s;font-family:inherit}
+.mv-tile b{display:block;font-size:18px;font-weight:900;color:#0f172a;line-height:1.1}
+.mv-tile span{display:block;margin-top:3px;font-size:9.5px;font-weight:800;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mv-tile.red b{color:#dc2626}.mv-tile.amber b{color:#b45309}.mv-tile.blue b{color:#1d4ed8}.mv-tile.violet b{color:#6d28d9}
+.mv-tile.on{background:#0f766e;border-color:#0f766e;box-shadow:0 6px 16px rgba(15,118,110,.28)}
+.mv-tile.on b,.mv-tile.on span{color:#fff}
+.mv-tile:active{transform:scale(.96)}
+.mv-segs{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;scrollbar-width:none}
 .mv-segs::-webkit-scrollbar{display:none}
-.mv-seg{flex:0 0 auto;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:999px;padding:9px 13px;font-size:11.5px;font-weight:700;min-height:36px;box-shadow:0 1px 2px rgba(15,23,42,.05)}
-.mv-seg.on{background:#0f766e;border-color:#0f766e;color:#fff;box-shadow:0 3px 10px rgba(15,118,110,.3)}
-.mv-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:12px 13px;margin-bottom:10px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
-.mv-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.mv-name{font-size:14.5px;font-weight:800;color:#0f172a;line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mv-price{font-size:13.5px;font-weight:800;color:#0f766e;white-space:nowrap;flex:0 0 auto}
-.mv-line{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px;font-size:12px;color:#334155}
-.mv-line.dim{color:#64748b;font-size:11.5px}
-.mv-track{font-family:ui-monospace,Menlo,monospace;letter-spacing:.3px}
-.mv-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.mv-chip{font-size:10.5px;font-weight:800;border-radius:999px;padding:4px 9px;background:#e2e8f0;color:#334155}
+.mv-seg{flex:0 0 auto;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:999px;padding:9px 14px;font-size:11.5px;font-weight:800;min-height:36px;box-shadow:0 1px 2px rgba(15,23,42,.05);font-family:inherit}
+.mv-seg.on{background:#0f766e;border-color:#0f766e;color:#fff;box-shadow:0 4px 12px rgba(15,118,110,.28)}
+.mv-count{font-size:11px;font-weight:800;color:#64748b;padding:0 2px 8px}
+.mv-card{position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:13px 14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(15,23,42,.05);overflow:hidden}
+.mv-card:before{content:"";position:absolute;top:0;bottom:0;right:0;width:4px;background:#cbd5e1}
+.mv-card.tone-ok:before{background:#10b981}.mv-card.tone-bad:before{background:#ef4444}.mv-card.tone-warn:before{background:#f59e0b}.mv-card.tone-new:before{background:#0ea5e9}
+.mv-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.mv-card-name{min-width:0;display:flex;flex-direction:column;gap:2px}
+.mv-card-name b{font-size:15px;font-weight:900;color:#0f172a;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mv-phone{font-size:12px;font-weight:700;color:#475569;direction:ltr;text-align:right;display:block}
+.mv-card-side{flex:0 0 auto;text-align:left;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.mv-price{font-size:14px;font-weight:900;color:#0f766e;white-space:nowrap}
+.mv-date{font-size:10px;font-weight:700;color:#94a3b8;white-space:nowrap}
+.mv-line{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:8px;font-size:12px;color:#334155;font-weight:600}
+.mv-line.dim{color:#64748b;font-size:11.5px;font-weight:600}
+.mv-track{font-family:ui-monospace,Menlo,monospace;letter-spacing:.3px;color:#1d4ed8}
+.mv-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.mv-chip{font-size:10.5px;font-weight:900;border-radius:999px;padding:4px 9px;background:#e2e8f0;color:#334155}
 .mv-chip.ok{background:#d1fae5;color:#065f46}
 .mv-chip.bad{background:#fee2e2;color:#991b1b}
+.mv-chip.warn{background:#fef3c7;color:#92400e}
 .mv-chip.gray{background:#e0f2fe;color:#0369a1}
-.mv-chip.draft{background:#fef3c7;color:#92400e}
-.mv-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.mv-btn{flex:1 1 auto;min-width:74px;min-height:42px;text-align:center;border:1px solid #cbd5e1;background:#f8fafc;color:#0f172a;border-radius:12px;padding:10px 6px;font-size:12px;font-weight:800;text-decoration:none;display:grid;place-items:center;transition:transform .1s}
+.mv-chip.draft{background:#f3e8ff;color:#6b21a8}
+.mv-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.mv-btn{flex:1 1 28%;min-width:92px;min-height:44px;text-align:center;border:1px solid #cbd5e1;background:#f8fafc;color:#0f172a;border-radius:13px;padding:10px 6px;font-size:12px;font-weight:800;text-decoration:none;display:grid;place-items:center;transition:transform .1s;font-family:inherit}
 .mv-btn:active{transform:scale(.95)}
-.mv-btn.call{background:#0f766e;border-color:#0f766e;color:#fff}
+.mv-btn.call{background:#0f766e;border-color:#0f766e;color:#fff;box-shadow:0 5px 14px rgba(15,118,110,.28)}
 .mv-btn.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+.mv-btn.wa{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
 .mv-btn.danger{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.mv-btn.ghost{background:transparent;border-style:dashed;color:#64748b}
 .mv-lbl{display:block;font-size:11.5px;font-weight:800;color:#475569;margin:12px 0 5px}
-.mv-hint{margin-top:6px;font-size:11px;font-weight:700;color:#0f766e;background:#ecfdf5;border-radius:9px;padding:6px 9px}
-.mv-in{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:13px 12px;font-size:16px;background:#fff;color:#0f172a;outline:none;min-height:46px}
+.mv-hint{margin-top:6px;font-size:11.5px;font-weight:800;color:#0f766e;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:7px 10px}
+.mv-in{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:13px;padding:13px 12px;font-size:16px;background:#fff;color:#0f172a;outline:none;min-height:48px;font-family:inherit}
 .mv-in:focus{border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.14)}
 .mv-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.mv-submit{width:100%;margin-top:16px;background:#0f766e;color:#fff;border:0;border-radius:14px;padding:16px;font-size:15px;font-weight:800;box-shadow:0 6px 16px rgba(15,118,110,.32);min-height:52px}
+.mv-submit{width:100%;margin-top:16px;background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;border:0;border-radius:15px;padding:16px;font-size:15px;font-weight:900;box-shadow:0 10px 22px rgba(15,118,110,.32);min-height:54px;font-family:inherit}
 .mv-submit:active{transform:scale(.98)}
-.mv-empty{text-align:center;color:#64748b;font-size:12.5px;padding:30px 10px}
+.mv-empty{text-align:center;color:#64748b;font-size:12.5px;font-weight:700;padding:38px 12px;background:#fff;border:1px dashed #cbd5e1;border-radius:18px}
 .mv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
-.mv-stat{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:11px 6px;text-align:center;box-shadow:0 1px 2px rgba(15,23,42,.05)}
-.mv-stat b{display:block;font-size:19px;color:#0f766e}
-.mv-stat span{font-size:10px;color:#64748b;font-weight:700}
-.mv-nav{flex:0 0 auto;position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid #e2e8f0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -2px 10px rgba(15,23,42,.06);z-index:62}
-.mv-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:transparent;color:#64748b;font-size:10px;font-weight:800;padding:6px 2px;border-radius:12px;position:relative;min-height:48px}
-.mv-nav-ic{font-size:20px;line-height:1}
-.mv-nav-btn.on{color:#0f766e;background:#ecfdf5}
+.mv-stat{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:12px 6px;text-align:center;box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.mv-stat b{display:block;font-size:20px;font-weight:900;color:#0f766e}
+.mv-stat span{font-size:10px;color:#64748b;font-weight:800}
+.mv-nav{flex:0 0 auto;position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-top:1px solid #e2e8f0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -3px 14px rgba(15,23,42,.07);z-index:62}
+.mv-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:transparent;color:#64748b;font-size:9.5px;font-weight:800;padding:6px 2px;border-radius:12px;position:relative;min-height:50px;font-family:inherit}
+.mv-nav-ic{font-size:19px;line-height:1}
+.mv-nav-btn.on{color:#0f766e}
 .mv-nav-btn:active{transform:scale(.94)}
-.mv-badge{position:absolute;top:2px;left:50%;margin-left:4px;background:#dc2626;color:#fff;border-radius:999px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center}
-.mv-fab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:#0f766e;color:#fff;border:0;font-size:28px;line-height:1;display:grid;place-items:center;box-shadow:0 10px 24px rgba(15,118,110,.45);z-index:61;transition:transform .12s}
-.mv-fab:active{transform:scale(.92)}
-@media(min-width:1024px){.mv-root{display:none}}
+.mv-badge{position:absolute;top:2px;left:50%;margin-left:4px;background:#dc2626;color:#fff;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;min-width:17px;text-align:center;box-shadow:0 2px 5px rgba(220,38,38,.35)}
+.mv-fab{flex:0 0 62px;width:62px;height:62px;margin:0 2px;border-radius:50%;background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;border:4px solid #fff;font-size:30px;line-height:1;font-weight:300;display:grid;place-items:center;box-shadow:0 10px 24px rgba(15,118,110,.42);transform:translateY(-16px);z-index:63;transition:transform .12s;font-family:inherit}
+.mv-fab:active{transform:translateY(-16px) scale(.93)}
+.mv-sheet-wrap{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-end;justify-content:center}
+.mv-sheet-back{position:absolute;inset:0;background:rgba(15,23,42,.45)}
+.mv-sheet{position:relative;width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -12px 40px rgba(15,23,42,.28);animation:mvUp .22s ease-out}
+@keyframes mvUp{from{transform:translateY(18px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.mv-sheet-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e2e8f0;background:#fff;border-radius:24px 24px 0 0}
+.mv-sheet-head b{font-size:15px;font-weight:900;color:#0f172a}
+.mv-sheet-close{width:36px;height:36px;border-radius:50%;border:0;background:#f1f5f9;color:#475569;font-size:15px;font-weight:900;display:grid;place-items:center;font-family:inherit}
+.mv-sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 16px calc(22px + env(safe-area-inset-bottom))}
+/* بصمة النسخة (كتشاف فأي صفحة أشمن نسخة خدام) */
+.pv-ver-badge{font-size:9px;font-weight:900;color:#94a3b8;border:1px solid #e2e8f0;border-radius:999px;padding:2px 7px;background:#f8fafc;flex:0 0 auto;white-space:nowrap}
+/* الزر اليدوي ديال التبديل بين نسخة الموبايل ونسخة الجدول (الهاتف فقط) */
+.pv-mob-switch{display:none!important}
+@media(max-width:1023px){.pv-mob-switch{display:inline-flex!important;align-items:center;gap:5px;border:1px solid #0f766e;background:#ecfdf5;color:#0f766e;border-radius:999px;padding:7px 12px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap;font-family:inherit}}
+@media(min-width:1024px){.mv-root{display:none!important}}
 </style>
+
+
 
 
 

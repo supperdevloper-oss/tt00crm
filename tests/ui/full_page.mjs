@@ -36,11 +36,11 @@ fs.writeFileSync(modFile, mod[2]);
 const results = [];
 const check = (name, ok, detail) => results.push([name, !!ok, detail || ""]);
 
-const run = async (agent, mobileMode) => {
+const run = async (agent, mobileMode, query) => {
   const dom = new JSDOM(
     `<!doctype html><html><head><meta name="viewport" content="width=device-width"></head>` +
     `<body><div id="root"></div></body></html>`,
-    { url: "https://paraveda.store/", pretendToBeVisual: true }
+    { url: "https://paraveda.store/" + (query || ""), pretendToBeVisual: true }
   );
   const w = dom.window;
   // a phone: the CRM must switch to the mobile version by itself
@@ -75,14 +75,17 @@ const run = async (agent, mobileMode) => {
     "InputEvent", "MutationObserver", "getComputedStyle", "devicePixelRatio", "screen", "history",
     "XMLHttpRequest", "IntersectionObserver", "ResizeObserver", "FileReader", "Blob", "URL"];
   const saved = {};
-  for (const g of globals) {
-    saved[g] = global[g];
-    const v = w[g];
-    if (v !== undefined) {
-      try { global[g] = typeof v === "function" && /^(requestAnimationFrame|cancelAnimationFrame|matchMedia|getComputedStyle)$/.test(g) ? v.bind(w) : v; }
-      catch (e) { /* ignore */ }
+  /* the browser globals have to stay alive while the page is driven */
+  const activate = () => {
+    for (const g of globals) {
+      const v = w[g];
+      if (v !== undefined) {
+        try { global[g] = typeof v === "function" && /^(requestAnimationFrame|cancelAnimationFrame|matchMedia|getComputedStyle)$/.test(g) ? v.bind(w) : v; }
+        catch (e) { /* ignore */ }
+      }
     }
-  }
+  };
+  activate();
   global.window = w;
   global.document = w.document;
   try { Object.defineProperty(global, "navigator", { value: w.navigator, configurable: true }); } catch (e) { }
@@ -121,7 +124,7 @@ const run = async (agent, mobileMode) => {
   }
   console.error = origError;
   try { for (const g of globals) global[g] = saved[g]; } catch (e) { }
-  return { dom, errors, html: rootHtml, text: w.document.body.textContent || "" };
+  return { dom, errors, html: rootHtml, text: w.document.body.textContent || "", activate };
 };
 
 // --- 1. the agent on a phone gets the mobile version ---------------------
@@ -139,6 +142,7 @@ check("the mobile version shows the call button and the order",
 {
   const w = agent.dom.window;
   const doc = w.document;
+  agent.activate();   // the browser globals must stay alive while we drive the page
   const click = async (el) => {
     el.dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true }));
     await new Promise((r) => setTimeout(r, 120));
@@ -170,7 +174,8 @@ check("the mobile version shows the call button and the order",
     await click(ok);
     await new Promise((r) => setTimeout(r, 400));
     const txt = doc.body.textContent || "";
-    check("the status can be changed from the phone", txt.includes("Confirmé"), txt.slice(0, 160));
+    check("the status can be changed from the phone",
+      txt.includes("تأكدات") || txt.includes("Confirmé"), txt.slice(0, 160));
   }
 }
 
@@ -185,6 +190,24 @@ const desk = await run("agent", "0");
 check("the table version can be forced (mobile mode off)",
   !desk.html.includes("mv-root") && desk.html.length > 50,
   (desk.html.includes("mv-root") ? "mv-root found" : "ok"));
+check("the agent page has the manual switch to the mobile version",
+  desk.html.includes("pv-mob-switch") && desk.text.includes("نسخة الموبايل"),
+  (desk.html.includes("pv-mob-switch") ? "switch found" : desk.text.slice(0, 160)));
+
+// --- 4. the version of the mobile app is visible ---------------------------
+check("the mobile version shows its version (v4.00)",
+  agent.html.includes("v4.00") && agent.html.includes("mv-ver"),
+  agent.html.slice(0, 160));
+
+// --- 5. the query string forces the mobile version -------------------------
+const forced = await run("agent", null, "?mobile=1");
+check("?mobile=1 forces the mobile version on the phone",
+  forced.html.includes("mv-root") && forced.html.length > 50,
+  (forced.html.includes("mv-root") ? "mv-root found" : forced.text.slice(0, 160)));
+const forced0 = await run("agent", null, "?mobile=0");
+check("?mobile=0 forces the table version on the phone",
+  !forced0.html.includes("mv-root") && forced0.html.length > 50,
+  (forced0.html.includes("mv-root") ? "mv-root found" : "ok"));
 
 try { fs.unlinkSync(modFile); } catch {}
 

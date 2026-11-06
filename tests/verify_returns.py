@@ -111,7 +111,7 @@ checks = {
     "Orders are sent exactly once": all(x in api for x in ("!empty($o['dlSent'])) continue;", "$o['_f']['dlSent'] = $now;", "$o['dlSent'] = 1; $o['dlAt'] = $now;")),
     "Failed Digylog sends stay pending with backoff": all(x in api for x in ("elseif (isset($failed[$id]))", "$o['dlNextTry']=$now+$delay", "$nextTry >", "min(60000,10000*")) and "$tries >= 20" not in api,
     "A failed order is never blocked forever": all(x in api for x in ("$gen !== CRM_DL_SENDER_GEN", "$tries = 0; $nextTry = 0;", "$o['dlGen']=CRM_DL_SENDER_GEN")),
-    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '3.96')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
+    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '4.00')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
     "Public diagnosis file explains a silent failure": all(x in api for x in ("function crm_dl_diag_save", "function crm_dl_diag_build", "dl-diag.json", "'pendingCount'", "crm_dl_diag_save(crm_dl_diag_build(")),
     "Digylog boutique is resolved automatically": all(x in api for x in ("function crm_dl_store_by_name", "function crm_dl_store_known", "function crm_dl_initials_match", "strpos($ns,$agentKey)!==false", "function crm_dl_networks", "!in_array((string)$network, $ids, true)")),
     "Digylog auth falls back to the seller token": all(x in api for x in ("$code===401 || $code===403", "sellerToken", "crm_tracking_bearer($cfg[$k])", "crm_dl_api_tokens()")),
@@ -121,20 +121,28 @@ checks = {
     "The Tracking cell and the delivery sync use every token": "crm_dl_http_tokens('GET', '/order/' . rawurlencode($tracking) . '/infos', $apiTokens)" in api and "$apiTokens=crm_dl_api_tokens();" in api,
     "The admin page can save and test the Digylog token": all(x in digylog_admin for x in ("function sellerTokenValue(", "op: 'api_test'", "id=\"testApi\"", "id=\"copyTok\"")),
     "Tracking import falls back to the API token": all(x in api for x in ("function crm_dl_token_candidates", "'sellerToken','token'", "crm_tracking_internal_many($phones,$tokens[0])", "$alt=crm_tracking_internal_many($phones,$tokens[$ti])")),
-    "The CRM has a dedicated mobile version for the phones": all(x in index for x in ("function __pvMobileOn()", "function __pvMobileToggle()", "paraveda_mobile_mode", "window.innerWidth < 1024", "function __PvMobileApp({ agent: e })")),
+    "The CRM has a dedicated mobile version for the phones": all(x in index for x in ("function __pvMobileOn()", "function __pvMobileToggle()", "function __pvSetMobile(", "paraveda_mobile_mode", "window.innerWidth < 1024", "function __PvMobileApp({ agent: e })")),
     "The mobile version is opened automatically on the phones": "if(!m&&__pvMobileOn())return s.jsx(__PvMobileApp,{agent:(c&&c.agent)||\"\"});" in index,
     "The admin keeps the table version on the phone": "!m&&__pvMobileOn()" in index and "m?s.jsxs(\"div\",{className:\"flex h-dvh flex-col bg-slate-100\"" in index,
-    "The admin table version stays reachable from the mobile version": all(x in index for x in ("__pvMobileToggle, className: \"mv-hbtn\"", "النسخة ديال الجدول", "__pvAdminMobile()")),
+    "The admin table version stays reachable from the mobile version": all(x in index for x in ("onClick: __pvMobileToggle, className: \"mv-hbtn\"", "النسخة ديال الجدول", "function __pvSetMobile(")),
     "The mobile version reuses the CRM data, the cities and the prices": all(x in index for x in ("const { orders: a, add: i, upd: c, publish: pubF } = Xt();", "const { currentUser: h, logout: lgOut } = kr();", "const cities = Ll() || [];", "const c0 = wo(v, cities);")),
     "The mobile version can follow up, call and change the order status": all(x in index for x in ("c(o.id, { statut: \"Confirmé\" })", "c(o.id, { statut: \"Rappel\" })", "c(o.id, { statut: \"Annulé\" })", "href: \"tel:\" + tel")),
     "The mobile version saves the order for the agent as a draft": all(x in index for x in ("agent: e, link: \"\", carosellFlag: \"\"", "_d: 1", "commission: 35", "livraison: \"\", tracking: \"\"", "setTab(\"drafts\")")),
     "The mobile version publishes the drafts to the admin": all(x in index for x in ("const publishAll = () => {", "const ids = new Set(drafts.map(o => o.id));", "const n = pubF(ids);")),
     "The mobile version fills the delivery cost of the city and not the selling price": all(x in index for x in ("setForm(f => ({ ...f, ville: v, commission: c0 != null ? c0 : f.commission }))", "commission: Number(v.commission) > 0 ? Number(v.commission) : 35", "ثمن التوصيل: ")),
     "The mobile version fills the selling price from the product": all(x in index for x in ("const pickProduit = (p) => {", "prix: !isNaN(pr) && pr > 0 ? pr : f.prix", "s.jsx(Pk, { key: \"i5\", value: f.produit, list: catalog, onChange: pickProduit")),
-    "The mobile version is hidden on the big screens": "@media(min-width:1024px){.mv-root{display:none}}" in index,
-    "The automatic Digylog sending is untouched by the mobile version": all(x in index for x in ("pv-digylog-send-auto", "const EXPECTED='3.96';", "setTimeout(sendConfirmed,2000);setInterval(sendConfirmed,6000);")),
+    "The mobile version is hidden on the big screens": "@media(min-width:1024px){.mv-root{display:none!important}}" in index,
+    "The automatic Digylog sending is untouched by the mobile version": all(x in index for x in ("pv-digylog-send-auto", "const EXPECTED='4.00';", "setTimeout(sendConfirmed,2000);setInterval(sendConfirmed,6000);")),
     "The mobile version uses the same JSX runtime as the rest of the CRM": "s.jsxs(\"div\", { className: \"mv-root\", dir: \"rtl\", children: [" in index and "s.jsxs(\"div\", { key: \"bd\", className: \"mv-body\", children: [" in index,
     "The mobile version never passes the children as the third argument": not re.search(r"s\.jsx?s?\(\"[a-z]+\",\s*\{[^}]*\}\s*,\s*[\[(]", index[index.index("function __PvMobileApp"):index.index("function __pvRepairStorage()")]),
+    "The mobile version is forced by the query string": all(x in index for x in ("function __pvMobileQuery()", "[?&]mobile=([^&#]*)", 'if (q === "1" || q === "0")', 'localStorage.setItem("paraveda_mobile_mode", q)')),
+    "The agent page has a manual switch to the mobile version": all(x in index for x in ('className:"pv-mob-switch"', "onClick:()=>__pvSetMobile(true)", "📱 نسخة الموبايل")),
+    "The mobile version shows its own version": all(x in index for x in ('className: "mv-ver"', '"v4.00"', "نسخة الموبايل v4.00")),
+    "The mobile version has the professional header and the counters": all(x in index for x in ('className: "mv-avatar"', 'className: "mv-strip"', 'className: "mv-tile "', "📞 للاتصال", "🚚 جاهزة", "⚠️ خطر")),
+    "The mobile version opens the new order in a sheet": all(x in index for x in ('className: "mv-sheet-wrap"', 'className: "mv-sheet-back"', 'className: "mv-sheet"', "➕ طلبية جديدة", "💾 حفظ الطلبية")),
+    "The mobile version has a toast for the actions": all(x in index for x in ('className: "mv-toast"', "✅ تأكيد", "⏰ متابعة", "💬 واتساب", "https://wa.me/")),
+    "The server tells which index.html is deployed": all(x in api for x in ("function crm_index_marker(", "indexVersion", "indexBuild", "indexHash", "crm_index_marker()")),
+    "The new version is announced to the user": all(x in index for x in ("function showNewVersion(", "نسخة جديدة متوفرة", "location.replace(location.pathname+'?_pv='+Date.now())", "pv_newver_")),
 }
 
 import subprocess
@@ -154,9 +162,9 @@ checks["Isolated simulation of the automatic sender passes"] = sim.returncode ==
 if sim.returncode != 0:
     print(sim.stdout[-2000:], sim.stderr[-2000:])
 
-package = ROOT / "paraveda-digylog-send-v3.zip"
+package = ROOT / "paraveda-mobile-v4.zip"
 with zipfile.ZipFile(package) as z:
-    checks["Digylog automatic fix package is valid and minimal"] = (
+    checks["The mobile package is valid and minimal"] = (
         z.testzip() is None
         and z.namelist() == ["api.php", "index.html", "digylog-admin.html", ".htaccess"]
         and all(z.read(name) == (ROOT / name).read_bytes() for name in z.namelist())
