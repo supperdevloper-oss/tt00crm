@@ -52,7 +52,7 @@ $SECRET = '8c907fc0f4ffe0b9775a6b7c3c0fc7700e5724c0d78343df';
 /* ---------- نسخة السيرفر ----------
  * كنرجعوها فـ export=version وفـ جواب digylog_sync، باش نعرفو بالضبط
  * أشمن api.php خدام دابا فـ production (ufiq le déploiement ma bditch). */
-define('CRM_API_VERSION', '4.00');
+define('CRM_API_VERSION', '4.01');
 /* جيل المرسل: ملي كيتبدل الكود، كل الطلبيات لي سبقت كتجرب من جديد.
  * (ماشي كيبقاوش محبوسة بـ 20 محاولة قديمة ولا بـ backoff طويل.) */
 define('CRM_DL_SENDER_GEN', 4);
@@ -846,6 +846,586 @@ function crm_sheet_orders($b) {
   crm_out(array('ok'=>true, 'added'=>$added, 'dup'=>$dup, 'skip'=>$skip, 't'=>$t, 'results'=>$out));
 }
 
+/* خريطة الأسماء (نفسها ديال index.html) باش نلقاو ثمن التوصيل بالمدينة */
+$CRM_STOREEP_CITY_ALIAS = array(
+  'الدار البيضاء' => 'casablanca',
+  'كازا' => 'casablanca',
+  'الرباط' => 'rabat',
+  'السلا' => 'sale',
+  'تمارة' => 'temara',
+  'القنيطرة' => 'kenitra',
+  'مراكش' => 'marrakech',
+  'فاس' => 'fes',
+  'مكناس' => 'meknes',
+  'طنجة' => 'tanger',
+  'أكادير' => 'agadir',
+  'اكادير' => 'agadir',
+  'وجدة' => 'oujda',
+  'آسفي' => 'safi',
+  'اسفي' => 'safi',
+  'تطوان' => 'tetouan',
+  'الجديدة' => 'el jadida',
+  'بني ملال' => 'beni mellal',
+  'الناظور' => 'nador',
+  'الرشيدية' => 'errachidia',
+  'ورزازات' => 'ouarzazate',
+  'الصويرة' => 'essaouira',
+  'تازة' => 'taza',
+  'سطات' => 'settat',
+  'برشيد' => 'berrchid',
+  'خريبكة' => 'khouribga',
+  'العرائش' => 'larache',
+  'القصر الكبير' => 'ksar el kebir',
+  'شفشاون' => 'chefchaouen',
+  'الحسيمة' => 'al hoceima',
+  'وزان' => 'ouezzane',
+  'بركان' => 'berkane',
+  'العيدية' => 'saidia',
+  'تاوريرت' => 'taourirt',
+  'جرادة' => 'jerada',
+  'كلميم' => 'guelmim',
+  'طاطا' => 'tata',
+  'طانطان' => 'tan tan',
+  'تزنيت' => 'tiznit',
+  'تارودانت' => 'taroudant',
+  'إنزكان' => 'inezgane',
+  'ايت ملول' => 'ait melloul',
+  'اليوسفية' => 'youssoufia',
+  'قلعة السراغنة' => 'el kelaa des sraghna',
+  'إفران' => 'ifrane',
+  'أزرو' => 'azrou',
+  'خنيفرة' => 'khenifra',
+  'أزيلال' => 'azilal',
+  'العيون' => 'laayoune',
+  'الداخلة' => 'dakhla',
+  'المحمدية' => 'mohammedia',
+  'سيدي قاسم' => 'sidi kacem',
+  'سيدي سليمان' => 'sidi slimane',
+  'مهدية' => 'mehdia',
+  'تنغير' => 'tinghir',
+  'ميدلت' => 'midelt',
+  'السمارة' => 'smara',
+  'بوجدور' => 'boujdour',
+  'طرفاية' => 'tarfaya',
+  'تالوين' => 'taliouine',
+  'أولوز' => 'aoulouz',
+);
+
+/* ================================================================
+ * v4.01 — Storeep → CRM  (app.storeep.com/orders)
+ *   Storeep عندو API رسمي: https://api.storeep.com/v1
+ *     GET  /v1/orders      → لائحة الطلبيات (Authorization: Bearer <token>)
+ *     POST /v1/webhooks    → webhook (order-created / order-updated)
+ *   هنا كنجيبو الطلبيات بطريقتين (كلهم أوتوماتيك):
+ *     1) Webhook : POST api.php?action=storeep_hook&key=<المفتاح السري>
+ *     2) Poller  : GET  api.php?action=storeep_sync&token=<توكن CRM>
+ *   كل طلبية جديدة كتتعيّن لمريم فقط (server-enforced) + إشعار لها.
+ *   التكرار كيتحسب سيرفر-سايد برقم طلبية Storeep (id/number) — ما كيزيدش مرتين.
+ * ================================================================ */
+define('CRM_STOREEP_API', 'https://api.storeep.com/v1');
+
+/* ---- إعداد Storeep (توكن API + مفتاح الـwebhook) ---- */
+function crm_storeep_cfg_paths() {
+  global $DATA_DIR, $DIR_LOC, $DIR_EXT;
+  $paths = array();
+  foreach (array($DATA_DIR, $DIR_LOC, $DIR_EXT) as $dir) {
+    $dir = rtrim((string)$dir, '/');
+    if ($dir === '') continue;
+    $path = $dir . '/storeep_cfg.json';
+    if (!in_array($path, $paths, true)) $paths[] = $path;
+  }
+  return $paths;
+}
+function crm_storeep_cfg_get() {
+  $merged = array();
+  foreach (crm_storeep_cfg_paths() as $path) {
+    $cfg = json_decode((string)@file_get_contents($path), true);
+    if (!is_array($cfg)) continue;
+    foreach ($cfg as $k => $v) {
+      if (!array_key_exists($k, $merged) || $merged[$k] === '' || $merged[$k] === null) $merged[$k] = $v;
+    }
+  }
+  return $merged;
+}
+function crm_storeep_cfg_set($c) {
+  if (!is_array($c)) return false;
+  $json = json_encode($c, JSON_UNESCAPED_UNICODE);
+  if ($json === false) return false;
+  $ok = false;
+  foreach (crm_storeep_cfg_paths() as $path) {
+    if (!is_dir(dirname($path))) continue;
+    if (@file_put_contents($path, $json, LOCK_EX) !== false) $ok = true;
+  }
+  return $ok;
+}
+/* المفتاح السري ديال الـwebhook: كيتولّد مرة وحدة وكيبقى فالسيرفر */
+function crm_storeep_hook_key() {
+  $c = crm_storeep_cfg_get();
+  $k = isset($c['hookKey']) ? trim((string)$c['hookKey']) : '';
+  if (strlen($k) < 16) {
+    try { $k = bin2hex(random_bytes(16)); } catch (Throwable $e) { $k = sha1(uniqid('pv', true)); }
+    $c['hookKey'] = $k;
+    crm_storeep_cfg_set($c);
+  }
+  return $k;
+}
+/* رابط الـwebhook كامل (حسب الدومين ديال السيرفر) — هادا هو لي كيتنسخ فـStoreep */
+function crm_storeep_hook_url() {
+  $scheme = 'https';
+  if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') $scheme = 'https';
+  elseif (isset($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off' && $_SERVER['HTTPS'] !== '') $scheme = 'https';
+  elseif (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 80) $scheme = 'http';
+  $host = isset($_SERVER['HTTP_HOST']) ? trim((string)$_SERVER['HTTP_HOST']) : '';
+  if ($host === '') $host = 'paraveda.store';
+  $script = isset($_SERVER['SCRIPT_NAME']) ? (string)$_SERVER['SCRIPT_NAME'] : '/api.php';
+  if ($script === '') $script = '/api.php';
+  return $scheme . '://' . $host . $script . '?action=storeep_hook&key=' . rawurlencode(crm_storeep_hook_key());
+}
+/* حالة الاستيراد: العلامات ديال الطلبيات لي دخلو + آخر مزامنة */
+function crm_storeep_state_read() {
+  $st = crm_dl_state_read('.storeep-state.json');
+  return is_array($st) ? $st : array();
+}
+function crm_storeep_state_save($seen, $added, $dup, $skip, $err) {
+  $seen = is_array($seen) ? $seen : array();
+  if (count($seen) > 2000) $seen = array_slice($seen, -2000, null, true);
+  $st = array(
+    'seen'      => $seen,
+    'lastSync'  => (int)(microtime(true) * 1000),
+    'lastAdded' => (int)$added,
+    'lastDup'   => (int)$dup,
+    'lastSkip'  => (int)$skip,
+    'lastError' => (string)$err,
+  );
+  return crm_dl_state_write('.storeep-state.json', $st);
+}
+/* HTTP: طلب واحد لـStoreep (Bearer token) */
+function crm_storeep_http($method, $path, $token, $body = null) {
+  if (!function_exists('curl_init')) return array(0, '', 'no-curl');
+  $ch = curl_init(CRM_STOREEP_API . $path);
+  $h = array('Accept: application/json', 'Content-Type: application/json', 'Authorization: Bearer ' . $token);
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $h);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+  if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
+  $resp = curl_exec($ch);
+  $err  = (string)curl_error($ch);
+  $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  return array($code, $resp === false ? '' : (string)$resp, $err);
+}
+/* ---- ثمن التوصيل: من نفس جدول المدن ديال CRM (paraveda_villes_v2) ---- */
+function crm_storeep_norm_city($s) {
+  $s = trim((string)$s);
+  if ($s === '') return '';
+  $s = function_exists('mb_strtolower') ? mb_strtolower($s, 'UTF-8') : strtolower($s);
+  $s = preg_replace('/[\x{0300}-\x{036f}]/u', '', $s);
+  $s = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $s);
+  return trim(preg_replace('/\s+/u', ' ', $s));
+}
+function crm_storeep_city_alias($s) {
+  global $CRM_STOREEP_CITY_ALIAS;
+  $k = crm_storeep_norm_city($s);
+  if ($k === '' || !is_array($CRM_STOREEP_CITY_ALIAS)) return $k;
+  return isset($CRM_STOREEP_CITY_ALIAS[$k]) ? $CRM_STOREEP_CITY_ALIAS[$k] : $k;
+}
+function crm_storeep_city_price($ville, $cities) {
+  if (!is_array($cities) || count($cities) === 0) return 0;
+  $v = crm_storeep_city_alias($ville);
+  if ($v === '') return 0;
+  $best = null;
+  foreach ($cities as $c) {
+    if (!is_array($c) || !isset($c['nom'])) continue;
+    $n = crm_storeep_city_alias($c['nom']);
+    if ($n === '') continue;
+    $p = (float)(isset($c['prix']) ? $c['prix'] : 0);
+    if ($n === $v) return $p;
+    if ($best === null && (strpos($v, $n) === 0 || strpos($n, $v) === 0)) $best = $p;
+  }
+  return ($best === null) ? 0 : $best;
+}
+/* ---- تحويل طلبية Storeep → طلبية CRM ---- */
+function crm_storeep_address($r) {
+  $list = (isset($r['addresses']) && is_array($r['addresses'])) ? $r['addresses'] : array();
+  $ship = null; $first = null;
+  foreach ($list as $a) {
+    if (!is_array($a)) continue;
+    if ($first === null) $first = $a;
+    $t = strtolower(trim((string)(isset($a['type']) ? $a['type'] : '')));
+    if ($ship === null && ($t === 'shipping' || $t === 'livraison')) $ship = $a;
+  }
+  if ($ship === null) $ship = $first;
+  return is_array($ship) ? $ship : array();
+}
+/* كيرجع [السبب|فارغ, الطلبية, id ديال Storeep, رقم الطلبية] */
+function crm_storeep_norm($r, $cities) {
+  if (!is_array($r)) return array('bad-order', null, '', '');
+  $id = trim((string)(isset($r['id']) ? $r['id'] : ''));
+  if ($id === '') return array('no-id', null, '', '');
+  if (!empty($r['is_test']))     return array('test-order', null, $id, '');
+  if (!empty($r['is_abandoned'])) return array('abandoned', null, $id, '');
+
+  $created = '';
+  foreach (array('created_at','createdAt','date_creation','dateCreation','created') as $f) {
+    if (isset($r[$f]) && trim((string)$r[$f]) !== '') { $created = trim((string)$r[$f]); break; }
+  }
+  $dc = crm_sheet_date($created);
+  if ($dc === null || $dc === '') return array('bad-date', null, $id, '');
+
+  $a = crm_storeep_address($r);
+  $nom = trim((string)(isset($a['fullname']) ? $a['fullname'] : ''));
+  if ($nom === '') {
+    $fn = trim((string)(isset($a['firstname']) ? $a['firstname'] : ''));
+    $ln = trim((string)(isset($a['lastname'])  ? $a['lastname']  : ''));
+    $nom = trim($fn . ' ' . $ln);
+  }
+  $tel = '';
+  foreach (array('phone','whatsapp','telephone','mobile') as $f) {
+    if (isset($a[$f]) && trim((string)$a[$f]) !== '') { $tel = crm_sheet_phone($a[$f]); break; }
+  }
+  if ($tel === '') $tel = crm_sheet_phone(isset($r['phone']) ? $r['phone'] : '');
+  if ($tel === '' && $nom === '') return array('no-name-or-phone', null, $id, '');
+
+  $ville = '';
+  foreach (array('city','commune','province','state_or_region','neighborhood') as $f) {
+    if (isset($a[$f]) && trim((string)$a[$f]) !== '') { $ville = trim((string)$a[$f]); break; }
+  }
+
+  $parts = array();
+  foreach (array('address1','address2','neighborhood','district','apartment','floor','postal_code','note') as $f) {
+    $v = isset($a[$f]) ? trim((string)$a[$f]) : '';
+    if ($v !== '') $parts[] = $v;
+  }
+  $adresse = implode(', ', $parts);
+
+  $items = (isset($r['items']) && is_array($r['items'])) ? $r['items'] : array();
+  $names = array(); $qte = 0; $sum = 0;
+  foreach ($items as $it) {
+    if (!is_array($it)) continue;
+    $nm = trim((string)(isset($it['name']) ? $it['name'] : ''));
+    if ($nm === '') continue;
+    $q = (int)crm_sheet_num(isset($it['quantity']) ? $it['quantity'] : 1, 1);
+    if ($q < 1) $q = 1;
+    $qte += $q;
+    $sum += (float)crm_sheet_num(isset($it['price']) ? $it['price'] : 0, 0) * $q;
+    $names[] = ($q > 1) ? ($nm . ' x' . $q) : $nm;
+  }
+  $produit = implode(' + ', $names);
+  if ($produit === '') $produit = 'Storeep';
+
+  $prix = crm_sheet_num(isset($r['total']) ? $r['total'] : '', 0);
+  if ((float)$prix <= 0) $prix = crm_sheet_num(isset($r['subtotal']) ? $r['subtotal'] : '', 0);
+  if ((float)$prix <= 0) $prix = $sum;
+
+  $number = trim((string)(isset($r['number']) ? $r['number'] : ''));
+  $lead = '';
+  foreach (array('utm_source','source','lead_source') as $f) {
+    if (isset($r[$f]) && trim((string)$r[$f]) !== '') { $lead = trim((string)$r[$f]); break; }
+  }
+  if ($lead === '') $lead = 'Facebook';
+  else $lead = ucfirst(strtolower($lead));
+
+  $o = array();
+  $o['dateCreation']     = $dc;
+  $o['dateConfirmation'] = '';        /* مازال ماتفكّرش — البنت كيتفكّر من CRM */
+  $o['statut']           = '';
+  $o['remarques']        = 'Storeep #' . ($number !== '' ? $number : $id);
+  $o['idCmd']            = '1';
+  $o['nom']              = $nom;
+  $o['telephone']        = $tel;
+  $o['ville']            = $ville;
+  $o['adresse']          = $adresse;
+  $o['qte']              = max(1, $qte);
+  $o['prix']             = $prix;
+  $o['produit']          = $produit;
+  $o['livraison']        = '';
+  $o['upsell']           = 0;
+  $o['carousell']        = '';
+  $o['carosellFlag']     = '';
+  $o['originLead']       = substr($lead, 0, 40);
+  $o['commission']       = crm_storeep_city_price($ville, $cities);
+  $o['fees']             = '';
+  $o['livreur']          = '';
+  $o['tracking']         = '';
+  $o['dateExp']          = '';
+  $o['dateLiv']          = '';
+  $o['motif']            = '';
+  $o['link']             = '';
+  $o['agent']            = 'Meryam';   /* Storeep → مريم فقط (server-enforced) */
+  $o['src']              = 'storeep';
+  return array(null, $o, $id, $number);
+}
+/* العلامة ديال طلبية Storeep داخل remarks (للحماية حتى لو ضاع ملف الحالة) */
+function crm_storeep_marker($rem) {
+  $rem = trim((string)$rem);
+  if ($rem === '') return '';
+  if (stripos($rem, 'storeep') !== 0) return '';
+  if (preg_match('/storeep\s*#?\s*([0-9A-Za-z\-]+)/i', $rem, $m)) return trim($m[1]);
+  return '';
+}
+/* كيزيد طلبيات Storeep الجداد للـCRM (بلا تكرار) */
+function crm_storeep_insert($orders, $source) {
+  global $LOCK_FILE;
+  $orders = is_array($orders) ? array_values($orders) : array();
+  if (count($orders) === 0) return array('ok'=>true,'added'=>0,'dup'=>0,'skip'=>0,'results'=>array());
+  $cfg = crm_storeep_cfg_get();
+  $autoConfirm = !empty($cfg['autoConfirm']);
+
+  $fh = @fopen($LOCK_FILE, 'c'); if ($fh) @flock($fh, LOCK_EX);
+  $data = crm_read_raw(true);
+  $cur = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+  if (!is_array($cur)) $cur = array();
+  $cur = array_values($cur);
+  $prevT = isset($data['paraveda_orders_v5']['t']) ? (int)$data['paraveda_orders_v5']['t'] : 0;
+  $cities = isset($data['paraveda_villes_v2']['d']) ? crm_unwrap($data['paraveda_villes_v2']['d']) : array();
+  if (!is_array($cities)) $cities = array();
+
+  $st = crm_storeep_state_read();
+  $seen = array();
+  if (is_array($st) && isset($st['seen']) && is_array($st['seen'])) {
+    foreach ($st['seen'] as $k => $v) { $k = (string)$k; if ($k !== '') $seen[$k] = true; }
+  }
+  $maxId = 0; $rowMk = array();
+  foreach ($cur as $o) {
+    if (!is_array($o)) continue;
+    if (isset($o['id']) && is_numeric($o['id']) && (int)$o['id'] > $maxId) $maxId = (int)$o['id'];
+    $mk = crm_storeep_marker(isset($o['remarques']) ? $o['remarques'] : '');
+    if ($mk !== '') $rowMk[$mk] = true;
+  }
+
+  $nowms  = (int)(microtime(true) * 1000);
+  $nextId = max((int)(microtime(true) * 1000000), $maxId + 1);
+  $out = array(); $added = 0; $dup = 0; $skip = 0; $addedBy = array();
+  foreach ($orders as $i => $r) {
+    if (!is_array($r)) { $out[] = array('i'=>$i,'st'=>'skip','why'=>'bad-order'); $skip++; continue; }
+    list($why, $o, $sid, $snum) = crm_storeep_norm($r, $cities);
+    if ($why !== null) { $out[] = array('i'=>$i,'st'=>'skip','why'=>$why); $skip++; continue; }
+    $mkId  = ($sid  !== '') ? (string)$sid  : '';
+    $mkNum = ($snum !== '') ? (string)$snum : '';
+    $isDup = false;
+    if ($mkId  !== '' && (isset($seen[$mkId])  || isset($rowMk[$mkId])))  $isDup = true;
+    if ($mkNum !== '' && (isset($seen[$mkNum]) || isset($rowMk[$mkNum]))) $isDup = true;
+    if ($isDup) { $out[] = array('i'=>$i,'st'=>'dup','storeep'=>$sid); $dup++; continue; }
+
+    if ($autoConfirm) {
+      $stt = strtolower(trim((string)(isset($r['status']) ? $r['status'] : '')));
+      if (in_array($stt, array('confirmed','paid','processing','delivered','shipped'), true) || !empty($r['is_paid'])) {
+        $o['statut'] = 'Confirmé';
+        $o['dateConfirmation'] = $o['dateCreation'];
+      }
+    }
+    $o['agent'] = 'Meryam';            /* server-enforced: مريم فقط */
+    $o['id']    = $nextId++;
+    $o['_u']    = $nowms;
+    $f = array();
+    foreach ($o as $fk => $fv) { if ($fk !== 'id' && $fk !== '_u') $f[$fk] = $nowms; }
+    $o['_f'] = $f;
+
+    $cur[] = $o;
+    if ($mkId  !== '') { $seen[$mkId]  = true; }
+    if ($mkNum !== '') { $seen[$mkNum] = true; }
+    $out[] = array('i'=>$i,'st'=>'added','id'=>$o['id'],'agent'=>$o['agent'],'storeep'=>$sid);
+    $added++;
+    $addedBy[$o['agent']][] = array('nom'=>$o['nom'],'produit'=>$o['produit'],'ville'=>$o['ville']);
+  }
+
+  if ($added === 0) {
+    if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
+    crm_storeep_state_save($seen, 0, $dup, $skip, '');
+    return array('ok'=>true,'added'=>0,'dup'=>$dup,'skip'=>$skip,'results'=>$out);
+  }
+
+  crm_backup();
+  $t = max($prevT + 1, $nowms);
+  $data['paraveda_orders_v5'] = array('t' => $t, 'd' => $cur);
+  $ok = crm_write_all($data);
+  if ($ok) crm_journal_append('paraveda_orders_v5', $t, $cur);
+  if ($fh) { @flock($fh, LOCK_UN); @fclose($fh); }
+  crm_storeep_state_save($seen, $added, $dup, $skip, '');
+  if (!$ok) return array('ok'=>false,'err'=>'write-failed','added'=>0,'dup'=>$dup,'skip'=>$skip,'results'=>$out);
+  crm_audit('storeep-orders | src=' . $source . ' | added=' . $added . ' | dup=' . $dup . ' | skip=' . $skip . ' | t=' . $t);
+  try { crm_push_batch($addedBy); } catch (Throwable $__e) { crm_audit('push-error | ' . $__e->getMessage()); }
+  return array('ok'=>true,'added'=>$added,'dup'=>$dup,'skip'=>$skip,'t'=>$t,'results'=>$out);
+}
+/* كيقلب على طلبية Storeep داخل الـpayload ديال الـwebhook */
+function crm_storeep_pick_order($j, $depth = 0) {
+  if (!is_array($j) || $depth > 4) return null;
+  if (isset($j['id']) && !is_array($j['id'])) {
+    if (isset($j['items']) || isset($j['addresses']) || isset($j['created_at']) || isset($j['number']) || isset($j['total'])) return $j;
+  }
+  foreach ($j as $k => $v) {
+    if (!is_array($v)) continue;
+    $o = crm_storeep_pick_order($v, $depth + 1);
+    if ($o !== null) return $o;
+  }
+  return null;
+}
+/* Webhook ديال Storeep: كل طلبية جديدة كتوصل مباشرة للـCRM */
+function crm_storeep_hook() {
+  $key = isset($_GET['key']) ? (string)$_GET['key'] : '';
+  $expect = crm_storeep_hook_key();
+  if ($key === '' || !hash_equals($expect, $key)) crm_out(array('ok'=>false,'err'=>'key'), 403);
+  $raw = (string)file_get_contents('php://input');
+  $j = json_decode($raw, true);
+  if (!is_array($j)) crm_out(array('ok'=>false,'err'=>'bad-json'), 400);
+  $ev = '';
+  foreach (array('event','type','event_type','eventType') as $f) {
+    if (isset($j[$f]) && is_string($j[$f])) { $ev = trim($j[$f]); break; }
+  }
+  $order = crm_storeep_pick_order($j);
+  if ($order === null) { crm_audit('storeep-hook | ignored=no-order | event=' . $ev); crm_out(array('ok'=>true,'ignored'=>'no-order','event'=>$ev)); }
+  $res = crm_storeep_insert(array($order), 'hook');
+  crm_audit('storeep-hook | event=' . $ev . ' | added=' . (isset($res['added']) ? (int)$res['added'] : 0) . ' | dup=' . (isset($res['dup']) ? (int)$res['dup'] : 0));
+  crm_out(array('ok'=>true,'event'=>$ev) + $res);
+}
+/* الجلب من Storeep (Bearer token) — كيستعمل فـ cron و فالزر ديال «جبد دابا» */
+function crm_storeep_sync($manual) {
+  $cfg = crm_storeep_cfg_get();
+  $token = isset($cfg['token']) ? trim((string)$cfg['token']) : '';
+  if ($token === '') return array('ok'=>false,'err'=>'no-token','added'=>0,'dup'=>0,'skip'=>0);
+  $all = array(); $pages = 0; $code = 0; $err = ''; $total = 0;
+  while ($pages < 3) {
+    $path = '/orders?limit=50&sort_field=created_at&sort_order=DESC&page=' . ($pages + 1);
+    list($code, $body, $herr) = crm_storeep_http('GET', $path, $token);
+    if ($code < 200 || $code >= 300) {
+      $err = 'http' . $code . ' ' . substr(trim((string)$body), 0, 200);
+      if ($err === 'http0 ') $err = 'http0 ' . (string)$herr;
+      break;
+    }
+    $j = json_decode($body, true);
+    $rows = array();
+    if (is_array($j)) {
+      if (isset($j['data']) && is_array($j['data'])) $rows = $j['data'];
+      elseif (isset($j['orders']) && is_array($j['orders'])) $rows = $j['orders'];
+      elseif (count($j) > 0 && array_keys($j) === range(0, count($j) - 1)) $rows = $j;
+      if (isset($j['meta']['pagination']['total'])) $total = (int)$j['meta']['pagination']['total'];
+    }
+    $n = 0;
+    foreach ($rows as $o) { if (is_array($o)) { $all[] = $o; $n++; } }
+    $pages++;
+    if ($n < 50) break;
+  }
+  if ($err !== '') {
+    crm_audit('storeep-sync | error=' . $err);
+    $st = crm_storeep_state_read();
+    crm_storeep_state_save(isset($st['seen']) ? $st['seen'] : array(), 0, 0, 0, $err);
+    return array('ok'=>false,'err'=>'http','code'=>$code,'detail'=>$err,'added'=>0,'dup'=>0,'skip'=>0,'pages'=>$pages);
+  }
+  $res = crm_storeep_insert($all, 'sync');
+  if (!isset($res['pages'])) $res['pages'] = $pages;
+  $res['fetched'] = count($all);
+  $res['total']   = $total;
+  return $res;
+}
+/* الجلب التلقائي (مع منع التكرار بين الأجهزة) */
+function crm_storeep_sync_guarded() {
+  $cfg = crm_storeep_cfg_get();
+  if (!isset($cfg['token']) || trim((string)$cfg['token']) === '') return array('ok'=>true,'skipped'=>'no-token','added'=>0);
+  if (array_key_exists('autoPoll', $cfg) && !$cfg['autoPoll']) return array('ok'=>true,'skipped'=>'disabled','added'=>0);
+  $lock = @fopen(crm_dl_state_path('.storeep-sync.lock'), 'c');
+  if (!$lock || !@flock($lock, LOCK_EX | LOCK_NB)) { if ($lock) @fclose($lock); return array('ok'=>true,'skipped'=>'busy','added'=>0); }
+  $stamp = crm_dl_state_path('.storeep-sync.stamp');
+  $last = is_file($stamp) ? (int)@filemtime($stamp) : 0;
+  if ($last > 0 && time() - $last < 45) { @flock($lock, LOCK_UN); @fclose($lock); return array('ok'=>true,'skipped'=>'throttled','retryAfter'=>45 - (time() - $last),'added'=>0); }
+  @touch($stamp);
+  $r = crm_storeep_sync(false);
+  @flock($lock, LOCK_UN); @fclose($lock);
+  return $r;
+}
+/* إعدادات Storeep (أدمين): get | save | test | sync */
+function crm_storeep_admin($b) {
+  global $SECRET;
+  if (!hash_equals($SECRET, crm_token())) crm_out(array('ok'=>false,'err'=>'token'), 403);
+  $op = isset($b['op']) ? (string)$b['op'] : 'get';
+  $c = crm_storeep_cfg_get();
+  $token = isset($c['token']) ? trim((string)$c['token']) : '';
+  $st = crm_storeep_state_read();
+  if ($op === 'get') {
+    $data = crm_read_raw(true);
+    $orders = isset($data['paraveda_orders_v5']['d']) ? crm_unwrap($data['paraveda_orders_v5']['d']) : array();
+    $imported = 0;
+    if (is_array($orders)) foreach ($orders as $o) {
+      if (!is_array($o) || !empty($o['_del'])) continue;
+      if (crm_storeep_marker(isset($o['remarques']) ? $o['remarques'] : '') !== '') $imported++;
+    }
+    crm_out(array('ok'=>true,'cfg'=>array(
+      'apiVersion'  => CRM_API_VERSION,
+      'hasToken'    => $token !== '',
+      'tokenTail'   => $token !== '' ? substr($token, -4) : '',
+      'hookKey'     => crm_storeep_hook_key(),
+      'hookUrl'     => crm_storeep_hook_url(),
+      'autoPoll'    => array_key_exists('autoPoll', $c) ? (int)$c['autoPoll'] : 1,
+      'autoConfirm' => array_key_exists('autoConfirm', $c) ? (int)$c['autoConfirm'] : 0,
+      'imported'    => $imported,
+      'lastSync'    => isset($st['lastSync']) ? (int)$st['lastSync'] : 0,
+      'lastAdded'   => isset($st['lastAdded']) ? (int)$st['lastAdded'] : 0,
+      'lastDup'     => isset($st['lastDup']) ? (int)$st['lastDup'] : 0,
+      'lastSkip'    => isset($st['lastSkip']) ? (int)$st['lastSkip'] : 0,
+      'lastError'   => isset($st['lastError']) ? (string)$st['lastError'] : '',
+      'seenCount'   => (is_array($st) && isset($st['seen']) && is_array($st['seen'])) ? count($st['seen']) : 0,
+    )));
+  }
+  if ($op === 'save') {
+    if (isset($b['token']) && trim((string)$b['token']) !== '') $c['token'] = trim((string)$b['token']);
+    if (isset($b['autoPoll']))    $c['autoPoll']    = !empty($b['autoPoll']) ? 1 : 0;
+    if (isset($b['autoConfirm'])) $c['autoConfirm'] = !empty($b['autoConfirm']) ? 1 : 0;
+    crm_storeep_cfg_set($c);
+    crm_audit('storeep-save | token=' . (isset($c['token']) && trim((string)$c['token']) !== '' ? 'set' : 'none') . ' | autoPoll=' . (isset($c['autoPoll']) ? (int)$c['autoPoll'] : 1) . ' | autoConfirm=' . (isset($c['autoConfirm']) ? (int)$c['autoConfirm'] : 0));
+    crm_out(array('ok'=>true));
+  }
+  if ($op === 'test') {
+    if ($token === '') crm_out(array('ok'=>false,'err'=>'no-token'), 400);
+    list($code, $body, $herr) = crm_storeep_http('GET', '/orders?limit=1', $token);
+    $msg = trim((string)$body);
+    if (strlen($msg) > 300) $msg = substr($msg, 0, 300);
+    $total = 0; $first = '';
+    $j = json_decode($msg, true);
+    if (is_array($j)) {
+      if (isset($j['meta']['pagination']['total'])) $total = (int)$j['meta']['pagination']['total'];
+      $rows = (isset($j['data']) && is_array($j['data'])) ? $j['data'] : array();
+      if (count($rows) > 0 && isset($rows[0]['id'])) $first = (string)$rows[0]['id'];
+    }
+    $detail = $msg;
+    if ($detail === '') $detail = (string)$herr;
+    crm_out(array('ok'=>true,'authOk'=>($code >= 200 && $code < 300),'code'=>$code,'total'=>$total,'firstId'=>$first,'detail'=>$detail,'tail'=>substr($token, -4)));
+  }
+  if ($op === 'sync') {
+    $r = crm_storeep_sync(true);
+    crm_out($r);
+  }
+  if ($op === 'register_hook') {
+    /* كيسجل webhook فـStoreep بوحدو: order-created → api.php?action=storeep_hook */
+    if ($token === '') crm_out(array('ok'=>false,'err'=>'no-token'), 400);
+    $url = crm_storeep_hook_url();
+    $body = array(
+      'name'         => 'Paraveda CRM',
+      'type'         => 'api',
+      'event'        => 'order-created',
+      'format'       => 'json',
+      'url_or_email' => $url,
+      'is_enabled'   => true,
+    );
+    list($code, $resp, $herr) = crm_storeep_http('POST', '/webhooks', $token, $body);
+    $dec = json_decode((string)$resp, true);
+    $id = (is_array($dec) && isset($dec['data']['id'])) ? (string)$dec['data']['id'] : '';
+    $detail = trim((string)$resp);
+    if ($detail === '') $detail = (string)$herr;
+    if (strlen($detail) > 400) $detail = substr($detail, 0, 400);
+    crm_audit('storeep-hook-register | code=' . $code . ' | id=' . $id);
+    crm_out(array('ok'=>($code >= 200 && $code < 300),'code'=>$code,'id'=>$id,'url'=>$url,'detail'=>$detail));
+  }
+  if ($op === 'hooks') {
+    if ($token === '') crm_out(array('ok'=>false,'err'=>'no-token'), 400);
+    list($code, $resp, $herr) = crm_storeep_http('GET', '/webhooks', $token);
+    crm_out(array('ok'=>($code >= 200 && $code < 300),'code'=>$code,'detail'=>substr(trim((string)$resp), 0, 1200)));
+  }
+  crm_out(array('ok'=>false,'err'=>'unknown-op'), 400);
+}
+
+/* ================================================================
+ * v3.100 — طلبية سريعة من البنت
 /* ================================================================
  * v3.100 — طلبية سريعة من البنت (من صفحة quick.html)
  *   POST api.php {action:'quick_order', agent:'imane', order:{nom, telephone, ville, adresse, produit, qte, prix, dateCreation?}}
@@ -2543,6 +3123,10 @@ crm_order_commission_cut_once();
 
 $m = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+/* v4.01 — webhook ديال Storeep: كيقبل GET و POST (Storeep كيصيفط POST)،
+ * والتأكيد بالمفتاح السري `key` — بلا توكن CRM وبلا بيانات فـ URL. */
+if (isset($_GET['action']) && $_GET['action'] === 'storeep_hook') crm_storeep_hook();
+
 /* ---------- GET: full snapshot ---------- */
 if ($m === 'GET') {
   // v3.101: cron ديال Digylog: api.php?action=digylog_sync&token=...
@@ -2550,12 +3134,18 @@ if ($m === 'GET') {
     if (!hash_equals($SECRET, crm_token())) crm_out(array('ok'=>false, 'err'=>'token'), 403);
     crm_out(crm_dl_run(false));
   }
+  /* v4.01: Storeep → CRM.
+   *   cron : api.php?action=storeep_sync&token=...  (جبد يدوي/دوري) */
+  if (isset($_GET['action']) && $_GET['action'] === 'storeep_sync') {
+    if (!hash_equals($SECRET, crm_token())) crm_out(array('ok'=>false, 'err'=>'token'), 403);
+    crm_out(crm_storeep_sync(true));
+  }
   // v3.41: la lecture exige aussi le token (avant: n'importe qui avec l'URL téléchargeait tous les clients)
   if (!hash_equals($SECRET, crm_token())) crm_out(array('ok'=>false, 'err'=>'token'), 403);
 
   /* Guaranteed automatic fallback: every CRM snapshot can start one throttled
      status batch, even when an old cached index lacks the heartbeat script. */
-  if (!isset($_GET['export']) && !isset($_GET['pushkey'])) { crm_dl_send_guarded(); crm_delivery_auto_guarded(); }
+  if (!isset($_GET['export']) && !isset($_GET['pushkey'])) { crm_dl_send_guarded(); crm_delivery_auto_guarded(); crm_storeep_sync_guarded(); }
 
   /* PERF v3.90 — أهم إصلاح فالسيرفر.
    * قبل: كل جهاز كيدير GET كل 5 ثواني وكيحمّل 1.1MB حتى إلا ما تبدل والو.
@@ -2579,7 +3169,7 @@ if ($m === 'GET') {
     if ($__what === 'version') {
       /* نسخة السيرفر + تشخيص المرسل. بلا بيانات زبائن وبلا توكنات. */
       crm_out(array_merge(
-        array('ok'=>true,'apiVersion'=>CRM_API_VERSION,'senderGen'=>CRM_DL_SENDER_GEN,'built'=>'2026-11-06','diag'=>crm_dl_diag_build(array())),
+        array('ok'=>true,'apiVersion'=>CRM_API_VERSION,'senderGen'=>CRM_DL_SENDER_GEN,'built'=>'2026-11-07','diag'=>crm_dl_diag_build(array())),
         crm_index_marker()
       ));
     }
@@ -2842,6 +3432,7 @@ if ($m === 'POST') {
     if ($a === 'ping') crm_out(array('ok'=>true, 'v'=>'3.83'));
     if ($a === 'restore') crm_out(array('ok'=>false, 'err'=>'restore-not-implemented', 'msg'=>'الاسترجاع كيدار يدوياً من مجلد backups'), 501);
     if ($a === 'sheet_orders') crm_sheet_orders($b);   // v3.97: الشيت → CRM
+    if ($a === 'storeep_admin') crm_storeep_admin($b);   // v4.01: إعدادات Storeep
     if ($a === 'push_subscribe') crm_push_subscribe($b);   // v3.98
     if ($a === 'push_test') crm_push_test($b);             // v3.98
     if ($a === 'quick_order') crm_quick_order($b);         // v3.100: طلبية سريعة من البنت
@@ -2914,6 +3505,27 @@ if ($m === 'POST') {
     crm_audit("stale | key=$k | t=$t < $prevT");
     crm_out(array('ok'=>true, 'noop'=>'stale', 't'=>$prevT));
   }
+  /* v4.01 — حماية طلبيات Storeep: جهاز عندو نسخة قديمة (ما زال ما دارش GET)
+   * ما يقدرش يمسح طلبية دخلت من Storeep فـ آخر 6 سوايع. كنرجعوها للپايلود
+   * إلا كانت ماكاينةش فيه. المسح العادي (_del) كيبقى خدام حيت السطر كيكون موجود. */
+  if ($k === 'paraveda_orders_v5' && is_array($d)) {
+    $__srv = isset($data[$k]['d']) ? crm_unwrap($data[$k]['d']) : array();
+    if (is_array($__srv) && count($__srv) > 0) {
+      $__have = array();
+      foreach ($d as $__o) { if (is_array($__o) && isset($__o['id'])) $__have[(string)$__o['id']] = true; }
+      $__cut = $now - 6 * 3600 * 1000;
+      $__keep = 0;
+      foreach ($__srv as $__o) {
+        if (!is_array($__o) || !isset($__o['id'])) continue;
+        if ((string)(isset($__o['src']) ? $__o['src'] : '') !== 'storeep') continue;
+        if ((float)(isset($__o['_u']) ? $__o['_u'] : 0) < $__cut) continue;
+        if (isset($__have[(string)$__o['id']])) continue;
+        $d[] = $__o; $__have[(string)$__o['id']] = true; $__keep++;
+      }
+      if ($__keep > 0) crm_audit('storeep-guard | kept=' . $__keep . ' | client-write kept new storeep orders');
+    }
+  }
+
   $prevJson = isset($data[$k]['d']) ? json_encode($data[$k]['d'], JSON_UNESCAPED_UNICODE) : null;
   $newJson  = json_encode($d, JSON_UNESCAPED_UNICODE);
   if ($prevJson === $newJson) {          // nothing changed: touch time only, no backup churn

@@ -17,9 +17,9 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NAME = sys.argv[1] if len(sys.argv) > 1 else "paraveda-mobile-v4.zip"
+NAME = sys.argv[1] if len(sys.argv) > 1 else "paraveda-storeep-v41.zip"
 FILES = ["api.php", "index.html", "digylog-admin.html", ".htaccess"]
-FIXED = (2026, 11, 6, 12, 0, 0)
+FIXED = (2026, 11, 7, 12, 0, 0)
 
 out = ROOT / NAME
 if out.exists():

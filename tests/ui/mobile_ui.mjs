@@ -1,5 +1,5 @@
 /**
- * UI verification of the professional mobile version of the CRM (نسخة الموبايل v4.00).
+ * UI verification of the professional mobile version of the CRM (نسخة الموبايل v4.01).
  *
  * It extracts the real mobile component from index.html, renders it with React
  * and drives the follow-up list, the KPI tiles, the quick status buttons, the
@@ -145,7 +145,7 @@ check("the mobile bottom navigation is rendered",
 check("the new order button is in the navigation",
   !!dom.window.document.querySelector(".mv-fab"), "no .mv-fab");
 check("the header shows the version of the app",
-  (dom.window.document.querySelector(".mv-ver") || {}).textContent === "v4.00",
+  (dom.window.document.querySelector(".mv-ver") || {}).textContent === "v4.01",
   (dom.window.document.querySelector(".mv-ver") || {}).textContent);
 check("the header shows the avatar of the agent",
   !!dom.window.document.querySelector(".mv-avatar"), "no avatar");
@@ -231,7 +231,7 @@ await click(byText("الأرقام"));
 check("the statistics page shows the numbers of the agent",
   text().includes("طلبيات") && text().includes("مؤكدة") && text().includes("مسلّمة"), text().slice(0, 300));
 check("the statistics page shows the version of the mobile app",
-  text().includes("نسخة الموبايل v4.00"), text().slice(0, 300));
+  text().includes("نسخة الموبايل v4.01"), text().slice(0, 300));
 
 // --- the switch between the table and the mobile version ------------------
 dom.window.localStorage.setItem("paraveda_mobile_mode", "0");

@@ -195,8 +195,8 @@ check("the agent page has the manual switch to the mobile version",
   (desk.html.includes("pv-mob-switch") ? "switch found" : desk.text.slice(0, 160)));
 
 // --- 4. the version of the mobile app is visible ---------------------------
-check("the mobile version shows its version (v4.00)",
-  agent.html.includes("v4.00") && agent.html.includes("mv-ver"),
+check("the mobile version shows its version (v4.01)",
+  agent.html.includes("v4.01") && agent.html.includes("mv-ver"),
   agent.html.slice(0, 160));
 
 // --- 5. the query string forces the mobile version -------------------------

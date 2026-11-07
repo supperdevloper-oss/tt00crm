@@ -61,7 +61,7 @@ checks = {
     "Admin can synchronize one exact Tracking now": all(x in api for x in ("$op === 'delivery_sync'", "crm_delivery_sync_batch($tracking !== '' ? 1 : 20, $tracking)", "'requestedTracking'=>$onlyTracking")) and all(x in digylog_admin for x in ("مزامنة Suivie من Digylog", "deliveryTracking", "syncDelivery", "op:'delivery_sync'")),
     "Returned synchronization changes no other business field": all(x in api for x in ("The only business-field write performed by this sync", "$o['livraison']=$next;$o['_f']['livraison']=$now;$o['_u']=$now", "It never writes statut, dateLiv, tracking, client data, prices, or other fields")),
     "Open CRM heartbeat checks delivery states": all(x in api for x in ("$result['deliverySync']=crm_delivery_auto_guarded()", "function crm_delivery_auto_guarded", ".delivery-auto.lock", ".delivery-auto.stamp", "if ($a === 'digylog_delivery_auto')")) and all(x in index for x in ("action:'digylog_tracking_auto'", "action:'digylog_delivery_auto'", "Promise.all")),
-    "Every authenticated CRM snapshot guarantees automatic fallback": all(x in api for x in ("Guaranteed automatic fallback", "old cached index lacks the heartbeat script", "if (!isset($_GET['export']) && !isset($_GET['pushkey'])) { crm_dl_send_guarded(); crm_delivery_auto_guarded(); }")),
+    "Every authenticated CRM snapshot guarantees automatic fallback": all(x in api for x in ("Guaranteed automatic fallback", "old cached index lacks the heartbeat script", "if (!isset($_GET['export']) && !isset($_GET['pushkey'])) { crm_dl_send_guarded(); crm_delivery_auto_guarded(); crm_storeep_sync_guarded(); }")),
     "Digylog webhook applies final status automatically": all(x in api for x in ("function crm_dl_hook()", "order-status-changed", "crm_delivery_status($p)", "if(isset($_GET['action'])&&$_GET['action']==='digylog_hook')crm_dl_hook()", "The webhook's only business-field write", "$o['livraison']=$newLiv")) and "'disabled'=>true" not in api,
     "Webhook matching is exact and never uses phone": all(x in api for x in ("$rowTracking===$tracking", "(string)$o['id']===$num", "count($hits)!==1", "'ambiguous'=>count($hits)>1")) and "telephone" not in api[api.index("function crm_dl_hook()"):api.index("/* ================================================================\n * Suivi des Retours")],
     "Agent pages include Tracking status": all(x in index for x in ('"Suivie","Tracking","UPSEL"', "pv-agent-mobile-track", "__pvDigylogOrder(String(H.tracking).trim(),Rd)", "tr.cmd-locked td.pv-track-cell")),
@@ -111,12 +111,12 @@ checks = {
     "Orders are sent exactly once": all(x in api for x in ("!empty($o['dlSent'])) continue;", "$o['_f']['dlSent'] = $now;", "$o['dlSent'] = 1; $o['dlAt'] = $now;")),
     "Failed Digylog sends stay pending with backoff": all(x in api for x in ("elseif (isset($failed[$id]))", "$o['dlNextTry']=$now+$delay", "$nextTry >", "min(60000,10000*")) and "$tries >= 20" not in api,
     "A failed order is never blocked forever": all(x in api for x in ("$gen !== CRM_DL_SENDER_GEN", "$tries = 0; $nextTry = 0;", "$o['dlGen']=CRM_DL_SENDER_GEN")),
-    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '4.00')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
+    "Server version is verifiable over HTTP": all(x in api for x in ("define('CRM_API_VERSION', '4.01')", "define('CRM_DL_SENDER_GEN', 4)", "$__what === 'version'", "'apiVersion'=>CRM_API_VERSION")),
     "Public diagnosis file explains a silent failure": all(x in api for x in ("function crm_dl_diag_save", "function crm_dl_diag_build", "dl-diag.json", "'pendingCount'", "crm_dl_diag_save(crm_dl_diag_build(")),
     "Digylog boutique is resolved automatically": all(x in api for x in ("function crm_dl_store_by_name", "function crm_dl_store_known", "function crm_dl_initials_match", "strpos($ns,$agentKey)!==false", "function crm_dl_networks", "!in_array((string)$network, $ids, true)")),
     "Digylog auth falls back to the seller token": all(x in api for x in ("$code===401 || $code===403", "sellerToken", "crm_tracking_bearer($cfg[$k])", "crm_dl_api_tokens()")),
     "CRM shows the sender result instead of failing silently": all(x in index for x in ("pv-digylog-send-auto", "pv-dl-alert", "Digylog: '+f+' طلبية ما تصيفطاتش", "export=version")) and all(x in digylog_admin for x in ("apiVersion", "الطلبيات لي مازال ما تصيفطاتش", "نسخة السيرفر")),
-    "Normal authenticated CRM reads also trigger automatic sending": "{ crm_dl_send_guarded(); crm_delivery_auto_guarded(); }" in api,
+    "Normal authenticated CRM reads also trigger automatic sending": "{ crm_dl_send_guarded(); crm_delivery_auto_guarded(); crm_storeep_sync_guarded(); }" in api,
     "Every Digylog call tries all the stored tokens": all(x in api for x in ("function crm_dl_api_tokens(", "function crm_dl_http_tokens(", "foreach (array('token', 'sellerToken') as $k)", "crm_dl_http_tokens('GET', '/order/'", "crm_dl_http_tokens('GET','/stores'", "crm_dl_http_tokens('GET','/networks'", "crm_delivery_fetch_infos($batch,$apiTokens)")),
     "The Tracking cell and the delivery sync use every token": "crm_dl_http_tokens('GET', '/order/' . rawurlencode($tracking) . '/infos', $apiTokens)" in api and "$apiTokens=crm_dl_api_tokens();" in api,
     "The admin page can save and test the Digylog token": all(x in digylog_admin for x in ("function sellerTokenValue(", "op: 'api_test'", "id=\"testApi\"", "id=\"copyTok\"")),
@@ -132,18 +132,57 @@ checks = {
     "The mobile version fills the delivery cost of the city and not the selling price": all(x in index for x in ("setForm(f => ({ ...f, ville: v, commission: c0 != null ? c0 : f.commission }))", "commission: Number(v.commission) > 0 ? Number(v.commission) : 35", "ثمن التوصيل: ")),
     "The mobile version fills the selling price from the product": all(x in index for x in ("const pickProduit = (p) => {", "prix: !isNaN(pr) && pr > 0 ? pr : f.prix", "s.jsx(Pk, { key: \"i5\", value: f.produit, list: catalog, onChange: pickProduit")),
     "The mobile version is hidden on the big screens": "@media(min-width:1024px){.mv-root{display:none!important}}" in index,
-    "The automatic Digylog sending is untouched by the mobile version": all(x in index for x in ("pv-digylog-send-auto", "const EXPECTED='4.00';", "setTimeout(sendConfirmed,2000);setInterval(sendConfirmed,6000);")),
+    "The automatic Digylog sending is untouched by the mobile version": all(x in index for x in ("pv-digylog-send-auto", "const EXPECTED='4.01';", "setTimeout(sendConfirmed,2000);setInterval(sendConfirmed,6000);")),
     "The mobile version uses the same JSX runtime as the rest of the CRM": "s.jsxs(\"div\", { className: \"mv-root\", dir: \"rtl\", children: [" in index and "s.jsxs(\"div\", { key: \"bd\", className: \"mv-body\", children: [" in index,
     "The mobile version never passes the children as the third argument": not re.search(r"s\.jsx?s?\(\"[a-z]+\",\s*\{[^}]*\}\s*,\s*[\[(]", index[index.index("function __PvMobileApp"):index.index("function __pvRepairStorage()")]),
     "The mobile version is forced by the query string": all(x in index for x in ("function __pvMobileQuery()", "[?&]mobile=([^&#]*)", 'if (q === "1" || q === "0")', 'localStorage.setItem("paraveda_mobile_mode", q)')),
     "The agent page has a manual switch to the mobile version": all(x in index for x in ('className:"pv-mob-switch"', "onClick:()=>__pvSetMobile(true)", "📱 نسخة الموبايل")),
-    "The mobile version shows its own version": all(x in index for x in ('className: "mv-ver"', '"v4.00"', "نسخة الموبايل v4.00")),
+    "The mobile version shows its own version": all(x in index for x in ('className: "mv-ver"', '"v4.01"', "نسخة الموبايل v4.01")),
     "The mobile version has the professional header and the counters": all(x in index for x in ('className: "mv-avatar"', 'className: "mv-strip"', 'className: "mv-tile "', "📞 للاتصال", "🚚 جاهزة", "⚠️ خطر")),
     "The mobile version opens the new order in a sheet": all(x in index for x in ('className: "mv-sheet-wrap"', 'className: "mv-sheet-back"', 'className: "mv-sheet"', "➕ طلبية جديدة", "💾 حفظ الطلبية")),
     "The mobile version has a toast for the actions": all(x in index for x in ('className: "mv-toast"', "✅ تأكيد", "⏰ متابعة", "💬 واتساب", "https://wa.me/")),
     "The server tells which index.html is deployed": all(x in api for x in ("function crm_index_marker(", "indexVersion", "indexBuild", "indexHash", "crm_index_marker()")),
     "The new version is announced to the user": all(x in index for x in ("function showNewVersion(", "نسخة جديدة متوفرة", "location.replace(location.pathname+'?_pv='+Date.now())", "pv_newver_")),
 }
+
+
+# ---------------------------------------------------------------- Storeep (v4.01)
+checks.update({
+    "Storeep orders land in the CRM automatically": all(x in api for x in (
+        "define('CRM_STOREEP_API', 'https://api.storeep.com/v1')",
+        "function crm_storeep_sync(", "function crm_storeep_sync_guarded(",
+        "function crm_storeep_hook(", "function crm_storeep_insert(",
+        "crm_storeep_hook();", "$_GET['action'] === 'storeep_sync'",
+        "crm_storeep_sync_guarded(); }", "$a === 'storeep_admin'",
+    )),
+    "Every Storeep order is assigned to Meryam only": all(x in api for x in (
+        "$o['agent'] = 'Meryam';", "$o['agent'] = 'Meryam';            /* server-enforced: مريم فقط */",
+    )) or api.count("'agent'] = 'Meryam'") >= 3,
+    "The same Storeep order can never be imported twice": all(x in api for x in (
+        "function crm_storeep_marker(", "$seen[$mkId]  = true;",
+        "if ($isDup) { $out[] = array('i'=>$i,'st'=>'dup'", ".storeep-state.json",
+    )),
+    "Storeep test orders and abandoned carts are skipped": all(x in api for x in (
+        "if (!empty($r['is_test']))", "'test-order'", "'abandoned'", "'bad-date'",
+    )),
+    "The Storeep webhook is protected by a secret key": all(x in api for x in (
+        "function crm_storeep_hook_key(", "if ($key === '' || !hash_equals($expect, $key))",
+        "storeep_cfg.json", "'hookUrl'",
+    )) and "storeep_cfg.json" in open(".htaccess", encoding="utf-8").read(),
+    "The Storeep token never leaves the server": all(x in api for x in (
+        "'hasToken'    => $token !== ''", "'tokenTail'   => $token !== '' ? substr($token, -4) : ''",
+    )) and "storeep_cfg.json" in open(".htaccess", encoding="utf-8").read(),
+    "A stale browser cannot wipe a fresh Storeep order": all(x in api for x in (
+        "storeep-guard", "!== 'storeep') continue;",
+    )),
+    "Storeep delivery cost comes from the CRM cities": all(x in api for x in (
+        "function crm_storeep_city_price(", "$CRM_STOREEP_CITY_ALIAS", "crm_storeep_city_alias(",
+    )),
+    "The admin page can connect, test and pull Storeep": all(x in digylog_admin for x in (
+        "action:'storeep_admin'", "op:'test'", "op:'sync'", "op:'register_hook'",
+        'id="spHook"', 'id="spToken"',
+    )),
+})
 
 import subprocess
 # The mobile UI test is optional: it needs the node modules of tests/ui.
@@ -162,7 +201,13 @@ checks["Isolated simulation of the automatic sender passes"] = sim.returncode ==
 if sim.returncode != 0:
     print(sim.stdout[-2000:], sim.stderr[-2000:])
 
-package = ROOT / "paraveda-mobile-v4.zip"
+sim_sp = subprocess.run([sys.executable, str(ROOT / "tests" / "sim_storeep.py")],
+                        capture_output=True, text=True)
+checks["Isolated simulation of the Storeep intake passes"] = sim_sp.returncode == 0
+if sim_sp.returncode != 0:
+    print(sim_sp.stdout[-2000:], sim_sp.stderr[-2000:])
+
+package = ROOT / "paraveda-storeep-v41.zip"
 with zipfile.ZipFile(package) as z:
     checks["The mobile package is valid and minimal"] = (
         z.testzip() is None

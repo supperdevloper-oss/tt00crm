@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Paraveda CRM — نسخة الموبايل الاحترافية (v4.00)
+   Paraveda CRM — نسخة الموبايل الاحترافية (v4.01)
    ------------------------------------------------------------------
    هاد الكود كيتحط داخل index.html (قبل function __pvRepairStorage).
    IMPORTANT: الملف مبني بـ automatic runtime ديال React:
@@ -262,7 +262,7 @@ function __PvMobileApp({ agent: e }) {
           s.jsx("b", { key: "t", children: "👤 الحساب" }),
           s.jsx("span", { key: "p", className: "mv-phone", children: h ? (h.username + " · " + (h.agent || "")) : "" })
         ]}),
-        s.jsx("span", { key: "v", className: "mv-date", children: "نسخة الموبايل v4.00" })
+        s.jsx("span", { key: "v", className: "mv-date", children: "نسخة الموبايل v4.01" })
       ]})] })
     ]});
   }
@@ -311,7 +311,7 @@ function __PvMobileApp({ agent: e }) {
         s.jsx("span", { key: "ag", className: "mv-head-sub", children: "نسخة الموبايل · " + stats.total + " طلبية" })
       ]}),
       s.jsxs("div", { key: "hr", className: "mv-head-r", children: [
-        s.jsx("span", { key: "vb", className: "mv-ver", title: "نسخة التطبيق", children: "v4.00" }),
+        s.jsx("span", { key: "vb", className: "mv-ver", title: "نسخة التطبيق", children: "v4.01" }),
         s.jsx("button", { key: "tb", onClick: __pvMobileToggle, className: "mv-hbtn", title: "النسخة ديال الجدول", children: "🖥️" }),
         s.jsx("button", { key: "lo", onClick: () => lgOut && lgOut(), className: "mv-hbtn", title: "تسجيل الخروج", children: "⏻" })
       ]})

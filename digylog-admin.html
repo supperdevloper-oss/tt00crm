@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>إعدادات Digylog — Paraveda</title>
+  <title>إعدادات Digylog و Storeep — Paraveda</title>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; background: #f1f5f9; font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; color: #0f172a; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
@@ -31,7 +31,7 @@
 </head>
 <body>
   <div class="top">
-    <h1>⚙️ إعدادات Digylog <span id="apiVer" style="font-size:11px;opacity:.85;font-weight:700"></span></h1>
+    <h1>⚙️ الإعدادات (Digylog + Storeep) <span id="apiVer" style="font-size:11px;opacity:.85;font-weight:700"></span></h1>
     <a href="index.html">رجوع للCRM</a>
   </div>
 
@@ -111,6 +111,36 @@
         <input id="deliveryTracking" type="text" autocomplete="off" placeholder="مثال: S8363F49B8" style="direction:ltr;text-align:left;text-transform:uppercase" />
         <div class="hint" style="margin-top:6px">دخل Tracking باش تفحص طلبية بعينها دابا. إلا خليتيه فارغ كيتفحصو 20 طلبية تلقائياً.</div>
         <button class="primary" id="syncDelivery" style="width:100%;margin-top:12px">🔄 مزامنة Suivie الآن</button>
+      </div>
+
+      <div class="card">
+        <h2>5) Storeep → CRM (الطلبيات كتدخل بوحدها)</h2>
+        <div class="hint" style="margin-bottom:10px;color:#166534;font-weight:700">كل طلبية جديدة فـ <b>app.storeep.com/orders</b> كتدخل أوتوماتيك للـCRM وتعطى لمريم. ما كتتزادش مرتين.</div>
+
+        <label for="spToken">توكن API ديال Storeep (Access token)</label>
+        <input id="spToken" type="password" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+        <div class="hint" id="spTokInfo">…</div>
+        <div class="hint">كيتولّد من Storeep: <b>Settings → Access tokens</b> → Create new token → صلاحيات <b>orders:read</b> (+ <b>webhooks:write</b> إلا بغيتي الويب هوك).</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <button id="spSave" type="button" style="background:#0f766e;color:#fff">💾 حفظ التوكن</button>
+          <button id="spTest" type="button" style="background:#e2e8f0;color:#0f172a">🔌 اختبار الاتصال</button>
+        </div>
+
+        <label class="check"><input id="spAutoPoll" type="checkbox" /> جلب تلقائي من Storeep (كل ما تحل الـCRM)</label>
+        <label class="check"><input id="spAutoConfirm" type="checkbox" /> الطلبيات الجداد كيتعلمو <b>Confirmé</b> أوتوماتيك</label>
+        <div class="hint">بلا هاد الخيار: الطلبية كتدخل بـ statut خاوي، والبنت كيتفكّرها (هادا هو الافتراضي الآمن).</div>
+
+        <button class="primary" id="spSync" style="width:100%;margin-top:10px">⬇️ جبد الطلبيات دابا</button>
+
+        <label for="spHook" style="margin-top:14px">رابط Webhook (تحطو فـ Storeep → Webhooks)</label>
+        <input id="spHook" type="text" readonly style="direction:ltr;text-align:left;font-size:12px" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <button id="spHookCopy" type="button" style="background:#e2e8f0;color:#0f172a">📋 نسخ الرابط</button>
+          <button id="spHookAuto" type="button" style="background:#e2e8f0;color:#0f172a">⚡ سجّل الويب هوك أوتوماتيك</button>
+        </div>
+        <div class="hint">فـ Storeep: Webhooks → Create → Event: <b>order-created</b> → Type: <b>api</b> → Format: <b>json</b> → لصق الرابط. (هادا كيصيفط الطلبية فـ نفس اللحظة.)</div>
+        <div id="spOut" class="hint" style="margin-top:10px;direction:ltr;text-align:left;white-space:pre-wrap"></div>
       </div>
 
       <div class="card">
@@ -381,6 +411,89 @@
         show('✅ Seller Authorization تحفظ. تعمّر Tracking ديال '+linked+' طلبية، والباقي غادي يتراجع أوتوماتيكياً.',true);
       } catch(e){ show('❌ '+(e.message||'error'),false); }
       finally{btn.disabled=false;}
+    };
+
+    /* ---------------- Storeep (v4.01) ---------------- */
+    function spOut(t){ var el=document.getElementById('spOut'); if(el) el.textContent=t; }
+    function spMsg(t){ show(t,true); }
+    function spFill(c){
+      if(!c) return;
+      var el=document.getElementById('spToken');
+      if(el) el.value='';
+      var ti=document.getElementById('spTokInfo');
+      if(ti){
+        ti.textContent = c.hasToken ? ('✅ توكن Storeep محفوظ (…' + c.tokenTail + ') — الجلب خدام') : '⚠️ ما كاينش توكن Storeep بعد — الطلبيات ما غاديش تدخل';
+        ti.style.color = c.hasToken ? '#166534' : '#b91c1c';
+        ti.style.fontWeight='700';
+      }
+      var ap=document.getElementById('spAutoPoll'); if(ap) ap.checked = c.autoPoll===undefined ? true : !!c.autoPoll;
+      var ac=document.getElementById('spAutoConfirm'); if(ac) ac.checked = !!c.autoConfirm;
+      var hk=document.getElementById('spHook'); if(hk) hk.value = c.hookUrl || '';
+      var lines=[];
+      lines.push('طلبيات Storeep دخلو للـCRM: '+(c.imported||0));
+      if(c.lastSync) lines.push('آخر مزامنة: '+new Date(c.lastSync).toLocaleString()+' | زادت: '+(c.lastAdded||0)+' | مكررة: '+(c.lastDup||0)+' | تتخطى: '+(c.lastSkip||0));
+      if(c.lastError) lines.push('⚠️ آخر خطأ: '+c.lastError);
+      lines.push('الإصدار: v'+(c.apiVersion||'?'));
+      spOut(lines.join('\n'));
+    }
+    function spReload(){
+      return call({action:'storeep_admin',op:'get'}).then(function(j){
+        if(j && j.ok){ spFill(j.cfg); out(j); }
+        else spMsg('❌ ما قدرتش نجيب إعدادات Storeep ('+((j&&j.err)||'error')+')');
+      });
+    }
+    spReload().catch(function(){});
+
+    var spSave=$('spSave');
+    if(spSave) spSave.onclick=function(){
+      var body={action:'storeep_admin',op:'save',
+        autoPoll: $('spAutoPoll').checked?1:0,
+        autoConfirm: $('spAutoConfirm').checked?1:0};
+      var t=$('spToken').value.trim(); if(t) body.token=t;
+      spSave.disabled=true;
+      call(body).then(function(j){
+        spSave.disabled=false;
+        if(j&&j.ok){ show('✅ تحفظات إعدادات Storeep',true); $('spToken').value=''; spReload(); out(j); }
+        else show('❌ ما تحفظاتش ('+((j&&j.err)||'error')+')',false);
+      }).catch(function(){ spSave.disabled=false; show('❌ مشكل فالاتصال',false); });
+    };
+    var spTest=$('spTest');
+    if(spTest) spTest.onclick=function(){
+      spTest.disabled=true; spOut('…');
+      call({action:'storeep_admin',op:'test'}).then(function(j){
+        spTest.disabled=false; out(j);
+        if(j&&j.ok&&j.authOk){ show('✅ التوكن خدام — Storeep فيها '+(j.total||0)+' طلبية',true); spOut('توكن صحيح (…'+j.tail+') | طلبيات: '+(j.total||0)); }
+        else if(j&&j.ok){ show('❌ Storeep رفض التوكن ('+(j.code||'?')+')',false); spOut((j.detail||'').slice(0,300)); }
+        else { show('❌ '+((j&&j.err)||'error'),false); }
+      }).catch(function(){ spTest.disabled=false; show('❌ مشكل فالاتصال',false); });
+    };
+    var spSync=$('spSync');
+    if(spSync) spSync.onclick=function(){
+      spSync.disabled=true; spOut('⏳ كنجبد الطلبيات من Storeep…');
+      call({action:'storeep_admin',op:'sync'}).then(function(j){
+        spSync.disabled=false; out(j);
+        if(!j||!j.ok){ show('❌ الجلب فشل: '+((j&&(j.detail||j.err))||'error'),false); spReload(); return; }
+        show('✅ جبدت '+(j.fetched||0)+' طلبية — زادت '+(j.added||0)+'، مكررة '+(j.dup||0)+'، تتخطى '+(j.skip||0),true);
+        spReload();
+      }).catch(function(){ spSync.disabled=false; show('❌ مشكل فالاتصال',false); });
+    };
+    var spCopy=$('spHookCopy');
+    if(spCopy) spCopy.onclick=function(){
+      var v=$('spHook').value||'';
+      if(!v){ show('❌ ما كاينش رابط',false); return; }
+      try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(v); } }
+      catch(e){}
+      $('spHook').select(); try{ document.execCommand('copy'); }catch(e){}
+      show('✅ تنسخ الرابط — لصقو فـ Storeep → Webhooks',true);
+    };
+    var spHookAuto=$('spHookAuto');
+    if(spHookAuto) spHookAuto.onclick=function(){
+      spHookAuto.disabled=true; spOut('⏳ كنسجل الويب هوك فـ Storeep…');
+      call({action:'storeep_admin',op:'register_hook'}).then(function(j){
+        spHookAuto.disabled=false; out(j);
+        if(j&&j.ok){ show('✅ الويب هوك تسجل فـ Storeep — الطلبيات غادي توصل فـ نفس اللحظة',true); spOut('Webhook id: '+(j.id||'—')); }
+        else show('❌ ما قدرتش نسجل: '+((j&&(j.detail||j.err))||'error'),false);
+      }).catch(function(){ spHookAuto.disabled=false; show('❌ مشكل فالاتصال',false); });
     };
   })();
   </script>
