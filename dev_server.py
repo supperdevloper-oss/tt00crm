@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import tempfile
 import threading
 import time
@@ -67,6 +68,43 @@ def write_data(value: dict[str, Any]) -> None:
                 os.unlink(temp_name)
             except FileNotFoundError:
                 pass
+
+
+API_VERSION = "4.01"
+SENDER_GEN = 4
+BUILT = "2026-11-07"
+
+
+def index_marker() -> dict[str, Any]:
+    """Same marker api.php exposes: which index.html is deployed."""
+    out: dict[str, Any] = {"indexVersion": "", "indexBuild": "", "indexHash": "",
+                           "indexSize": 0, "indexMtime": 0}
+    path = ROOT / "index.html"
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return out
+    text = raw.decode("utf-8", "replace")
+    out["indexSize"] = len(raw)
+    out["indexMtime"] = int(path.stat().st_mtime)
+    out["indexHash"] = hashlib.sha1(raw).hexdigest()[:12]
+    version = re.search(r"EXPECTED\s*=\s*'([^']+)'", text)
+    build = re.search(r"PV_BUILD\s*=\s*'([^']+)'", text)
+    if version:
+        out["indexVersion"] = version.group(1)
+    if build:
+        out["indexBuild"] = build.group(1)
+    return out
+
+
+def version_payload() -> dict[str, Any]:
+    return {
+        "ok": True, "apiVersion": API_VERSION, "senderGen": SENDER_GEN, "built": BUILT,
+        "diag": {"ok": True, "autoSend": 1, "enabled": 1, "pendingCount": 0,
+                 "sent": 0, "failed": 0, "skipped": 0, "route": "dev",
+                 "lastRun": {"ok": True, "sent": 0, "failed": 0, "when": 0}},
+        **index_marker(),
+    }
 
 
 def encoded_snapshot() -> tuple[bytes, str]:
@@ -227,6 +265,14 @@ class CRMHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = self.path.split("?", 1)[0]
         if path.endswith("/api.php"):
+            query = parse_qs(urlsplit(self.path).query)
+            if query.get("export", [""])[0] == "version":
+                self.json_response(version_payload())
+                return
+            if query.get("action", [""])[0] == "storeep_sync":
+                self.json_response({"ok": True, "skipped": "dev-preview", "added": 0,
+                                    "dup": 0, "skip": 0, "fetched": 0})
+                return
             try:
                 payload, etag = encoded_snapshot()
                 if self.headers.get("If-None-Match") == etag:
@@ -271,8 +317,43 @@ class CRMHandler(SimpleHTTPRequestHandler):
             self.json_response(apply_digylog_hook(body))
             return
         if "action" in body:
+            action = str(body.get("action") or "")
+            if action in ("digylog_send_auto", "digylog_tracking_auto", "digylog_delivery_auto"):
+                # Nothing is sent from the preview: answer the same shape api.php uses.
+                self.json_response({"ok": True, "sent": 0, "failed": 0, "skipped": 0,
+                                    "updated": 0, "linked": 0, "checked": 0,
+                                    "apiVersion": API_VERSION, "devPreview": True})
+                return
+            if action == "digylog_admin":
+                op = str(body.get("op") or "get")
+                if op == "get":
+                    self.json_response({"ok": True, "cfg": {
+                        "apiVersion": API_VERSION, "senderGen": SENDER_GEN, "enabled": 0,
+                        "autoSend": 0, "network": 1, "sentType": 0, "defaultStore": "",
+                        "stores": {}, "agents": [], "since": 0, "hasToken": False,
+                        "tokenTail": "", "hasSellerToken": False, "sellerTokenTail": "",
+                    }, "agentStores": {}, "devPreview": True})
+                    return
+                self.json_response({"ok": True, "devPreview": True, "skipped": "dev-preview"})
+                return
+            if action == "storeep_admin":
+                op = str(body.get("op") or "get")
+                if op == "get":
+                    self.json_response({"ok": True, "devPreview": True, "cfg": {
+                        "apiVersion": API_VERSION, "hasToken": False, "tokenTail": "",
+                        "hookKey": "dev-preview", "autoPoll": 1, "autoConfirm": 0,
+                        "imported": 0, "lastSync": 0, "lastAdded": 0, "lastDup": 0,
+                        "lastSkip": 0, "lastError": "", "seenCount": 0,
+                    }})
+                    return
+                self.json_response({"ok": True, "devPreview": True, "added": 0, "dup": 0,
+                                    "skip": 0, "fetched": 0})
+                return
+            if action == "push_subscribe":
+                self.json_response({"ok": True, "devPreview": True})
+                return
             self.json_response(
-                {"ok": False, "error": "This dev server supports key sync and the Digylog webhook only."},
+                {"ok": False, "err": "dev-preview", "error": "This dev server supports key sync and the Digylog webhook only."},
                 HTTPStatus.NOT_IMPLEMENTED,
             )
             return

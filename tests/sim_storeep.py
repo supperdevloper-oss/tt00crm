@@ -73,7 +73,20 @@ def norm_city(s):
     s = re.sub(r'[^\w]+', ' ', s, flags=re.UNICODE)
     return re.sub(r'\s+', ' ', s).strip()
 
-ALIAS = json.loads(open('/tmp/alias.json', encoding='utf-8').read())
+def _alias_table():
+    """The city aliases are read from index.html itself (single source of truth)."""
+    text = open(INDEX, encoding='utf-8', errors='replace').read()
+    start = text.find('const Ap={')
+    if start < 0:
+        return {}
+    end = text.find('};', start)
+    body = text[start + len('const Ap=') + 1:end + 1][:-1]
+    pairs = re.findall(r'(?:"([^"]+)"|([\u0600-\u06ff\w][^:]*?))\s*:\s*"([^"]+)"', body)
+    return {(a or b.strip()): v for a, b, v in pairs}
+
+ALIAS = _alias_table()
+if len(ALIAS) < 20:
+    raise SystemExit('cannot read the city aliases from index.html')
 
 def city_alias(s):
     k = norm_city(s)
