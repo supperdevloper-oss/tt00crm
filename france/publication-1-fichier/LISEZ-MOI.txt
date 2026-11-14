@@ -1,0 +1,41 @@
+UN SEUL FICHIER — MODE D'EMPLOI
+===============================
+
+C'est QUOI ?
+Un index.html complet : les photos, les polices et le CSS sont
+DEDANS. Aucun dossier assets/ a televerser, aucun risque d'image cassee.
+
+
+CE QU'IL FAUT FAIRE (2 minutes)
+-------------------------------
+1. cPanel > Gestionnaire de fichiers > public_html > Guide
+2. Televerser "index.html" (celui de ce ZIP)
+3. S'il demande : "ecraser le fichier existant" -> OUI
+4. C'est fini.
+
+Vous n'avez RIEN d'autre a supprimer ni a televerser.
+
+
+VERIFIER
+--------
+Ouvrir : https://www.easymeatrecipe.com/Guide/
+   -> les photos doivent s'afficher
+Puis : Ctrl + F5 (ou navigation privee) pour vider le cache
+
+
+CE QUI EST DANS LE FICHIER
+--------------------------
+- 365 recettes / 2,97 EUR / bouton Gumroad
+- Pixel Facebook 28976191782041006
+- Bandeau de consentement cookies
+- 3 pages legales (mentions, CGV, confidentialite) : liens normaux,
+  elles restent des fichiers separes sur le serveur.
+- 15 images + 6 polices integrees (WebP optimise pour mobile)
+- Poids total : 1,5 Mo (le navigateur ne telecharge qu'un fichier)
+
+
+SI VOUS PREFEREZ GARDER LES DOSSIERS
+------------------------------------
+Utilisez SITE-COMPLET.zip (pages + assets/) a la place.
+Les deux methodes fonctionnent, mais UN FICHIER est plus sur :
+impossible d'oublier un dossier.
